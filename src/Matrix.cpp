@@ -1,4 +1,4 @@
-#include "ncm/Matrix.hpp"
+﻿#include "ncm/Matrix.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -9,9 +9,30 @@
 namespace ncm {
 namespace {
 
-// y += scale * (A x), with A row-major [rows][cols].
+// y += scale * (A x), with A row-major [R][Cc]. Sizes are compile-time constants so the
+// compiler can unroll fully and vectorize across rows; each row's sum keeps the same order,
+// so results are bit-identical to the generic loop.
+template <uint32_t R, uint32_t Cc>
+inline void matvecFixed(const float* __restrict A, const float* __restrict x, float* __restrict y, float scale) {
+    float acc[R];
+    for (uint32_t r = 0; r < R; ++r) acc[r] = 0.0f;
+    for (uint32_t c = 0; c < Cc; ++c) {
+        const float xc = x[c];
+        for (uint32_t r = 0; r < R; ++r) acc[r] += A[size_t(r) * Cc + c] * xc;
+    }
+    for (uint32_t r = 0; r < R; ++r) y[r] += scale * acc[r];
+}
+
+// Dispatches the block sizes the matrix uses to the fixed-size kernel.
 inline void matvecAdd(const float* __restrict A, const float* __restrict x, float* __restrict y,
                       uint32_t rows, uint32_t cols, float scale) {
+    if (rows == C1 && cols == C1) return matvecFixed<C1, C1>(A, x, y, scale);
+    if (rows == C1 && cols == C2) return matvecFixed<C1, C2>(A, x, y, scale);
+    if (rows == C2 && cols == C1) return matvecFixed<C2, C1>(A, x, y, scale);
+    if (rows == C2 && cols == C2) return matvecFixed<C2, C2>(A, x, y, scale);
+    if (rows == C2 && cols == C3) return matvecFixed<C2, C3>(A, x, y, scale);
+    if (rows == C3 && cols == C2) return matvecFixed<C3, C2>(A, x, y, scale);
+    if (rows == C3 && cols == C3) return matvecFixed<C3, C3>(A, x, y, scale);
     for (uint32_t r = 0; r < rows; ++r) {
         const float* a = A + size_t(r) * cols;
         float acc = 0.0f;
@@ -213,7 +234,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
 
     // Long-range targets: random voxels in the same field, fixed for life (spec Section 3C).
     const int64_t voxels = int64_t(V_);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         const size_t fieldBase = (v / Vf_) * Vf_;
@@ -308,7 +329,7 @@ void NeuralCellularMatrix::step1D() {
     const uint32_t L = L_;
 
     const int64_t lines = int64_t(Q_);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic, 256)
     for (int64_t qi = 0; qi < lines; ++qi) {
         const size_t q = size_t(qi);
         const float* parent = s2 + q * C2;
@@ -355,7 +376,7 @@ void NeuralCellularMatrix::step2D() {
     const size_t SS = SS_;
 
     const int64_t cells = int64_t(Q_);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic, 256)
     for (int64_t qi = 0; qi < cells; ++qi) {
         const size_t q = size_t(qi);
         const size_t v = q / SS;
@@ -403,7 +424,7 @@ void NeuralCellularMatrix::step2D() {
 
     // Pass 2: local competition within each sheet (3 x 3 neighbourhood), then homeostasis.
     const float* drive = drive2_.data();
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic, 256)
     for (int64_t qi = 0; qi < cells; ++qi) {
         const size_t q = size_t(qi);
         const size_t v = q / SS;
@@ -448,7 +469,7 @@ void NeuralCellularMatrix::step3D() {
     const size_t SS = SS_;
 
     const int64_t voxels = int64_t(V_);
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         const uint32_t x = uint32_t(v % N);
@@ -549,7 +570,7 @@ void NeuralCellularMatrix::step3D() {
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
     const float* drive = drive3_.data();
     const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         const uint32_t x = uint32_t(v % N);
@@ -770,7 +791,7 @@ MatrixStats NeuralCellularMatrix::computeStats() const {
             double active = 0.0, total = 0.0;
             const int64_t begin = int64_t(size_t(f) * cellsPerField);
             const int64_t end = begin + int64_t(cellsPerField);
-#pragma omp parallel for reduction(+ : active, total) schedule(static)
+#pragma omp parallel for reduction(+ : active, total) schedule(dynamic, 256)
             for (int64_t i = begin; i < end; ++i) {
                 const float* cell = state.data() + size_t(i) * channels;
                 float sum = 0.0f, strongest = 0.0f;

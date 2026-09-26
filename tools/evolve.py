@@ -213,6 +213,7 @@ def main():
     ap.add_argument("--threads", type=int, default=0,
                     help="CPU threads per run (0 = all cores, split evenly across --parallel runs)")
     ap.add_argument("--parallel", type=int, default=2, help="variants evaluated side by side")
+    ap.add_argument("--immigrants", type=int, default=2, help="strongly mutated explorers per generation")
     ap.add_argument("--cooldown", type=float, default=0.0, help="seconds of rest between runs")
     ap.add_argument("--reject-below", type=float, default=None,
                     help="extra quick-recall rejection threshold (off by default; the suite exits early itself)")
@@ -234,12 +235,12 @@ def main():
         entries = [e for e in entries if not e.get("verification")]
         if entries:
             first_gen = max(e["generation"] for e in entries) + 1
-            seen, ranked = set(), []
-            for e in sorted(entries, key=lambda e: e["fitness"], reverse=True):
-                key = json.dumps(e["params"], sort_keys=True)
-                if key not in seen:
-                    seen.add(key)
-                    ranked.append({k: e["params"].get(k, SPACE[k][3]) for k in SPACE})
+            scores = {}
+            for e in entries:
+                scores.setdefault(json.dumps(e["params"], sort_keys=True), []).append(e["fitness"])
+            ranked = [json.loads(k) for k, _ in sorted(scores.items(), key=lambda kv: sum(kv[1]) / len(kv[1]),
+                                                        reverse=True)]
+            ranked = [{k: p.get(k, SPACE[k][3]) for k in SPACE} for p in ranked]
             elites = ranked[: args.elites]
             population = list(elites)
             while len(population) < args.population:
@@ -288,14 +289,33 @@ def main():
                     print("VERIFIED: passes both stages on all verification seeds", flush=True)
                     return 0
 
-        results.sort(key=lambda r: r["fitness"], reverse=True)
-        BEST.write_text(json.dumps({"params": results[0]["params"], "fitness": results[0]["fitness"],
+        # Rank by average fitness over every seed a variant has been tested on: survivors are
+        # re-tested each generation, so their averages grow reliable and one lucky seed
+        # cannot keep a weak variant alive.
+        history = {}
+        for line in LOG.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            e = json.loads(line)
+            if not e.get("verification"):
+                history.setdefault(json.dumps(e["params"], sort_keys=True), []).append(e["fitness"])
+        def mean_fitness(params):
+            v = history.get(json.dumps(params, sort_keys=True), [])
+            return sum(v) / len(v) if v else -1e9
+        ranked = sorted({json.dumps(r["params"], sort_keys=True): r["params"] for r in results}.values(),
+                        key=mean_fitness, reverse=True)
+        BEST.write_text(json.dumps({"params": ranked[0], "mean_fitness": mean_fitness(ranked[0]),
+                                    "evaluations": len(history.get(json.dumps(ranked[0], sort_keys=True), [])),
                                     "generation": gen, "verified": False}, indent=2))
-        print(f"gen {gen} done in {time.time() - t0:.0f}s, best fitness {results[0]['fitness']:.2f}", flush=True)
+        print(f"gen {gen} done in {time.time() - t0:.0f}s, best single fitness "
+              f"{max(r['fitness'] for r in results):.2f}, best average {mean_fitness(ranked[0]):.2f}", flush=True)
 
-        elites = [r["params"] for r in results[: args.elites]]
-        strength = max(0.08, 0.3 * (1.0 - (gen - first_gen) / max(1, args.generations)))
+        elites = ranked[: args.elites]
+        strength = max(0.12, 0.3 * (1.0 - (gen - first_gen) / max(1, args.generations)))
         children = []
+        # Immigrants: strongly mutated variants that keep the search exploring.
+        for _ in range(min(args.immigrants, args.population - len(elites))):
+            children.append(mutate(rng.choice(elites), rng, 0.5))
         while len(children) < args.population - len(elites):
             a, b = rng.sample(elites, 2) if len(elites) > 1 else (elites[0], elites[0])
             children.append(mutate(crossover(a, b, rng), rng, strength))
