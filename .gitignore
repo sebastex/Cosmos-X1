@@ -1,2 +1,4 @@
 build/
 out/
+tools/*.jsonl
+tools/evolve_best.json

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "ncm/CharacterCodebook.hpp"
+#include "ncm/Experiments.hpp"
 #include "ncm/Matrix.hpp"
 #include "ncm/Scheduler.hpp"
 #include "ncm/Viewer.hpp"
@@ -32,11 +33,15 @@ struct Options {
     uint64_t seed = 0;
     bool seedSet = false;
     bool quiet = false;
+    std::string test = "stage0";
+    bool clearGaps = false;
+    bool silenceRecall = false; // diagnostic: full-strength recall mode during silence
+    std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
 };
 
 void usage() {
-    std::cout << "usage: cosmos_x1 [--preset tiny|dev|full] [--ticks N] [--input-ticks N]\n"
+    std::cout << "usage: cosmos_x1 [--test stage0|recall] [--preset tiny|dev|full] [--ticks N] [--input-ticks N]\n"
                  "                 [--snap N] [--out DIR] [--text \"...\"] [--seed N] [--quiet]\n"
                  "                 [--set name=value]...\n"
                  "settings: "
@@ -59,6 +64,18 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--seed") { o.seed = std::stoull(value()); o.seedSet = true; }
         else if (a == "--set") o.settings.push_back(value());
         else if (a == "--quiet") o.quiet = true;
+        else if (a == "--test") o.test = value();
+        else if (a == "--clear-gaps") o.clearGaps = true;
+        else if (a == "--silence-recall") o.silenceRecall = true;
+        else if (a == "--patterns") {
+            o.patterns.clear();
+            std::string list = value(), item;
+            for (char c : list) {
+                if (c == ',') { o.patterns.push_back(item); item.clear(); }
+                else item += c;
+            }
+            o.patterns.push_back(item);
+        }
         else if (a == "--help" || a == "-h") { usage(); return false; }
         else throw std::invalid_argument("unknown argument " + a);
     }
@@ -117,6 +134,27 @@ int main(int argc, char** argv) {
         return 2;
     }
     if (opt.seedSet) cfg.seed = opt.seed;
+
+    if (opt.test == "recall") {
+        std::printf("COSMOS X1: NEURAL CELLULAR MATRIX, preset %s\n", opt.preset.c_str());
+        ncm::RecallOptions ro;
+        ro.quiet = opt.quiet;
+        ro.clearBetween = opt.clearGaps;
+        ro.silenceSuppressed = !opt.silenceRecall;
+        if (!opt.patterns.empty()) ro.patterns = opt.patterns;
+        return ncm::runRecallTest(cfg, ro);
+    }
+    if (opt.test == "capacity") return ncm::runCapacityTest(cfg);
+    if (opt.test == "efficiency") return ncm::runEfficiencyTest(cfg);
+    if (opt.test == "streamed") return ncm::runStreamedTest(cfg);
+    if (opt.test == "continual") return ncm::runContinualTest(cfg);
+    if (opt.test == "order") return ncm::runOrderTest(cfg);
+    if (opt.test == "suite") return ncm::runMemorySuite(cfg);
+    if (opt.test != "stage0") {
+        std::cerr << "error: unknown test '" << opt.test
+                  << "' (use stage0, recall, capacity, efficiency, streamed, continual, order or suite)\n";
+        return 2;
+    }
 
     std::printf("========================================================\n");
     std::printf(" COSMOS X1: NEURAL CELLULAR MATRIX, Stage 0 (CPU)\n");
@@ -220,12 +258,12 @@ int main(int argc, char** argv) {
     std::printf("  %.1f 1D ticks per second overall (%.1f s total)\n", double(clock.ticks1D()) / total, total);
 
     // Stage 0 is done when a pattern injected into the Input field spreads through
-    // the ladder and settles without dying out or exploding (spec Section 10).
-    // Once input stops, homeostasis holds the matrix at a quiet background level
-    // near its activity target (spec Section 3C). That background must stay sparse,
-    // must not die, and must not freeze into a fixed pattern, which would mean
-    // saturated cells rather than living dynamics. Holding chosen patterns is the
-    // job of learned connections in Stage 1.
+    // the ladder, stays sparse, and settles once input stops (spec Section 10).
+    // Before learning, the matrix must be input-driven with a fading memory: once
+    // input stops, activity falls back toward rest. A matrix that keeps generating
+    // its own activity responds to its history instead of its input and cannot
+    // represent anything (found by the Stage 1 recall test). Holding chosen
+    // patterns is the job of learned connections in Stage 1.
     const bool reached = firstLit[0] != 0;
     bool spread = reached, inputFirst = reached;
     for (uint32_t f = 1; f < ncm::kFields; ++f) {
@@ -245,22 +283,29 @@ int main(int argc, char** argv) {
     const double atInputEnd = activityAt(opt.inputTicks);
     const double finalTotalMean3 = history.empty() ? 0.0 : history.back().second;
     const bool longEnough = opt.ticks >= opt.inputTicks + 200;
-    const bool alive = atInputEnd > 0.0 && finalTotalMean3 >= 0.1 * atInputEnd;
-    const bool notFrozen = frozenCorrelation < 0.98;
-    const bool settles = longEnough && alive && notFrozen && sparse;
+    const bool fades = atInputEnd > 0.0 && finalTotalMean3 <= 0.5 * atInputEnd;
+    // Any activity that remains must still be changing, not saturated and frozen.
+    const bool notFrozen = finalTotalMean3 < eps || frozenCorrelation < 0.98;
+    const bool settles = longEnough && fades && notFrozen && sparse;
 
     std::printf("\nStage 0 check\n");
     std::printf("  reached Input field:              %s\n", reached ? "yes" : "NO");
-    std::printf("  spread to Memory/Reasoning/Output: %s\n", spread ? "yes" : "NO");
+    std::printf("  spread to Memory/Reasoning/Output: %s (peak 3D activity relative to Input:", spread ? "yes" : "NO");
+    for (uint32_t f = 1; f < ncm::kFields; ++f)
+        std::printf(" %s %.0f%%", kFieldNames[f], peakVoxelMean[0] > 0.0 ? 100.0 * peakVoxelMean[f] / peakVoxelMean[0] : 0.0);
+    std::printf(")\n");
     std::printf("  Input lit first:                  %s (first active at ticks", inputFirst ? "yes" : "NO");
     for (uint32_t f = 0; f < ncm::kFields; ++f) std::printf(" %llu", (unsigned long long)firstLit[f]);
     std::printf(")\n");
     std::printf("  sparse (mean <= %.2f, some cells strongly on): %s (peak mean %.4f, peak Input active %.2f%%)\n",
                 sparseLimit, sparse ? "yes" : "NO", peakLevelMean, 100.0 * peakInputActive);
-    std::printf("  settles (bounded, alive, not frozen): %s (3D activity at input end %.4f, end %.4f; "
+    std::printf("  settles (fades toward rest, not frozen): %s (3D activity at input end %.4f, end %.4f; "
                 "pattern correlation over the last 100 ticks %.3f)%s\n",
                 settles ? "yes" : "NO", atInputEnd, finalTotalMean3, frozenCorrelation,
                 longEnough ? "" : " [run at least 200 ticks past input]");
+    std::printf("  field gains at end (gain control):");
+    for (uint32_t f = 0; f < ncm::kFields; ++f) std::printf(" %s %.2f", kFieldNames[f], m.fieldGains()[f]);
+    std::printf("\n");
     std::printf("  snapshots: %s\n", std::filesystem::absolute(opt.outDir).string().c_str());
     return (reached && spread && inputFirst && sparse && settles) ? 0 : 3;
 }

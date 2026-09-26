@@ -11,6 +11,8 @@ add_library(ncm
     src/Matrix.cpp
     src/CharacterCodebook.cpp
     src/Viewer.cpp
+    src/RecallTest.cpp
+    src/MemorySuite.cpp
 )
 target_include_directories(ncm PUBLIC include)
 target_link_libraries(ncm PUBLIC OpenMP::OpenMP_CXX)

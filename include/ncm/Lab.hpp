@@ -1,0 +1,173 @@
+#pragma once
+// Shared machinery for memory experiments (Stage 1 tests): driving a matrix with text,
+// surprise-gated learning, and comparing activity patterns.
+
+#include <algorithm>
+#include <climits>
+#include <cmath>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "ncm/CharacterCodebook.hpp"
+#include "ncm/Matrix.hpp"
+#include "ncm/Random.hpp"
+#include "ncm/Scheduler.hpp"
+
+namespace ncm::lab {
+
+inline double cosine(const std::vector<double>& a, const std::vector<double>& b, size_t begin = 0,
+                     size_t end = SIZE_MAX) {
+    end = std::min({end, a.size(), b.size()});
+    double dot = 0.0, na = 0.0, nb = 0.0;
+    for (size_t i = begin; i < end; ++i) {
+        dot += a[i] * b[i];
+        na += a[i] * a[i];
+        nb += b[i] * b[i];
+    }
+    return (na > 0.0 && nb > 0.0) ? dot / std::sqrt(na * nb) : 0.0;
+}
+
+// Keeps a fixed share of a fingerprint's lines: a partial cue.
+inline std::vector<uint32_t> thin(const std::vector<uint32_t>& fp, float fraction, uint64_t seed, char c) {
+    std::vector<uint32_t> kept;
+    for (uint32_t s : fp)
+        if (hashUniform(seed, 0xC0E + uint64_t(uint8_t(c)), s) < fraction) kept.push_back(s);
+    return kept;
+}
+
+// Drives one matrix: text in, level clocks, surprise-gated learning, encoding/recall mode.
+class Session {
+public:
+    Session(const Config& cfg, bool learning, bool silenceSuppressed = true)
+        : cfg_(cfg), learning_(learning), silenceSuppressed_(silenceSuppressed),
+          m_(std::make_unique<NeuralCellularMatrix>(cfg)),
+          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.seed) {}
+
+    // One 1D tick. `fingerprint` is what enters the sensory surface (nullptr = silence);
+    // `actual` is the full fingerprint of the character being heard, for the surprise check.
+    void tick(const std::vector<uint32_t>* fingerprint, const std::vector<uint32_t>* actual, bool allowLearning) {
+        if (fingerprint) {
+            // Surprise (spec Section 5A): read the matrix's guess before the character
+            // arrives. Only external text produces surprise.
+            const double guess = actual ? m_->motorOverlap(*actual) : 0.0;
+            surpriseSum_ += 1.0 - guess;
+            ++surpriseCount_;
+            m_->setSensoryInput(*fingerprint);
+            // While storing, surprise sets encoding mode. During recall the cue is familiar
+            // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
+            // motor path learns to predict (Stage 3) surprise cannot tell the two apart itself.
+            m_->setModulator(allowLearning ? float(1.0 - guess) : 0.0f);
+        } else {
+            m_->clearSensoryInput();
+            m_->setModulator(silenceSuppressed_ ? 1.0f : 0.0f);
+        }
+
+        m_->step1D();
+        const LevelScheduler::Tick t = clock_.advance();
+        if (t.sheet) m_->step2D();
+        if (t.voxel) {
+            m_->step3D();
+            const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
+            surpriseSum_ = 0.0;
+            surpriseCount_ = 0;
+            if (learning_ && allowLearning) {
+                m_->learn(modulator);
+                lastModulator_ = modulator;
+            }
+        }
+    }
+
+    // Presents `text` (cycling through its characters, one per tick) for `ticks` ticks, with
+    // each fingerprint thinned to `fraction` (1 = full input). Returns the summed 3D state
+    // from tick `recordFrom` on (empty if recordFrom >= ticks).
+    std::vector<double> present(const std::string& text, uint64_t ticks, float fraction, bool allowLearning,
+                                uint64_t recordFrom) {
+        std::vector<double> acc;
+        for (uint64_t t = 0; t < ticks; ++t) {
+            const char c = text[t % text.size()];
+            const auto& full = codebook_.fingerprint(char32_t(uint8_t(c)));
+            if (fraction >= 1.0f) {
+                tick(&full, &full, allowLearning);
+            } else {
+                const auto cue = thin(full, fraction, cfg_.seed, c);
+                tick(&cue, &full, allowLearning);
+            }
+            if (t >= recordFrom) accumulate(acc);
+        }
+        return acc;
+    }
+
+    // Silence for `ticks` ticks; returns the summed 3D state from tick `recordFrom` on.
+    std::vector<double> silence(uint64_t ticks, bool allowLearning, uint64_t recordFrom = UINT64_MAX) {
+        std::vector<double> acc;
+        for (uint64_t t = 0; t < ticks; ++t) {
+            tick(nullptr, nullptr, allowLearning);
+            if (t >= recordFrom) accumulate(acc);
+        }
+        return acc;
+    }
+
+    void accumulate(std::vector<double>& acc) const {
+        const auto& s = m_->voxelState();
+        if (acc.size() != s.size()) acc.assign(s.size(), 0.0);
+        for (size_t i = 0; i < s.size(); ++i) acc[i] += s[i];
+    }
+
+    void clearActivity() { m_->clearActivity(); }
+    const NeuralCellularMatrix& matrix() const { return *m_; }
+    const CharacterCodebook& codebook() const { return codebook_; }
+    float lastModulator() const { return lastModulator_; }
+
+private:
+    Config cfg_;
+    bool learning_;
+    bool silenceSuppressed_;
+    std::unique_ptr<NeuralCellularMatrix> m_;
+    CharacterCodebook codebook_;
+    LevelScheduler clock_;
+    double surpriseSum_ = 0.0;
+    uint64_t surpriseCount_ = 0;
+    float lastModulator_ = 0.0f;
+};
+
+// How specifically a set of cues recalled their own stored patterns.
+struct Specificity {
+    bool identifies = true; // every cue is most similar to its own pattern
+    double own = 0.0;       // mean similarity to own pattern
+    double margin = 0.0;    // mean (own - best other)
+};
+
+// similarity[k][j] = cue k vs stored pattern j. `cues` selects which rows count
+// (all rows when empty); every column competes.
+inline Specificity specificity(const std::vector<std::vector<double>>& similarity,
+                               const std::vector<size_t>& cues = {}) {
+    Specificity s;
+    std::vector<size_t> rows = cues;
+    if (rows.empty())
+        for (size_t k = 0; k < similarity.size(); ++k) rows.push_back(k);
+    for (size_t k : rows) {
+        double best = -1.0;
+        for (size_t j = 0; j < similarity[k].size(); ++j)
+            if (j != k) best = std::max(best, similarity[k][j]);
+        s.identifies = s.identifies && similarity[k][k] > best;
+        s.own += similarity[k][k];
+        s.margin += similarity[k][k] - best;
+    }
+    if (!rows.empty()) {
+        s.own /= double(rows.size());
+        s.margin /= double(rows.size());
+    }
+    return s;
+}
+
+inline std::vector<std::vector<double>> similarityMatrix(const std::vector<std::vector<double>>& cues,
+                                                         const std::vector<std::vector<double>>& stored) {
+    std::vector<std::vector<double>> sim(cues.size(), std::vector<double>(stored.size(), 0.0));
+    for (size_t k = 0; k < cues.size(); ++k)
+        for (size_t j = 0; j < stored.size(); ++j) sim[k][j] = cosine(cues[k], stored[j]);
+    return sim;
+}
+
+} // namespace ncm::lab

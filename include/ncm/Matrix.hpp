@@ -14,6 +14,14 @@ struct LevelStats {
     std::array<double, kFields> mean{};            // mean channel value
 };
 
+// Running totals of learning activity, for diagnostics.
+struct LearningStats {
+    uint64_t calls = 0;    // learn() calls that applied a non-zero rate
+    uint64_t learners = 0; // voxel updates (active voxels per call, summed)
+    double change = 0.0;   // total absolute Hebbian change to learned strengths
+    double scaled = 0.0;   // total strength removed by synaptic scaling
+};
+
 struct MatrixStats {
     LevelStats line;  // 1D
     LevelStats sheet; // 2D
@@ -37,6 +45,20 @@ public:
     void step2D();
     void step3D();
 
+    // Hebbian learning (spec Section 5A), applied right after step3D():
+    // association + order - Oja normalization, scaled by the modulator M in [0, 1].
+    // Learns the 3D neighbourhood, long-range and 4D connections from excitatory
+    // sources, and each voxel's sheet modulation. M = 0 leaves everything frozen.
+    void learn(float modulator);
+
+    // The current surprise modulator M in [0, 1]. Besides gating learning it sets the
+    // mode: high M = encoding (learned connections turned down), low M = recall.
+    void setModulator(float modulator) { modulator_ = modulator; }
+
+    // Share of a fingerprint's motor-surface lines whose exit cells are active:
+    // how strongly the matrix is "about to say" that character (spec Section 5A).
+    double motorOverlap(const std::vector<uint32_t>& fingerprint) const;
+
     // Sensory surface (spec Section 6B): face x = 0 of the Input field.
     // `active_lines` are surface line indices whose entry cells fire this tick;
     // all other entry cells are held silent while input is on.
@@ -50,7 +72,15 @@ public:
     // Surface line indices whose exit cells are currently active.
     std::vector<uint32_t> readMotorExit() const;
 
+    // Silences every cell (states only; learned connections and thresholds are kept).
+    // A diagnostic, used to test whether lingering activity causes memories to merge.
+    void clearActivity();
+
     MatrixStats computeStats() const;
+    const LearningStats& learningStats() const { return learnStats_; }
+    const std::array<float, kFields>& fieldGains() const { return fieldGain_; }
+    // Total strength of the plastic (learned) part of all connections.
+    double totalPlasticStrength() const;
 
     const Config& config() const { return cfg_; }
     const AVec<float>& lineState() const { return s1_.cur; }
@@ -70,6 +100,11 @@ private:
     void initSurfaces();
     void applySurfaceClamps();
 
+    // Calls fn(block) for every learned C3 x C3 block entering voxel v: neighbourhood
+    // (except self-persistence), long-range and 4D, from excitatory sources only.
+    template <class Fn>
+    void forEachLearnedBlock(size_t v, Fn&& fn);
+
     Config cfg_;
     uint32_t N_, S_, L_;
     size_t V_, Vf_, SS_, Q_, P_;
@@ -85,6 +120,17 @@ private:
     AVec<float> drive2_;
     AVec<float> drive3_;
 
+    // Fatigue per cell (2D and 3D), and each voxel's long-run average activity (covariance learning).
+    AVec<float> fatigue2_;
+    AVec<float> fatigue3_;
+    AVec<float> average3_;
+
+    LearningStats learnStats_;
+    float modulator_ = 0.0f;
+
+    // Per-field gain on incoming signals (gain control), adapted toward the target activity.
+    std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
+
     // Shared rules per level (evolved in Stage 5): row-major [out][in] channel matrices.
     AVec<float> W1_; // 3 offsets (left, self, right) x C1 x C1
     AVec<float> W2_; // 9 offsets (3 x 3) x C2 x C2
@@ -95,8 +141,9 @@ private:
     AVec<float> U2_; // sheet position  -> voxel:       SS x C3 x C2
     AVec<float> D2_; // voxel -> sheet position:        SS x C2 x C3
 
-    // Learned connections (spec Section 2C). Learning itself arrives in Stage 1.
-    AVec<float> W3_;               // per voxel: 27 neighbourhood offsets x C3 x C3
+    // Learned connections (spec Section 2C) = fixed scaffold (StartingRule strengths, a
+    // scaled one-to-one channel map applied on the fly) + the plastic parts stored here.
+    AVec<float> W3_;               // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused)
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
     AVec<float> WL_;               // per voxel: long-range links x C3 x C3
     AVec<float> H_;                // per voxel: 3 other fields x C3 x C3 (4D link)
