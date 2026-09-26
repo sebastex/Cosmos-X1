@@ -77,6 +77,11 @@ struct LearningParams {
     // connections transmit at (1 - encoding_suppression * M). New material is written without
     // being captured by existing memories; familiar input recalls at full strength.
     float encoding_suppression = 0.8f;
+    // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest
+    // channel (like all-or-nothing spikes), not raw amplitudes. Without it, learning scales
+    // with the square of activity, so faint streamed input learns far more slowly than held
+    // input. 0 = raw amplitudes, 1 = normalized.
+    float normalized = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 
@@ -114,6 +119,12 @@ struct Config {
     float line_upward_gain = 1.0f;
     float upward_gain   = 1.0f;
     float normalize_upward = 0.0f; // 0 = off, 1 = on
+
+    // Output normalization (divisive, per cell): a cell that wins the competition fires at a
+    // consistent strength, out = s * (1 + sigma) / (sigma + strongest channel), so faint and
+    // strong inputs transmit comparably, like same-sized spikes. sigma is the semi-saturation
+    // constant: activity well below it stays faint (noise is not amplified). 0 = off.
+    float output_sigma = 0.0f;
 
     // Per-field gain control: each 3D field scales the 4D link from earlier fields (its only
     // loop-free input) so its activity tracks the target. Faint streamed input is amplified,

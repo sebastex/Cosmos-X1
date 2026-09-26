@@ -124,6 +124,7 @@ private:
     AVec<float> fatigue2_;
     AVec<float> fatigue3_;
     AVec<float> average3_;
+    AVec<float> averageN3_; // long-run average of the normalized firing pattern (normalized plasticity)
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;

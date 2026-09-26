@@ -37,6 +37,7 @@ struct Options {
     bool clearGaps = false;
     bool silenceRecall = false; // diagnostic: full-strength recall mode during silence
     bool earlyExit = false;     // suite: stop after recall if learning clearly hurts it
+    uint64_t storeTicks = 0;    // recall test: exposure per stored item (0 = default)
     std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
 };
@@ -69,6 +70,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--clear-gaps") o.clearGaps = true;
         else if (a == "--silence-recall") o.silenceRecall = true;
         else if (a == "--early-exit") o.earlyExit = true;
+        else if (a == "--store-ticks") o.storeTicks = std::stoull(value());
         else if (a == "--patterns") {
             o.patterns.clear();
             std::string list = value(), item;
@@ -144,6 +146,7 @@ int main(int argc, char** argv) {
         ro.clearBetween = opt.clearGaps;
         ro.silenceSuppressed = !opt.silenceRecall;
         if (!opt.patterns.empty()) ro.patterns = opt.patterns;
+        if (opt.storeTicks > 0) ro.storeTicks = opt.storeTicks;
         return ncm::runRecallTest(cfg, ro);
     }
     if (opt.test == "capacity") return ncm::runCapacityTest(cfg);

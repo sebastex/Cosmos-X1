@@ -1,4 +1,4 @@
-﻿#include "ncm/Matrix.hpp"
+#include "ncm/Matrix.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -93,7 +93,7 @@ inline void finishCell(const float* in, float* out, float& theta, const LevelPar
 // together, which Hebbian learning needs to bind them. Returns the final mean.
 template <uint32_t C>
 inline float competeCell(float* out, float ownDrive, size_t own, const size_t* rivals, uint32_t rivalCount,
-                         const float* drive, uint32_t winners) {
+                         const float* drive, uint32_t winners, float sigma = 0.0f) {
     uint32_t stronger = 0;
     bool wins = ownDrive > 0.0f;
     for (uint32_t r = 0; wins && r < rivalCount; ++r) {
@@ -101,7 +101,18 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
         if (d > ownDrive || (d == ownDrive && rivals[r] < own))
             if (++stronger >= winners) wins = false;
     }
-    if (wins) return ownDrive;
+    if (wins) {
+        if (sigma > 0.0f) {
+            // Output normalization (divisive): winners fire at a consistent strength.
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C; ++c) strongest = std::max(strongest, out[c]);
+            const float scale = (1.0f + sigma) / (sigma + strongest);
+            float sum = 0.0f;
+            for (uint32_t c = 0; c < C; ++c) sum += (out[c] = std::min(1.0f, out[c] * scale));
+            return sum / float(C);
+        }
+        return ownDrive;
+    }
     for (uint32_t c = 0; c < C; ++c) out[c] = 0.0f;
     return 0.0f;
 }
@@ -174,6 +185,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     fatigue2_.assign(Q_, 0.0f);
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
+    averageN3_.assign(V_, cfg.target_activity);
 
     initInhibitory();
     initSharedRules();
@@ -438,7 +450,7 @@ void NeuralCellularMatrix::step2D() {
                 if ((dy == 0 && dx == 0) || ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
                 rivals[n++] = v * SS + size_t(ny) * S + size_t(nx);
             }
-        const float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2);
+        const float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.output_sigma);
         adaptThreshold(theta[q], final, lp, target);
         // Fatigue follows the activity of the channels that fire (the mean over all channels
         // understates it by C / channel_winners, so fatigue could never build up).
@@ -588,11 +600,21 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3);
+        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3, cfg_.output_sigma);
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
         average3_[v] += (final - average3_[v]) / avgTau;
+        {
+            const float* cell = out + v * C3;
+            float strongest = 0.0f, sum = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) {
+                strongest = std::max(strongest, cell[c]);
+                sum += cell[c];
+            }
+            const float normMean = strongest > 0.0f ? sum / (strongest * float(C3)) : 0.0f;
+            averageN3_[v] += (normMean - averageN3_[v]) / avgTau;
+        }
     }
 
     // Gain control: each field nudges the gain on its incoming signals toward the target
@@ -667,7 +689,15 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float cov = std::clamp(cfg_.learning.covariance, 0.0f, 1.0f);
     const float budget = std::max(0.0f, cfg_.learning.plastic_budget);
     const float oja = std::max(0.0f, cfg_.learning.oja);
-    auto avgOf = [&](size_t cell) { return cov * average3_[cell]; };
+    const bool normalized = cfg_.learning.normalized > 0.5f;
+    auto avgOf = [&](size_t cell) { return cov * (normalized ? averageN3_[cell] : average3_[cell]); };
+    // Normalized plasticity: a cell's pattern scaled so its strongest channel is 1.
+    auto normalizeInto = [](const float* x, float* outv, uint32_t n) {
+        float strongest = 0.0f;
+        for (uint32_t c = 0; c < n; ++c) strongest = std::max(strongest, x[c]);
+        const float inv = strongest > 0.0f ? 1.0f / strongest : 0.0f;
+        for (uint32_t c = 0; c < n; ++c) outv[c] = x[c] * inv;
+    };
 
     const int64_t voxels = int64_t(V_);
     double change = 0.0, scaled = 0.0;
@@ -680,10 +710,26 @@ void NeuralCellularMatrix::learn(float modulator) {
         if (!anyActive(pi, qi, C3)) continue; // only active cells change their incoming connections
         ++learners;
 
+        float piN[C3], qiN[C3];
+        if (normalized) {
+            normalizeInto(pi, piN, C3);
+            normalizeInto(qi, qiN, C3);
+            pi = piN;
+            qi = qiN;
+        }
+
         // Inhibitory connections and self-persistence are not visited: they stay fixed.
         forEachLearnedBlock(v, [&](float* block, size_t src) {
-            change += hebbianBlock<C3>(block, pi, qi, post + src * C3, prev + src * C3, avgOf(v), avgOf(src), rate,
-                                       lambda, oja);
+            const float* sp = post + src * C3;
+            const float* sq = prev + src * C3;
+            float spN[C3], sqN[C3];
+            if (normalized) {
+                normalizeInto(sp, spN, C3);
+                normalizeInto(sq, sqN, C3);
+                sp = spN;
+                sq = sqN;
+            }
+            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
@@ -732,6 +778,13 @@ void NeuralCellularMatrix::learn(float modulator) {
             for (size_t cell = 0; cell < SS; ++cell) {
                 const float* post2 = s2 + (v * SS + cell) * C2;
                 const float* pre2 = s2prev + (v * SS + cell) * C2;
+                float post2N[C2], pre2N[C2];
+                if (normalized) {
+                    normalizeInto(post2, post2N, C2);
+                    normalizeInto(pre2, pre2N, C2);
+                    post2 = post2N;
+                    pre2 = pre2N;
+                }
                 for (uint32_t a = 0; a < C2; ++a) {
                     const float pa = post2[a];
                     if (pa == 0.0f) continue;
@@ -819,7 +872,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
-           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(W1_) + bytes(W2_) +
+           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
            bytes(H_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }

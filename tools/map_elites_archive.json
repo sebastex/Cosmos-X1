@@ -5,70 +5,8 @@
       "order": 0,
       "deep": 0
     },
-    "fitness": 2.9750000000000005,
-    "evaluations": 1,
-    "params": {
-      "agc_max": 2.6804,
-      "agc_rate": 0.0,
-      "channel_winners3": 2,
-      "covariance": 0.8602,
-      "downward_gain": 0.3,
-      "encoding_suppression": 0.8,
-      "fatigue_gain2": 0.6,
-      "fatigue_gain3": 0.6,
-      "learning_rate": 0.2,
-      "line_upward_gain": 1.0,
-      "link4d": 0.1,
-      "link4d_backward": 0.0877,
-      "long_range": 0.15,
-      "normalize_upward": 1,
-      "order_gain": 0.5,
-      "plastic_budget": 0.5,
-      "upward_gain": 1.0,
-      "voxel_neighbour": 0.1,
-      "voxel_self": 0.198,
-      "winners3": 3
-    }
-  },
-  {
-    "cell": {
-      "streamed": 0,
-      "order": 0,
-      "deep": 1
-    },
-    "fitness": 2.035,
-    "evaluations": 1,
-    "params": {
-      "agc_max": 4.3014,
-      "agc_rate": 0.0252,
-      "channel_winners3": 4,
-      "covariance": 0.9259,
-      "downward_gain": 0.3153,
-      "encoding_suppression": 0.7633,
-      "fatigue_gain2": 0.6498,
-      "fatigue_gain3": 0.65,
-      "learning_rate": 0.2,
-      "line_upward_gain": 0.9499,
-      "link4d": 0.0887,
-      "link4d_backward": 0.0678,
-      "long_range": 0.1898,
-      "normalize_upward": 1,
-      "order_gain": 0.5,
-      "plastic_budget": 0.5009,
-      "upward_gain": 1.0,
-      "voxel_neighbour": 0.1194,
-      "voxel_self": 0.3717,
-      "winners3": 1
-    }
-  },
-  {
-    "cell": {
-      "streamed": 1,
-      "order": 0,
-      "deep": 0
-    },
-    "fitness": 12.8225,
-    "evaluations": 2,
+    "fitness": 10.095,
+    "evaluations": 3,
     "params": {
       "agc_max": 4.0,
       "agc_rate": 0.0,
@@ -94,63 +32,311 @@
   },
   {
     "cell": {
-      "streamed": 1,
+      "streamed": 0,
       "order": 0,
       "deep": 1
     },
-    "fitness": 2.085,
+    "fitness": 2.6699999999999995,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 2.1461,
+      "agc_rate": 0.0,
+      "channel_winners3": 2,
+      "covariance": 0.5887,
+      "downward_gain": 0.375,
+      "encoding_suppression": 0.9938,
+      "fatigue_gain2": 0.5895,
+      "fatigue_gain3": 0.9422,
+      "learning_rate": 0.2315,
+      "line_upward_gain": 1.0,
+      "link4d": 0.2065,
+      "link4d_backward": 0.0958,
+      "long_range": 0.1643,
+      "normalize_upward": 0,
+      "order_gain": 0.5,
+      "plastic_budget": 0.5,
+      "upward_gain": 1.0332,
+      "voxel_neighbour": 0.1165,
+      "voxel_self": 0.2743,
+      "winners3": 4
+    }
+  },
+  {
+    "cell": {
+      "streamed": 0,
+      "order": 0,
+      "deep": 2
+    },
+    "fitness": -3.1550000000000002,
     "evaluations": 2,
     "params": {
-      "agc_max": 2.6804,
+      "agc_max": 4.0,
+      "agc_rate": 0.0113,
+      "channel_winners3": 4,
+      "covariance": 0.8602,
+      "downward_gain": 0.2053,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.6,
+      "fatigue_gain3": 0.567,
+      "learning_rate": 0.2,
+      "line_upward_gain": 0.8609,
+      "link4d": 0.1712,
+      "link4d_backward": 0.1126,
+      "long_range": 0.1444,
+      "normalize_upward": 0,
+      "order_gain": 0.5,
+      "plastic_budget": 0.3915,
+      "upward_gain": 0.8788,
+      "voxel_neighbour": 0.1085,
+      "voxel_self": 0.3,
+      "winners3": 3
+    }
+  },
+  {
+    "cell": {
+      "streamed": 0,
+      "order": 1,
+      "deep": 0
+    },
+    "fitness": 1.345,
+    "evaluations": 2,
+    "params": {
+      "agc_max": 3.6456,
       "agc_rate": 0.0,
       "channel_winners3": 3,
-      "covariance": 0.8933,
+      "covariance": 0.9446,
+      "downward_gain": 0.3441,
+      "encoding_suppression": 0.91,
+      "fatigue_gain2": 0.7713,
+      "fatigue_gain3": 0.5638,
+      "learning_rate": 0.2288,
+      "line_upward_gain": 0.6649,
+      "link4d": 0.0935,
+      "link4d_backward": 0.0678,
+      "long_range": 0.1618,
+      "normalize_upward": 1,
+      "order_gain": 0.5,
+      "plastic_budget": 0.5,
+      "upward_gain": 1.0319,
+      "voxel_neighbour": 0.0819,
+      "voxel_self": 0.2908,
+      "winners3": 2
+    }
+  },
+  {
+    "cell": {
+      "streamed": 0,
+      "order": 2,
+      "deep": 0
+    },
+    "fitness": 6.36,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 4.0,
+      "agc_rate": 0.0005,
+      "channel_winners3": 2,
+      "covariance": 0.8602,
       "downward_gain": 0.3,
-      "encoding_suppression": 0.866,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.6534,
+      "fatigue_gain3": 0.65,
+      "learning_rate": 0.2,
+      "line_upward_gain": 0.7707,
+      "link4d": 0.0887,
+      "link4d_backward": 0.0877,
+      "long_range": 0.15,
+      "normalize_upward": 0,
+      "order_gain": 0.5155,
+      "plastic_budget": 0.5,
+      "upward_gain": 1.0,
+      "voxel_neighbour": 0.0938,
+      "voxel_self": 0.3,
+      "winners3": 3
+    }
+  },
+  {
+    "cell": {
+      "streamed": 0,
+      "order": 2,
+      "deep": 1
+    },
+    "fitness": 4.109999999999999,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 4.0,
+      "agc_rate": 0.0,
+      "channel_winners3": 2,
+      "covariance": 0.812,
+      "downward_gain": 0.2053,
+      "encoding_suppression": 0.8,
       "fatigue_gain2": 0.6,
-      "fatigue_gain3": 0.6,
-      "learning_rate": 0.2438,
+      "fatigue_gain3": 0.567,
+      "learning_rate": 0.3088,
       "line_upward_gain": 1.0,
-      "link4d": 0.1794,
+      "link4d": 0.1712,
+      "link4d_backward": 0.102,
+      "long_range": 0.15,
+      "normalize_upward": 1,
+      "order_gain": 0.5,
+      "plastic_budget": 0.4584,
+      "upward_gain": 0.8806,
+      "voxel_neighbour": 0.1074,
+      "voxel_self": 0.2395,
+      "winners3": 4
+    }
+  },
+  {
+    "cell": {
+      "streamed": 0,
+      "order": 3,
+      "deep": 0
+    },
+    "fitness": 5.9399999999999995,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 4.0,
+      "agc_rate": 0.0,
+      "channel_winners3": 4,
+      "covariance": 1.0,
+      "downward_gain": 0.2334,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.7713,
+      "fatigue_gain3": 0.65,
+      "learning_rate": 0.2,
+      "line_upward_gain": 1.0,
+      "link4d": 0.1,
       "link4d_backward": 0.1,
       "long_range": 0.15,
       "normalize_upward": 1,
       "order_gain": 0.5,
+      "plastic_budget": 0.4421,
+      "upward_gain": 1.0,
+      "voxel_neighbour": 0.0897,
+      "voxel_self": 0.2908,
+      "winners3": 2
+    }
+  },
+  {
+    "cell": {
+      "streamed": 0,
+      "order": 3,
+      "deep": 1
+    },
+    "fitness": -10.59,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 3.2535,
+      "agc_rate": 0.0252,
+      "channel_winners3": 3,
+      "covariance": 0.8351,
+      "downward_gain": 0.3171,
+      "encoding_suppression": 0.7633,
+      "fatigue_gain2": 0.6498,
+      "fatigue_gain3": 0.65,
+      "learning_rate": 0.174,
+      "line_upward_gain": 1.0,
+      "link4d": 0.1078,
+      "link4d_backward": 0.0635,
+      "long_range": 0.1618,
+      "normalize_upward": 1,
+      "order_gain": 0.5,
       "plastic_budget": 0.5,
       "upward_gain": 1.0,
-      "voxel_neighbour": 0.1,
-      "voxel_self": 0.2048,
+      "voxel_neighbour": 0.1194,
+      "voxel_self": 0.3,
+      "winners3": 2
+    }
+  },
+  {
+    "cell": {
+      "streamed": 1,
+      "order": 0,
+      "deep": 0
+    },
+    "fitness": 10.605000000000002,
+    "evaluations": 2,
+    "params": {
+      "agc_max": 4.0,
+      "agc_rate": 0.0,
+      "channel_winners3": 3,
+      "covariance": 0.8602,
+      "downward_gain": 0.2053,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.6,
+      "fatigue_gain3": 0.567,
+      "learning_rate": 0.2,
+      "line_upward_gain": 1.0,
+      "link4d": 0.1712,
+      "link4d_backward": 0.102,
+      "long_range": 0.15,
+      "normalize_upward": 0,
+      "order_gain": 0.5,
+      "plastic_budget": 0.4584,
+      "upward_gain": 1.0,
+      "voxel_neighbour": 0.1074,
+      "voxel_self": 0.3,
       "winners3": 3
     }
   },
   {
     "cell": {
       "streamed": 1,
-      "order": 2,
-      "deep": 0
+      "order": 0,
+      "deep": 1
     },
-    "fitness": 3.9624999999999995,
+    "fitness": 5.495,
     "evaluations": 2,
     "params": {
-      "agc_max": 3.6149,
+      "agc_max": 2.6804,
       "agc_rate": 0.0,
-      "channel_winners3": 2,
-      "covariance": 0.9446,
+      "channel_winners3": 3,
+      "covariance": 0.8561,
       "downward_gain": 0.3,
-      "encoding_suppression": 0.8,
-      "fatigue_gain2": 0.7713,
-      "fatigue_gain3": 0.65,
-      "learning_rate": 0.2,
-      "line_upward_gain": 0.6649,
-      "link4d": 0.1,
-      "link4d_backward": 0.0678,
-      "long_range": 0.1618,
+      "encoding_suppression": 0.866,
+      "fatigue_gain2": 0.5895,
+      "fatigue_gain3": 0.67,
+      "learning_rate": 0.2315,
+      "line_upward_gain": 1.0,
+      "link4d": 0.2065,
+      "link4d_backward": 0.1,
+      "long_range": 0.1643,
       "normalize_upward": 0,
       "order_gain": 0.5,
       "plastic_budget": 0.5,
       "upward_gain": 1.0,
-      "voxel_neighbour": 0.0958,
-      "voxel_self": 0.2908,
+      "voxel_neighbour": 0.1157,
+      "voxel_self": 0.2048,
+      "winners3": 4
+    }
+  },
+  {
+    "cell": {
+      "streamed": 1,
+      "order": 1,
+      "deep": 0
+    },
+    "fitness": 8.615,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 4.4448,
+      "agc_rate": 0.0,
+      "channel_winners3": 2,
+      "covariance": 0.8602,
+      "downward_gain": 0.4287,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.5231,
+      "fatigue_gain3": 0.6,
+      "learning_rate": 0.2,
+      "line_upward_gain": 0.9487,
+      "link4d": 0.0925,
+      "link4d_backward": 0.0877,
+      "long_range": 0.15,
+      "normalize_upward": 0,
+      "order_gain": 0.2875,
+      "plastic_budget": 0.5081,
+      "upward_gain": 1.0,
+      "voxel_neighbour": 0.1068,
+      "voxel_self": 0.3,
       "winners3": 2
     }
   },
@@ -183,6 +369,37 @@
       "voxel_neighbour": 0.0958,
       "voxel_self": 0.2908,
       "winners3": 2
+    }
+  },
+  {
+    "cell": {
+      "streamed": 2,
+      "order": 0,
+      "deep": 0
+    },
+    "fitness": 9.73,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 3.6456,
+      "agc_rate": 0.0,
+      "channel_winners3": 3,
+      "covariance": 0.9446,
+      "downward_gain": 0.3037,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.7713,
+      "fatigue_gain3": 0.5638,
+      "learning_rate": 0.1366,
+      "line_upward_gain": 0.7827,
+      "link4d": 0.0917,
+      "link4d_backward": 0.0678,
+      "long_range": 0.1618,
+      "normalize_upward": 0,
+      "order_gain": 0.5,
+      "plastic_budget": 0.5,
+      "upward_gain": 1.3643,
+      "voxel_neighbour": 0.1024,
+      "voxel_self": 0.2908,
+      "winners3": 3
     }
   },
   {
@@ -223,7 +440,7 @@
       "deep": 0
     },
     "fitness": 4.26,
-    "evaluations": 1,
+    "evaluations": 2,
     "params": {
       "agc_max": 3.6456,
       "agc_rate": 0.0,
@@ -276,6 +493,37 @@
       "voxel_neighbour": 0.1194,
       "voxel_self": 0.3717,
       "winners3": 2
+    }
+  },
+  {
+    "cell": {
+      "streamed": 3,
+      "order": 0,
+      "deep": 0
+    },
+    "fitness": 1.4699999999999995,
+    "evaluations": 1,
+    "params": {
+      "agc_max": 4.2921,
+      "agc_rate": 0.0,
+      "channel_winners3": 3,
+      "covariance": 0.8602,
+      "downward_gain": 0.3506,
+      "encoding_suppression": 0.8,
+      "fatigue_gain2": 0.5231,
+      "fatigue_gain3": 1.0857,
+      "learning_rate": 0.2,
+      "line_upward_gain": 1.0,
+      "link4d": 0.1,
+      "link4d_backward": 0.0,
+      "long_range": 0.15,
+      "normalize_upward": 0,
+      "order_gain": 0.5,
+      "plastic_budget": 0.6317,
+      "upward_gain": 1.0,
+      "voxel_neighbour": 0.1,
+      "voxel_self": 0.3,
+      "winners3": 3
     }
   }
 ]

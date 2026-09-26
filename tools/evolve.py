@@ -48,6 +48,12 @@ SPACE = {
     "winners3": (1, 6, "i", 3),
     "order_gain": (0.0, 2.0, "f", 0.5),
     "covariance": (0.0, 1.0, "f", 1.0),
+    # Added after the night-1 diagnosis (streamed input is amplitude-limited): output
+    # normalization and normalized learning, plus the levers that make normalized activity settle.
+    "output_sigma": (0.0, 0.6, "f", 0.0),
+    "normalized_plasticity": (0, 1, "b", 0),
+    "homeostasis3": (0.0005, 0.02, "f", 0.001),
+    "fatigue_tau3": (5.0, 80.0, "f", 20.0),
 }
 
 
