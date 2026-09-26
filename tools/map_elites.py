@@ -89,6 +89,7 @@ def main():
     ap.add_argument("--preset", default="tiny")
     ap.add_argument("--retest-share", type=float, default=0.2, help="share of evaluations spent re-testing archive members")
     ap.add_argument("--verify-seeds", type=int, default=3)
+    ap.add_argument("--verify-size", default="small", help="a larger size a winner must also pass at ('' to skip)")
     ap.add_argument("--rng", type=int, default=11)
     args = ap.parse_args()
 
@@ -150,6 +151,13 @@ def main():
                     if not v["passes_both"]:
                         ok = False
                         break
+                if ok and args.verify_size:
+                    # Scale invariance (spec Section 8A): a winner found at one size must also
+                    # pass at a larger size, or it is not a winner.
+                    v = evolve.evaluate(params, args.verify_size, rng.randint(20_001, 30_000))
+                    print(f"  verify at {args.verify_size}: all={v['passes_both']} "
+                          f"checks={v['stage1'].get('checks_passed', 0)}/6", flush=True)
+                    ok = v["passes_both"]
                 if ok:
                     evolve.BEST.write_text(json.dumps({"params": params, "verified": True, "method": "map-elites"},
                                                       indent=2))

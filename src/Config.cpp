@@ -74,6 +74,11 @@ std::map<std::string, float*> settingTable(Config& c) {
 
 std::map<std::string, uint32_t*> countTable(Config& c) {
     return {
+        // Geometry: any size can be set, not only the presets (scale invariance, spec Section 8A).
+        {"field_dim", &c.field_dim},
+        {"sheet_dim", &c.sheet_dim},
+        {"line_len", &c.line_len},
+        {"long_range_links", &c.long_range_links},
         {"winners2", &c.winners2},
         {"winners3", &c.winners3},
         {"inhibition_radius3", &c.inhibition_radius3},
