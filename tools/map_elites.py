@@ -55,16 +55,24 @@ class Archive:
     def record(self, params, r):
         self.evals.setdefault(key_of(params), []).append(r)
 
+    def measured(self, k):
+        # Evaluations cut short by the suite's early exit never measured the behaviours,
+        # so they must not place a variant in a niche.
+        return [r for r in self.evals[k] if not r["stage1"].get("rejected_early") and
+                "suite stopped early" not in r.get("note", "") and r["stage1"].get("streamed", -1.0) > -0.999]
+
     def mean(self, k):
-        rs = self.evals[k]
+        rs = self.measured(k) or self.evals[k]
         fitness = sum(r["fitness"] for r in rs) / len(rs)
         behaviour = tuple(bin_of(sum(f(r) for r in rs) / len(rs), edges) for _, f, edges in DIMENSIONS)
         return fitness, behaviour
 
     def rebuild(self):
-        """Place every variant in its (averaged) niche; keep the best per niche."""
+        """Place every measured variant in its (averaged) niche; keep the best per niche."""
         self.cells = {}
         for k in self.evals:
+            if not self.measured(k):
+                continue
             fitness, cell = self.mean(k)
             cur = self.cells.get(cell)
             if cur is None or self.mean(cur)[0] < fitness:
@@ -116,14 +124,21 @@ def main():
         archive.cells[(0, 0, 0)] = key_of(base)
         archive.evals[key_of(base)] = []
 
+    def pick():
+        # Tournament of two: every niche can be chosen, but the better of two random
+        # champions breeds, so the search leans toward quality without losing diversity.
+        members = archive.members()
+        a, b = rng.choice(members), rng.choice(members)
+        return a if archive.mean(key_of(a))[0] >= archive.mean(key_of(b))[0] else b
+
     def propose():
         members = archive.members()
         if members and rng.random() < args.retest_share:
             return rng.choice(members)  # re-test an archive member on a new seed
-        a = rng.choice(members)
-        if len(members) > 1 and rng.random() < 0.5:
-            a = evolve.crossover(a, rng.choice(members), rng)
-        return evolve.mutate(a, rng, rng.choice((0.1, 0.2, 0.4)))
+        a = pick()
+        if len(members) > 1 and rng.random() < 0.25:
+            a = evolve.crossover(a, pick(), rng)
+        return evolve.mutate(a, rng, rng.choice((0.1, 0.2, 0.3)))
 
     done = 0
     while done < args.evaluations:
