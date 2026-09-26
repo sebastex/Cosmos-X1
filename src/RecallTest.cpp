@@ -105,7 +105,7 @@ void printMatrix(const char* title, const RecallOptions& opt, const Result& r) {
 
 } // namespace
 
-int runRecallTest(const Config& cfg, const RecallOptions& opt) {
+int runRecallTest(const Config& cfg, const RecallOptions& opt, double* specificityGain) {
     std::printf("Stage 1 recall test: %zu patterns, stored for %llu ticks each, recalled from %.0f%% cues\n\n",
                 opt.patterns.size(), (unsigned long long)opt.storeTicks, 100.0 * opt.cueFraction);
 
@@ -155,6 +155,7 @@ int runRecallTest(const Config& cfg, const RecallOptions& opt) {
     const double gain = ownLearned - ownBaseline;
     const double marginGain = marginLearned - marginBaseline;
     const bool improves = marginGain >= 0.05;
+    if (specificityGain) *specificityGain = marginGain;
 
     double relOwn = 0.0, relOther = 0.0;
     for (size_t k = 0; k < P; ++k)

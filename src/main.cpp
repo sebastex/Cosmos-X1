@@ -36,6 +36,7 @@ struct Options {
     std::string test = "stage0";
     bool clearGaps = false;
     bool silenceRecall = false; // diagnostic: full-strength recall mode during silence
+    bool earlyExit = false;     // suite: stop after recall if learning clearly hurts it
     std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
 };
@@ -67,6 +68,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--test") o.test = value();
         else if (a == "--clear-gaps") o.clearGaps = true;
         else if (a == "--silence-recall") o.silenceRecall = true;
+        else if (a == "--early-exit") o.earlyExit = true;
         else if (a == "--patterns") {
             o.patterns.clear();
             std::string list = value(), item;
@@ -149,7 +151,7 @@ int main(int argc, char** argv) {
     if (opt.test == "streamed") return ncm::runStreamedTest(cfg);
     if (opt.test == "continual") return ncm::runContinualTest(cfg);
     if (opt.test == "order") return ncm::runOrderTest(cfg);
-    if (opt.test == "suite") return ncm::runMemorySuite(cfg);
+    if (opt.test == "suite") return ncm::runMemorySuite(cfg, opt.earlyExit);
     if (opt.test != "stage0") {
         std::cerr << "error: unknown test '" << opt.test
                   << "' (use stage0, recall, capacity, efficiency, streamed, continual, order or suite)\n";

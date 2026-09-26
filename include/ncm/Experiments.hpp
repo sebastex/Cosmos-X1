@@ -26,7 +26,8 @@ struct RecallOptions {
 // Runs the same protocol on a learning matrix and on an identical matrix that never
 // learns, and compares how closely each partial cue's activity matches the full pattern.
 // Returns 0 when learning measurably improves recall and every cue finds its own pattern.
-int runRecallTest(const Config& cfg, const RecallOptions& opt);
+// If `specificityGain` is given, it receives the learned-minus-untrained specificity gain.
+int runRecallTest(const Config& cfg, const RecallOptions& opt, double* specificityGain = nullptr);
 
 // Stage 1 memory suite (MemorySuite.cpp). Each returns 0 on pass.
 int runCapacityTest(const Config& cfg);   // CP3: the right memory among 8
@@ -34,6 +35,8 @@ int runEfficiencyTest(const Config& cfg); // CP4: usable after short exposure
 int runStreamedTest(const Config& cfg);   // CP5: memories from streamed text
 int runContinualTest(const Config& cfg);  // CP6: new learning does not erase old memories
 int runOrderTest(const Config& cfg);      // CP7: early order signal
-int runMemorySuite(const Config& cfg);    // all of the above plus the recall test
+// All of the above plus the recall test. With earlyExit, stops after the recall test when
+// learning makes recall clearly worse than an untrained matrix (saves compute in searches).
+int runMemorySuite(const Config& cfg, bool earlyExit = false);
 
 } // namespace ncm

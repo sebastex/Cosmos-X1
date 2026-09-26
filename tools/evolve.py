@@ -84,12 +84,25 @@ def settings(cand):
     return args
 
 
+THREADS = 0        # set from --threads; 0 = all cores (full speed)
+COOLDOWN = 0.0     # set from --cooldown; seconds of rest between runs
+
+
 def run(args, timeout=1800):
+    import os
+    env = dict(os.environ)
+    if THREADS > 0:
+        env["OMP_NUM_THREADS"] = str(THREADS)
+    flags = 0x00004000 if sys.platform == "win32" else 0  # BELOW_NORMAL_PRIORITY_CLASS
     try:
-        out = subprocess.run([str(EXE)] + args, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
-        return out.returncode, out.stdout
+        out = subprocess.run([str(EXE)] + args, cwd=ROOT, capture_output=True, text=True, timeout=timeout,
+                             env=env, creationflags=flags)
+        result = out.returncode, out.stdout
     except subprocess.TimeoutExpired:
-        return -1, ""
+        result = -1, ""
+    if COOLDOWN > 0:
+        time.sleep(COOLDOWN)
+    return result
 
 
 def stage0(cand, preset, seed):
@@ -113,7 +126,10 @@ def gain_after(label, out):
 def stage1(cand, preset, seed):
     """The full Stage 1 memory suite (recall, capacity, efficiency, streamed text,
     continual learning, early order)."""
-    code, out = run(["--test", "suite", "--preset", preset, "--seed", str(seed)] + settings(cand), timeout=5400)
+    # --early-exit: the suite stops after its first test when recall is clearly worse than an
+    # untrained matrix, so hopeless variants cost a quarter of a full run.
+    code, out = run(["--test", "suite", "--early-exit", "--preset", preset, "--seed", str(seed)] + settings(cand),
+                    timeout=5400)
     m = re.search(r"own ([0-9.]+) vs others ([0-9.]+) \(need", out)
     rel_own, rel_other = (float(m.group(1)), float(m.group(2))) if m else (0.0, 1.0)
     m = re.search(r"forgetting of old memories: ([+-][0-9.]+)", out)
@@ -156,10 +172,29 @@ def score(s0, s1):
     return fitness
 
 
+def quick_recall(cand, preset, seed):
+    """The 3-memory recall test alone (about a quarter of the full suite's cost)."""
+    code, out = run(["--test", "recall", "--preset", preset, "--seed", str(seed)] + settings(cand))
+    return gain_after("specificity (own minus best other):", out) if out else -1.0
+
+
 def evaluate(cand, preset, seed):
     s0 = stage0(cand, preset, seed)
+    # Early rejection: a variant whose basic recall is clearly worse than an untrained
+    # matrix cannot pass the suite, so it is scored without running the rest.
+    if REJECT_BELOW is not None:
+        quick = quick_recall(cand, preset, seed)
+        if quick < REJECT_BELOW:
+            s1 = {"pass": False, "reliability": 0.0, "reliability_other": 1.0, "recall": quick,
+                  "capacity": -1.0, "efficiency30": -1.0, "streamed": -1.0, "continual_old": -1.0,
+                  "continual_new": -1.0, "forgetting": 1.0, "order_forward": -0.04, "order_signal": -0.04,
+                  "checks_passed": 0, "gain": quick, "rejected_early": True}
+            return {"fitness": score(s0, s1), "passes_both": False, "stage0": s0, "stage1": s1}
     s1 = stage1(cand, preset, seed)
     return {"fitness": score(s0, s1), "passes_both": s0["pass"] and s1["pass"], "stage0": s0, "stage1": s1}
+
+
+REJECT_BELOW = None  # separate quick-recall rejection (off: the suite's --early-exit does this without duplicate work)
 
 
 def log(entry):
@@ -175,19 +210,57 @@ def main():
     ap.add_argument("--preset", default="small")
     ap.add_argument("--verify-seeds", type=int, default=3)
     ap.add_argument("--rng", type=int, default=7)
+    ap.add_argument("--threads", type=int, default=0,
+                    help="CPU threads per run (0 = all cores, split evenly across --parallel runs)")
+    ap.add_argument("--parallel", type=int, default=2, help="variants evaluated side by side")
+    ap.add_argument("--cooldown", type=float, default=0.0, help="seconds of rest between runs")
+    ap.add_argument("--reject-below", type=float, default=None,
+                    help="extra quick-recall rejection threshold (off by default; the suite exits early itself)")
+    ap.add_argument("--resume", action="store_true", help="continue from the best variants in the log")
     args = ap.parse_args()
+
+    global THREADS, COOLDOWN, REJECT_BELOW
+    THREADS, COOLDOWN, REJECT_BELOW = args.threads, args.cooldown, args.reject_below
+    if THREADS == 0 and args.parallel > 1:
+        import os
+        THREADS = max(1, (os.cpu_count() or 2) // args.parallel)
 
     rng = random.Random(args.rng)
     base = start_candidate()
-    population = [base] + [mutate(base, rng, 0.3) for _ in range(args.population - 1)]
+    first_gen = 0
+    population = None
+    if args.resume and LOG.exists():
+        entries = [json.loads(line) for line in LOG.read_text(encoding="utf-8").splitlines() if line.strip()]
+        entries = [e for e in entries if not e.get("verification")]
+        if entries:
+            first_gen = max(e["generation"] for e in entries) + 1
+            seen, ranked = set(), []
+            for e in sorted(entries, key=lambda e: e["fitness"], reverse=True):
+                key = json.dumps(e["params"], sort_keys=True)
+                if key not in seen:
+                    seen.add(key)
+                    ranked.append({k: e["params"].get(k, SPACE[k][3]) for k in SPACE})
+            elites = ranked[: args.elites]
+            population = list(elites)
+            while len(population) < args.population:
+                a, b = rng.sample(elites, 2) if len(elites) > 1 else (elites[0], elites[0])
+                population.append(mutate(crossover(a, b, rng), rng, 0.2))
+            print(f"resuming at generation {first_gen} from {len(entries)} logged runs", flush=True)
+    if population is None:
+        population = [base] + [mutate(base, rng, 0.3) for _ in range(args.population - 1)]
     verified_seeds = set()
 
-    for gen in range(args.generations):
+    from concurrent.futures import ThreadPoolExecutor
+
+    for gen in range(first_gen, first_gen + args.generations):
         seed = rng.randint(100, 10_000)
         t0 = time.time()
         results = []
-        for i, cand in enumerate(population):
-            r = evaluate(cand, args.preset, seed)
+        # Evaluate variants side by side (measured: 2 at a time, 7 threads each, is ~1.36x the
+        # throughput of one at a time with all 14 threads).
+        with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
+            evaluated = list(pool.map(lambda c: evaluate(c, args.preset, seed), population))
+        for i, (cand, r) in enumerate(zip(population, evaluated)):
             r.update({"generation": gen, "seed": seed, "index": i, "params": cand})
             log(r)
             results.append(r)
@@ -221,7 +294,7 @@ def main():
         print(f"gen {gen} done in {time.time() - t0:.0f}s, best fitness {results[0]['fitness']:.2f}", flush=True)
 
         elites = [r["params"] for r in results[: args.elites]]
-        strength = max(0.08, 0.3 * (1.0 - gen / max(1, args.generations)))
+        strength = max(0.08, 0.3 * (1.0 - (gen - first_gen) / max(1, args.generations)))
         children = []
         while len(children) < args.population - len(elites):
             a, b = rng.sample(elites, 2) if len(elites) > 1 else (elites[0], elites[0])

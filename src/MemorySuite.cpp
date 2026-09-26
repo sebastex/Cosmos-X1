@@ -83,7 +83,8 @@ int runEfficiencyTest(const Config& cfg) {
     const std::vector<std::string> items = {"a", "k", "z"};
     std::printf("CP4 efficiency: memory strength after short and long exposure\n");
     bool shortPass = false;
-    for (uint64_t ticks : {15ull, 30ull, 60ull, 120ull}) {
+    // (120 ticks is the recall test's own exposure, so it is not repeated here.)
+    for (uint64_t ticks : {15ull, 30ull, 60ull}) {
         const Comparison c = storeAndRecall(cfg, items, ticks);
         char label[64];
         std::snprintf(label, sizeof(label), "exposure %llu ticks:", (unsigned long long)ticks);
@@ -187,7 +188,7 @@ int runOrderTest(const Config& cfg) {
     return pass ? 0 : 3;
 }
 
-int runMemorySuite(const Config& cfg) {
+int runMemorySuite(const Config& cfg, bool earlyExit) {
     struct Entry {
         const char* name;
         int code;
@@ -195,7 +196,13 @@ int runMemorySuite(const Config& cfg) {
     std::vector<Entry> results;
     RecallOptions ro;
     std::printf("=== CP2 recall ===\n");
-    results.push_back({"CP2 recall (3 memories)", runRecallTest(cfg, ro)});
+    double recallGain = 0.0;
+    results.push_back({"CP2 recall (3 memories)", runRecallTest(cfg, ro, &recallGain)});
+    if (earlyExit && recallGain < -0.02) {
+        std::printf("\nsuite stopped early: learning makes recall worse than an untrained matrix (gain %+.3f)\n",
+                    recallGain);
+        return 3;
+    }
     std::printf("\n=== CP3 ===\n");
     results.push_back({"CP3 capacity (8 memories)", runCapacityTest(cfg)});
     std::printf("\n=== CP4 ===\n");

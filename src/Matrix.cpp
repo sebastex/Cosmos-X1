@@ -119,6 +119,13 @@ inline bool anyActive(const float* a, const float* b, uint32_t n) {
     return false;
 }
 
+// Event-driven updates (spec Section 3C): a silent source contributes nothing, so it is skipped.
+inline bool isSilent(const float* x, size_t n) {
+    for (size_t i = 0; i < n; ++i)
+        if (x[i] != 0.0f) return false;
+    return true;
+}
+
 void fillNormal(AVec<float>& w, Rng& rng, double stddev) {
     for (float& v : w) v = float(rng.normal() * stddev);
 }
@@ -307,6 +314,13 @@ void NeuralCellularMatrix::step1D() {
         const float* parent = s2 + q * C2;
         const float* line = s1 + q * L * C1;
         float* lineOut = out + q * L * C1;
+        // A silent line under a silent parent stays silent: skip the arithmetic.
+        if (isSilent(parent, C2) && isSilent(line, size_t(L) * C1)) {
+            std::fill(lineOut, lineOut + size_t(L) * C1, 0.0f);
+            if (lp.homeostasis_rate > 0.0f)
+                for (uint32_t k = 0; k < L; ++k) adaptThreshold(theta[q * L + k], 0.0f, lp, target);
+            continue;
+        }
         for (uint32_t k = 0; k < L; ++k) {
             float in[C1] = {};
             for (int o = -1; o <= 1; ++o) {
@@ -355,11 +369,12 @@ void NeuralCellularMatrix::step2D() {
                 if (ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
                 const size_t qn = v * SS + size_t(ny) * S + size_t(nx);
                 const uint32_t o = uint32_t((dy + 1) * 3 + (dx + 1));
+                if (isSilent(s2 + qn * C2, C2)) continue; // silent sources contribute nothing
                 // Self-persistence is not a synapse; lateral inputs carry the sender's sign.
                 const float sign = (o == 4 || !inhib2_[qn]) ? 1.0f : inh;
                 matvecAdd(W2_.data() + size_t(o) * C2 * C2, s2 + qn * C2, in, C2, C2, sign);
             }
-        matvecAdd(M2_.data() + v * C2 * C2, s2 + q * C2, in, C2, C2, 1.0f);
+        if (!isSilent(s2 + q * C2, C2)) matvecAdd(M2_.data() + v * C2 * C2, s2 + q * C2, in, C2, C2, 1.0f);
         // Upward summary with divisive normalization: scaled by 1/sqrt(active line cells), so
         // a streamed character (one active cell per line) and a held one (a full line) drive
         // the sheet cell in the same useful range.
@@ -380,7 +395,7 @@ void NeuralCellularMatrix::step2D() {
                 for (uint32_t c = 0; c < C2; ++c) in[c] += scale * up[c];
             }
         }
-        matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
+        if (!isSilent(s3 + v * C3, C3)) matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
 
         drive2_[q] = activateCell<C2>(in, out + q * C2, theta[q] + lp.fatigue_gain * fatigue2_[q],
                                       cfg_.channel_winners2);
@@ -452,6 +467,7 @@ void NeuralCellularMatrix::step3D() {
                     const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                     const uint32_t o = uint32_t((dz + 1) * 9 + (dy + 1) * 3 + (dx + 1));
                     const float* src = s3 + vn * C3;
+                    if (isSilent(src, C3)) continue; // silent sources contribute nothing
                     if (o == 13) {
                         addScaled(src, in, C3, r.voxel_self); // self-persistence: fixed
                     } else if (inhib3_[vn]) {
@@ -465,6 +481,7 @@ void NeuralCellularMatrix::step3D() {
         for (uint32_t l = 0; l < K; ++l) {
             const size_t t = lrTarget_[v * K + l];
             const float* src = s3 + t * C3;
+            if (isSilent(src, C3)) continue;
             if (inhib3_[t]) {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
@@ -480,6 +497,10 @@ void NeuralCellularMatrix::step3D() {
             if (g == f) continue;
             const size_t vg = voxelIndex(g, x, y, z);
             const float* src = s3 + vg * C3;
+            if (isSilent(src, C3)) {
+                ++gi;
+                continue;
+            }
             const float link = g < f ? r.link4d : r.link4d_backward; // feedforward vs feedback
             // The learned part keeps the same asymmetry: feedback transmits at the
             // backward/forward ratio, or learned feedback would rebuild the loops.
