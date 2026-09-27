@@ -284,6 +284,28 @@ int runDriftTest(const Config& cfg, const std::string& item, uint64_t learnAfter
             }
         }
     }
+    // Amplitude of 3D activity while the item is held (untrained twin): the strongest channel
+    // per voxel, per field. A voxel counts as firing from the active level (0.5).
+    {
+        Session s(cfg, false);
+        s.present(item, kStore, 1.0f, false, UINT64_MAX);
+        const auto& v = s.matrix().voxelState();
+        const size_t perField = v.size() / kFields;
+        std::printf("  amplitude while held (untrained): strongest channel per voxel\n");
+        for (uint32_t f = 0; f < kFields; ++f) {
+            float top = 0.0f;
+            size_t above[4] = {};
+            const float levels[4] = {0.01f, 0.05f, 0.1f, 0.5f};
+            for (size_t i = f * perField; i < (f + 1) * perField; i += C3) {
+                float strongest = 0.0f;
+                for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, v[i + c]);
+                top = std::max(top, strongest);
+                for (int k = 0; k < 4; ++k) above[k] += strongest >= levels[k];
+            }
+            std::printf("    field %u: max %.3f; voxels >= 0.01: %zu, >= 0.05: %zu, >= 0.1: %zu, >= 0.5: %zu (of %zu)\n",
+                        f, top, above[0], above[1], above[2], above[3], perField / C3);
+        }
+    }
     std::printf("  tick  %-38s %s\n", "learned", "untrained");
     for (size_t k = 0; k < rows[0].size(); ++k)
         std::printf("  %4zu  %-38s %s\n", 5 * (k + 1), rows[1][k].c_str(), rows[0][k].c_str());
