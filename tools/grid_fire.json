@@ -1,0 +1,6 @@
+{
+  "fire_threshold2": [0, 0.02],
+  "fire_threshold3": [0.2, 0.35, 0.5],
+  "link4d": [0.1, 0.3, 0.5],
+  "voxel_self": [0.3, 0.1]
+}

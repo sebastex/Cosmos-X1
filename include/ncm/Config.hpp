@@ -150,6 +150,13 @@ struct Config {
     // constant: activity well below it stays faint (noise is not amplified). 0 = off.
     float output_sigma = 0.0f;
 
+    // Firing (all-or-none output): a cell that wins the competition and whose strongest
+    // channel reaches this level fires at full strength (pattern kept, strongest channel 1);
+    // below it the cell is silent. Signals then keep their strength from field to field
+    // instead of shrinking at every step. 0 = off (graded output).
+    float fire_threshold2 = 0.0f; // sheet cells
+    float fire_threshold3 = 0.0f; // voxels
+
     // Per-field gain control: each 3D field scales the 4D link from earlier fields (its only
     // loop-free input) so its activity tracks the target. Faint streamed input is amplified,
     // strong input is turned down. Its own sheet summaries (a voxel -> sheet -> voxel loop),
