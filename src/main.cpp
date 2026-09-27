@@ -166,6 +166,7 @@ int main(int argc, char** argv) {
     if (opt.test == "streamed") return ncm::runStreamedTest(cfg);
     if (opt.test == "continual") return ncm::runContinualTest(cfg);
     if (opt.test == "order") return ncm::runOrderTest(cfg);
+    if (opt.test == "context") return ncm::runContextTest(cfg);
     if (opt.test == "drift") return ncm::runDriftTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0], opt.storeTicks);
     if (opt.test == "suite") return ncm::runMemorySuite(cfg, opt.earlyExit);
     if (opt.test != "stage0") {

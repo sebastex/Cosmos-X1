@@ -408,4 +408,45 @@ int runDriftTest(const Config& cfg, const std::string& item, uint64_t learnAfter
     return 0;
 }
 
+// Diagnostic: context coding. Streams each word (no learning) and averages the 3D state at
+// the ticks where the shared letter 'e' (or the space) is the current input. If "e in apple"
+// and "e in river" give nearly the same pattern, the matrix has no context for shared letters
+// and Hebbian association from them cannot stay word-specific. Printed per field, with the
+// same word's two halves as a reliability reference.
+int runContextTest(const Config& cfg) {
+    const std::vector<std::string> words = {"apple ", "river ", "stone "};
+    const char shared[2] = {'e', ' '};
+    std::printf("Context coding: 3D state when a shared letter is current, compared across words\n");
+    for (char letter : shared) {
+        std::vector<std::vector<double>> first(3), second(3);
+        for (size_t w = 0; w < words.size(); ++w) {
+            Session s(cfg, false);
+            const std::string& text = words[w];
+            for (uint64_t t = 0; t < 240; ++t) {
+                const char c = text[t % text.size()];
+                const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(c)));
+                s.tick(&fp, &fp, false);
+                if (t >= 60 && c == letter) s.accumulate(t < 150 ? first[w] : second[w]);
+            }
+        }
+        const size_t perField = first[0].size() / kFields;
+        std::printf("  letter '%c':\n", letter == ' ' ? '_' : letter);
+        for (uint32_t f = 0; f < kFields; ++f) {
+            const size_t b = f * perField, e = (f + 1) * perField;
+            double self = 0.0, cross = 0.0;
+            int nc = 0;
+            for (size_t w = 0; w < 3; ++w) {
+                self += lab::cosine(first[w], second[w], b, e) / 3.0;
+                for (size_t v = 0; v < 3; ++v)
+                    if (v != w) {
+                        cross += lab::cosine(first[w], second[v], b, e);
+                        ++nc;
+                    }
+            }
+            std::printf("    field %u: same word %.3f, different words %.3f\n", f, self, cross / nc);
+        }
+    }
+    return 0;
+}
+
 } // namespace ncm

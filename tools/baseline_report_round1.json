@@ -1,0 +1,577 @@
+[
+ {
+  "variant": "champion",
+  "seed": 21,
+  "stage0": true,
+  "deep": 46,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.152,
+   "capacity": 0.266,
+   "efficiency": 0.117,
+   "streamed": 0.003,
+   "forgetting": -0.012,
+   "order": 0.077
+  }
+ },
+ {
+  "variant": "champion",
+  "seed": 22,
+  "stage0": true,
+  "deep": 39,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.057,
+   "capacity": 0.056,
+   "efficiency": 0.052,
+   "streamed": 0.013,
+   "forgetting": -0.006,
+   "order": 0.094
+  }
+ },
+ {
+  "variant": "champion",
+  "seed": 23,
+  "stage0": true,
+  "deep": 38,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.173,
+   "capacity": 0.139,
+   "efficiency": 0.133,
+   "streamed": -0.005,
+   "forgetting": -0.013,
+   "order": 0.137
+  }
+ },
+ {
+  "variant": "champion",
+  "seed": 24,
+  "stage0": true,
+  "deep": 45,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.171,
+   "capacity": 0.054,
+   "efficiency": 0.09,
+   "streamed": 0.008,
+   "forgetting": 0.041,
+   "order": 0.035
+  }
+ },
+ {
+  "variant": "champion",
+  "seed": 25,
+  "stage0": true,
+  "deep": 40,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.152,
+   "capacity": 0.161,
+   "efficiency": 0.17,
+   "streamed": 0.022,
+   "forgetting": -0.044,
+   "order": 0.093
+  }
+ },
+ {
+  "variant": "+mixed wiring",
+  "seed": 21,
+  "stage0": true,
+  "deep": 68,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.261,
+   "capacity": 0.241,
+   "efficiency": 0.119,
+   "streamed": 0.012,
+   "forgetting": -0.009,
+   "order": 0.085
+  }
+ },
+ {
+  "variant": "+mixed wiring",
+  "seed": 22,
+  "stage0": true,
+  "deep": 59,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.116,
+   "capacity": 0.052,
+   "efficiency": 0.058,
+   "streamed": 0.014,
+   "forgetting": 0.0,
+   "order": 0.101
+  }
+ },
+ {
+  "variant": "+mixed wiring",
+  "seed": 23,
+  "stage0": true,
+  "deep": 50,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.154,
+   "capacity": 0.149,
+   "efficiency": 0.105,
+   "streamed": 0.008,
+   "forgetting": 0.009,
+   "order": 0.098
+  }
+ },
+ {
+  "variant": "+mixed wiring",
+  "seed": 24,
+  "stage0": true,
+  "deep": 63,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": false,
+   "efficiency": false,
+   "streamed": false,
+   "continual": false,
+   "order": false
+  },
+  "gains": {
+   "recall": 0.117,
+   "capacity": 0.039,
+   "efficiency": 0.013,
+   "streamed": 0.006,
+   "forgetting": 0.043,
+   "order": 0.019
+  }
+ },
+ {
+  "variant": "+mixed wiring",
+  "seed": 25,
+  "stage0": true,
+  "deep": 58,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.188,
+   "capacity": 0.138,
+   "efficiency": 0.088,
+   "streamed": 0.025,
+   "forgetting": 0.012,
+   "order": 0.086
+  }
+ },
+ {
+  "variant": "+two-speed memory",
+  "seed": 21,
+  "stage0": true,
+  "deep": 46,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.199,
+   "capacity": 0.226,
+   "efficiency": 0.089,
+   "streamed": 0.004,
+   "forgetting": -0.019,
+   "order": 0.088
+  }
+ },
+ {
+  "variant": "+two-speed memory",
+  "seed": 22,
+  "stage0": true,
+  "deep": 39,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": false,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.064,
+   "capacity": 0.058,
+   "efficiency": 0.042,
+   "streamed": -0.002,
+   "forgetting": -0.01,
+   "order": 0.116
+  }
+ },
+ {
+  "variant": "+two-speed memory",
+  "seed": 23,
+  "stage0": true,
+  "deep": 38,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.176,
+   "capacity": 0.137,
+   "efficiency": 0.116,
+   "streamed": -0.006,
+   "forgetting": -0.0,
+   "order": 0.154
+  }
+ },
+ {
+  "variant": "+two-speed memory",
+  "seed": 24,
+  "stage0": true,
+  "deep": 45,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": false,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.167,
+   "capacity": 0.046,
+   "efficiency": 0.097,
+   "streamed": 0.01,
+   "forgetting": 0.035,
+   "order": 0.067
+  }
+ },
+ {
+  "variant": "+two-speed memory",
+  "seed": 25,
+  "stage0": true,
+  "deep": 40,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.166,
+   "capacity": 0.15,
+   "efficiency": 0.163,
+   "streamed": 0.031,
+   "forgetting": -0.047,
+   "order": 0.118
+  }
+ },
+ {
+  "variant": "+lighter erasure fix",
+  "seed": 21,
+  "stage0": true,
+  "deep": 46,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.114,
+   "capacity": 0.252,
+   "efficiency": 0.131,
+   "streamed": 0.011,
+   "forgetting": -0.023,
+   "order": 0.082
+  }
+ },
+ {
+  "variant": "+lighter erasure fix",
+  "seed": 22,
+  "stage0": true,
+  "deep": 39,
+  "reliable": true,
+  "checks": {
+   "recall": false,
+   "capacity": false,
+   "efficiency": false,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.032,
+   "capacity": 0.046,
+   "efficiency": 0.049,
+   "streamed": 0.007,
+   "forgetting": -0.022,
+   "order": 0.045
+  }
+ },
+ {
+  "variant": "+lighter erasure fix",
+  "seed": 23,
+  "stage0": true,
+  "deep": 38,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.178,
+   "capacity": 0.132,
+   "efficiency": 0.176,
+   "streamed": 0.008,
+   "forgetting": 0.012,
+   "order": 0.057
+  }
+ },
+ {
+  "variant": "+lighter erasure fix",
+  "seed": 24,
+  "stage0": true,
+  "deep": 45,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": false,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.208,
+   "capacity": 0.047,
+   "efficiency": 0.099,
+   "streamed": 0.007,
+   "forgetting": 0.141,
+   "order": 0.052
+  }
+ },
+ {
+  "variant": "+lighter erasure fix",
+  "seed": 25,
+  "stage0": true,
+  "deep": 40,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": true,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.216,
+   "capacity": 0.151,
+   "efficiency": 0.209,
+   "streamed": 0.058,
+   "forgetting": 0.089,
+   "order": 0.055
+  }
+ },
+ {
+  "variant": "+wiring +lighter",
+  "seed": 21,
+  "stage0": true,
+  "deep": 68,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.218,
+   "capacity": 0.249,
+   "efficiency": 0.159,
+   "streamed": 0.023,
+   "forgetting": -0.015,
+   "order": 0.086
+  }
+ },
+ {
+  "variant": "+wiring +lighter",
+  "seed": 22,
+  "stage0": true,
+  "deep": 59,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": false,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.106,
+   "capacity": 0.044,
+   "efficiency": 0.06,
+   "streamed": 0.016,
+   "forgetting": 0.001,
+   "order": 0.062
+  }
+ },
+ {
+  "variant": "+wiring +lighter",
+  "seed": 23,
+  "stage0": true,
+  "deep": 50,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.184,
+   "capacity": 0.146,
+   "efficiency": 0.157,
+   "streamed": 0.015,
+   "forgetting": 0.045,
+   "order": 0.05
+  }
+ },
+ {
+  "variant": "+wiring +lighter",
+  "seed": 24,
+  "stage0": true,
+  "deep": 63,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": false,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.161,
+   "capacity": 0.079,
+   "efficiency": 0.03,
+   "streamed": 0.02,
+   "forgetting": 0.042,
+   "order": 0.036
+  }
+ },
+ {
+  "variant": "+wiring +lighter",
+  "seed": 25,
+  "stage0": true,
+  "deep": 58,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.236,
+   "capacity": 0.145,
+   "efficiency": 0.108,
+   "streamed": 0.043,
+   "forgetting": 0.067,
+   "order": 0.051
+  }
+ }
+]
