@@ -106,6 +106,7 @@ RATE_SPACE = {
     "covariance": (0.0, 1.0, "f", 0.5),
     "encoding_suppression": (0.0, 1.0, "f", 0.95),
     "modulator_tau": (0.0, 60.0, "f", 0.0),
+    "order_tau": (0.0, 30.0, "f", 0.0),  # order timing window (added after generation 3)
 }
 
 
