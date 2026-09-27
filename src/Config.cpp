@@ -77,6 +77,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"mode_tau", &c.learning.mode_tau},
         {"hetero_ltd", &c.learning.hetero_ltd},
         {"presynaptic_bound", &c.learning.presynaptic_bound},
+        {"consolidation_rate", &c.learning.consolidation_rate},
+        {"consolidated_budget", &c.learning.consolidated_budget},
         {"fatigue_recall", &c.fatigue_recall},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},

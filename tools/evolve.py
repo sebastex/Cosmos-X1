@@ -93,7 +93,7 @@ RATE_SPACE = {
     "fire_gain3": (1.5, 20.0, "f", 5.0),
     "fire_threshold2": (0.001, 0.1, "f", 0.01),
     "fire_threshold3": (0.001, 0.1, "f", 0.01),
-    "link4d": (0.02, 0.5, "f", 0.2),
+    "link4d": (0.02, 0.8, "f", 0.2),
     "link4d_backward": (0.0, 0.1, "f", 0.02),
     "voxel_self": (0.01, 0.3, "f", 0.06),
     "voxel_neighbour": (0.003, 0.1, "f", 0.02),
@@ -119,6 +119,9 @@ RATE_SPACE = {
     # giving the latest memory a temporary boost that later reads as forgetting.
     "modulation_rate": (0.0, 1.0, "f", 1.0),
     "hetero_ltd": (0.0, 1.0, "f", 1.0),
+    # Pattern separation on the feedforward 4D link (random extra sources per voxel).
+    "link4d_spread": (0, 8, "i", 0),
+    "link4d_spread_share": (0.1, 0.9, "f", 0.5),
 }
 
 

@@ -161,6 +161,18 @@ private:
     std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
     AVec<float> WL_;               // per voxel: long-range links x C3 x C3
     AVec<float> H_;                // per voxel: 3 other fields x C3 x C3 (4D link)
+    // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when
+    // consolidation is off. Transmission uses fast + slow.
+    AVec<float> S3_, SL_, SH_;
+    float* slowOf(float* fastBlock) {
+        auto map = [&](AVec<float>& fast, AVec<float>& slow) -> float* {
+            if (slow.empty() || fastBlock < fast.data() || fastBlock >= fast.data() + fast.size()) return nullptr;
+            return slow.data() + (fastBlock - fast.data());
+        };
+        if (float* s = map(W3_, S3_)) return s;
+        if (float* s = map(WL_, SL_)) return s;
+        return map(H_, SH_);
+    }
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
 
     // Surfaces: surface line index -> sheet cell index q.

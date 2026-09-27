@@ -128,6 +128,13 @@ struct LearningParams {
     // then form new links slowly, so new memories recruit fresh cells (pattern separation).
     // 0 = off.
     float presynaptic_bound = 0.0f;
+    // Consolidation (two-component synapses): each plastic connection has a fast part (learned
+    // as above, freely overwritten by new learning) and a slow part that follows the fast part
+    // upward at this rate per learning step and has its own budget. Old memories persist in the
+    // slow part when new learning reshapes the fast part, without slowing new learning.
+    // 0 = off (no slow part).
+    float consolidation_rate = 0.0f;
+    float consolidated_budget = 0.5f; // per output channel, like plastic_budget
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

@@ -282,6 +282,11 @@ void NeuralCellularMatrix::initVoxelWeights() {
     const uint32_t K = cfg_.long_range_links;
 
     W3_.assign(V_ * 27 * C3 * C3, 0.0f);
+    if (cfg_.learning.consolidation_rate > 0.0f) {
+        S3_.assign(V_ * 27 * C3 * C3, 0.0f);
+        SL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
+        SH_.assign(V_ * 3 * C3 * C3, 0.0f);
+    }
     WL_.assign(V_ * K * C3 * C3, 0.0f);
     H_.assign(V_ * 3 * C3 * C3, 0.0f);
     M2_.assign(V_ * C2 * C2, 0.0f);
@@ -616,6 +621,7 @@ void NeuralCellularMatrix::step3D() {
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                // scaffold
                         matvecAdd(w + size_t(o) * C3 * C3, src, in, C3, C3, rec); // plastic memory part
+                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, in, C3, C3, rec);
                     }
                 }
 
@@ -628,6 +634,7 @@ void NeuralCellularMatrix::step3D() {
             } else {
                 addScaled(src, in, C3, r.long_range);
                 matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, in, C3, C3, rec);
+                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, in, C3, C3, rec);
             }
         }
 
@@ -658,6 +665,8 @@ void NeuralCellularMatrix::step3D() {
             } else {
                 addScaled(src, in, C3, gain * link);
                 matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
+                if (!SH_.empty())
+                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
         }
@@ -827,6 +836,8 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
     const bool useTrace = cfg_.learning.trace_tau > 0.0f;
     const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
+    const float consolidate = S3_.empty() ? 0.0f : std::clamp(cfg_.learning.consolidation_rate, 0.0f, 1.0f);
+    const float slowBudget = std::max(0.0f, cfg_.learning.consolidated_budget);
     // Presynaptic budget: each source channel's total outgoing plastic strength, refreshed
     // every 20 learning steps (it changes slowly). A cell already wired strongly into stored
     // memories forms new outgoing links slowly, so new memories recruit fresh cells instead
@@ -943,6 +954,25 @@ void NeuralCellularMatrix::learn(float modulator) {
             scaled += double(total[a]) * (1.0 - double(factor[a]));
         }
         if (scale) forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(block, factor); });
+
+        // Consolidation: the slow part follows the fast part upward, then its own budget.
+        if (consolidate > 0.0f) {
+            float slowTotal[C3] = {};
+            forEachLearnedBlock(v, [&](float* block, size_t) {
+                float* slow = slowOf(block);
+                for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                    if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
+                    slowTotal[i / C3] += slow[i];
+                }
+            });
+            float slowFactor[C3];
+            bool slowScale = false;
+            for (uint32_t a = 0; a < C3; ++a) {
+                slowFactor[a] = slowTotal[a] > slowBudget ? slowBudget / slowTotal[a] : 1.0f;
+                slowScale = slowScale || slowFactor[a] < 1.0f;
+            }
+            if (slowScale) forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(slowOf(block), slowFactor); });
+        }
     }
     learnStats_.calls += 1;
     learnStats_.learners += learners;
