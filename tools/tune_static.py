@@ -75,8 +75,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--preset", default="small")
     ap.add_argument("--seeds", default="1,2")
+    ap.add_argument("--variants", default="", help="JSON list of parameter dicts (default: the built-in sweep)")
     args = ap.parse_args()
     seeds = [int(s) for s in args.seeds.split(",")]
+    global VARIANTS
+    if args.variants:
+        text = args.variants
+        if text.startswith("@"):  # @path: read the list from a file (shells mangle inline JSON)
+            text = pathlib.Path(text[1:]).read_text(encoding="utf-8")
+        VARIANTS = json.loads(text)
 
     from concurrent.futures import ThreadPoolExecutor
     results = []

@@ -1,0 +1,6 @@
+[
+  {"covariance": 0.5, "encoding_suppression": 0.95},
+  {"covariance": 0.5, "encoding_suppression": 0.95, "winners3": 2},
+  {"covariance": 0.5, "encoding_suppression": 0.95, "order_gain": 0.2},
+  {}
+]
