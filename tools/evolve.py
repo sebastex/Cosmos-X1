@@ -289,6 +289,8 @@ def main():
     ap.add_argument("--reject-below", type=float, default=None,
                     help="extra quick-recall rejection threshold (off by default; the suite exits early itself)")
     ap.add_argument("--resume", action="store_true", help="continue from the best variants in the log")
+    ap.add_argument("--seeds-per-gen", type=int, default=1,
+                    help="seeds each variant is tested on per generation (fitness = their mean)")
     ap.add_argument("--inject", default="",
                     help="JSON list (or @file) of partial parameter dicts added to the first population")
     ap.add_argument("--regime", default="graded", choices=("graded", "firing", "rate"),
@@ -339,19 +341,34 @@ def main():
     from concurrent.futures import ThreadPoolExecutor
 
     for gen in range(first_gen, first_gen + args.generations):
-        seed = rng.randint(100, 10_000)
+        # Several seeds per generation (each changes the wiring and the items): measured, the
+        # same variant's checks swing across seeds by more than the pass bars, so selection on
+        # one seed chased luck. Every seed's result is logged; ranking uses their mean.
+        seeds = [rng.randint(100, 10_000) for _ in range(max(1, args.seeds_per_gen))]
+        seed = seeds[0]
         t0 = time.time()
         results = []
         # Evaluate variants side by side (measured: 2 at a time, 7 threads each, is ~1.36x the
         # throughput of one at a time with all 14 threads).
+        jobs = [(c, sd) for c in population for sd in seeds]
         with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
-            evaluated = list(pool.map(lambda c: evaluate(c, args.preset, seed), population))
+            flat = list(pool.map(lambda cs: evaluate(cs[0], args.preset, cs[1]), jobs))
+        evaluated = []
+        for i, cand in enumerate(population):
+            rs = flat[i * len(seeds):(i + 1) * len(seeds)]
+            for sd, one in zip(seeds, rs):
+                one.update({"generation": gen, "seed": sd, "index": i, "params": cand})
+                log(one)
+            agg = dict(rs[0])
+            agg["fitness"] = sum(x["fitness"] for x in rs) / len(rs)
+            agg["passes_both"] = all(x["passes_both"] for x in rs)
+            agg["stage1"] = dict(rs[0]["stage1"])
+            agg["stage1"]["checks_passed"] = min(x["stage1"]["checks_passed"] for x in rs)
+            evaluated.append(agg)
         for i, (cand, r) in enumerate(zip(population, evaluated)):
-            r.update({"generation": gen, "seed": seed, "index": i, "params": cand})
-            log(r)
             results.append(r)
             s1 = r["stage1"]
-            print(f"gen {gen} cand {i}: fitness {r['fitness']:.2f} all={r['passes_both']} checks={s1['checks_passed']}/6 "
+            print(f"gen {gen} cand {i}: fitness {r['fitness']:.2f} all={r['passes_both']} checks(min over seeds)={s1['checks_passed']}/6 "
                   f"deep={r['stage0']['deep_percent']:.0f}% recall={s1['recall']:+.3f} cap={s1['capacity']:+.3f} "
                   f"eff30={s1['efficiency30']:+.3f} stream={s1['streamed']:+.3f} "
                   f"old={s1['continual_old']:+.3f} order={s1['order_signal']:+.3f}", flush=True)
