@@ -122,6 +122,9 @@ RATE_SPACE = {
     # Pattern separation on the feedforward 4D link (random extra sources per voxel).
     "link4d_spread": (0, 8, "i", 0),
     "link4d_spread_share": (0.1, 0.9, "f", 0.5),
+    # Consolidation (fast + slow plastic parts); budgets should roughly split the total.
+    "consolidation_rate": (0.0, 0.2, "f", 0.0),
+    "consolidated_budget": (0.05, 2.0, "f", 0.5),
 }
 
 
