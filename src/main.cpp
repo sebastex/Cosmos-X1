@@ -38,6 +38,7 @@ struct Options {
     bool silenceRecall = false; // diagnostic: full-strength recall mode during silence
     bool earlyExit = false;     // suite: stop after recall if learning clearly hurts it
     uint64_t storeTicks = 0;    // recall test: exposure per stored item (0 = default)
+    float cueFraction = 0.0f;   // recall test: share of the fingerprint kept in cues (0 = default)
     std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
 };
@@ -71,6 +72,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--silence-recall") o.silenceRecall = true;
         else if (a == "--early-exit") o.earlyExit = true;
         else if (a == "--store-ticks") o.storeTicks = std::stoull(value());
+        else if (a == "--cue-fraction") o.cueFraction = std::stof(value());
         else if (a == "--patterns") {
             o.patterns.clear();
             std::string list = value(), item;
@@ -147,6 +149,7 @@ int main(int argc, char** argv) {
         ro.silenceSuppressed = !opt.silenceRecall;
         if (!opt.patterns.empty()) ro.patterns = opt.patterns;
         if (opt.storeTicks > 0) ro.storeTicks = opt.storeTicks;
+        if (opt.cueFraction > 0.0f) ro.cueFraction = opt.cueFraction;
         return ncm::runRecallTest(cfg, ro);
     }
     if (opt.test == "capacity") return ncm::runCapacityTest(cfg);
@@ -154,6 +157,7 @@ int main(int argc, char** argv) {
     if (opt.test == "streamed") return ncm::runStreamedTest(cfg);
     if (opt.test == "continual") return ncm::runContinualTest(cfg);
     if (opt.test == "order") return ncm::runOrderTest(cfg);
+    if (opt.test == "drift") return ncm::runDriftTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);
     if (opt.test == "suite") return ncm::runMemorySuite(cfg, opt.earlyExit);
     if (opt.test != "stage0") {
         std::cerr << "error: unknown test '" << opt.test

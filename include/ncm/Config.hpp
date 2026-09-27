@@ -93,6 +93,11 @@ struct LearningParams {
     // share) per output channel, so channels already holding memories learn new ones slowly
     // (protecting what they store) while unused channels learn at full speed. 0 = off.
     float soft_bound = 0.0f;
+    // Predictive (delta-rule) association: each cell learns only the part of its activity that
+    // its plastic inputs do not already predict, so learning stops once a memory reproduces the
+    // experience instead of growing until the budget cap. Without it, full-strength recall
+    // overshoots and distorts the stored pattern. 0 = plain covariance, 1 = full prediction.
+    float predictive = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 
@@ -147,6 +152,9 @@ struct Config {
     float agc_min = 0.25f;
     float agc_max = 16.0f;
     float downward_gain = 0.3f;
+    // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in
+    // silence. 1 = fatigue independent of mode.
+    float fatigue_recall = 1.0f;
 
     // 1D lines carry sequences intact, so homeostasis is off there by default (spec Section 3C).
     // theta_max is high enough that homeostasis can always catch up with a cell's drive;

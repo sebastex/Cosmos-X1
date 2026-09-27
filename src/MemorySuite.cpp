@@ -233,3 +233,48 @@ int runMemorySuite(const Config& cfg, bool earlyExit) {
 }
 
 } // namespace ncm
+
+namespace ncm {
+
+// Diagnostic: store one item, then hold its full input in recall mode and follow the 3D state
+// tick by tick (similarity to the stored pattern, active voxels, total activity), on the
+// learning matrix and its untrained twin. Shows whether recall starts right and drifts, or
+// whether learned connections change the pattern from the start.
+int runDriftTest(const Config& cfg, const std::string& item) {
+    std::printf("Recall drift: \"%s\" stored %llu ticks, then full input in recall mode\n", item.c_str(),
+                (unsigned long long)kStore);
+    std::vector<std::vector<std::string>> rows(2);
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        const auto stored = s.present(item, kStore, 1.0f, true, kStore / 2);
+        s.silence(kGap, true);
+        for (uint64_t t = 0; t < kCue; ++t) {
+            std::vector<double> now;
+            s.present(item, 1, 1.0f, false, 0);
+            s.accumulate(now);
+            const auto& v = s.matrix().voxelState();
+            size_t active = 0;
+            double total = 0.0;
+            for (size_t i = 0; i < v.size(); i += C3) {
+                float strongest = 0.0f;
+                for (uint32_t c = 0; c < C3; ++c) {
+                    strongest = std::max(strongest, v[i + c]);
+                    total += v[i + c];
+                }
+                active += strongest >= cfg.level3.active_level;
+            }
+            if (t % 5 == 4) {
+                char line[128];
+                std::snprintf(line, sizeof(line), "sim %.3f active %5zu total %8.1f", lab::cosine(now, stored),
+                              active, total);
+                rows[learning].push_back(line);
+            }
+        }
+    }
+    std::printf("  tick  %-38s %s\n", "learned", "untrained");
+    for (size_t k = 0; k < rows[0].size(); ++k)
+        std::printf("  %4zu  %-38s %s\n", 5 * (k + 1), rows[1][k].c_str(), rows[0][k].c_str());
+    return 0;
+}
+
+} // namespace ncm

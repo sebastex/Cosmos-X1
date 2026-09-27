@@ -127,15 +127,17 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
 template <uint32_t C>
 // `room` (optional, one value per output channel in [0, 1]) scales strengthening only: soft
 // bounds, so a channel whose plastic budget is already full of memories learns new ones slowly.
+// `predicted` (optional, per output channel) is what the cell's plastic inputs already predict;
+// association then learns only the unpredicted part of the cell's activity (delta rule).
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja, const float* room) {
+                           float oja, const float* room, const float* predicted) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
         if (pa == 0.0f && qa == 0.0f) continue;
         float* row = W + size_t(a) * C;
-        const float da = pa - avgPost;
+        const float da = pa - avgPost - (predicted ? predicted[a] : 0.0f);
         const float up = room ? room[a] : 1.0f;
         for (uint32_t b = 0; b < C; ++b) {
             const float dw =
@@ -378,6 +380,11 @@ void NeuralCellularMatrix::step1D() {
 // 2D level: lateral interaction within each sheet, a summary from each cell's own
 // 1D line, drive from the parent voxel, and the voxel's learned modulation.
 void NeuralCellularMatrix::step2D() {
+    // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
+    // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
+    // can settle instead of wearing itself out.
+    const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
+                              (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
     const float* s1 = s1_.cur.data();
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
@@ -433,7 +440,7 @@ void NeuralCellularMatrix::step2D() {
         }
         if (!isSilent(s3 + v * C3, C3)) matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
 
-        drive2_[q] = activateCell<C2>(in, out + q * C2, theta[q] + lp.fatigue_gain * fatigue2_[q],
+        drive2_[q] = activateCell<C2>(in, out + q * C2, theta[q] + lp.fatigue_gain * fatigueMode * fatigue2_[q],
                                       cfg_.channel_winners2);
     }
 
@@ -466,6 +473,11 @@ void NeuralCellularMatrix::step2D() {
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
 // three fields, and a summary from each voxel's own 2D sheet.
 void NeuralCellularMatrix::step3D() {
+    // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
+    // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
+    // can settle instead of wearing itself out.
+    const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
+                              (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
     float* out = s3_.next.data();
@@ -581,7 +593,7 @@ void NeuralCellularMatrix::step3D() {
             }
         }
 
-        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v],
+        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigueMode * fatigue3_[v],
                                       cfg_.channel_winners3);
     }
 
@@ -697,6 +709,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float oja = std::max(0.0f, cfg_.learning.oja);
     const bool normalized = cfg_.learning.normalized > 0.5f;
     const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
+    const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
     auto avgOf = [&](size_t cell) { return cov * (normalized ? averageN3_[cell] : average3_[cell]); };
     // Normalized plasticity: a cell's pattern scaled so its strongest channel is 1.
     auto normalizeInto = [](const float* x, float* outv, uint32_t n) {
@@ -739,6 +752,17 @@ void NeuralCellularMatrix::learn(float modulator) {
             }
         }
 
+        // Local prediction: the drive the cell's plastic inputs gave it from the previous state,
+        // at full (recall-mode) strength. Learning stops once memory reproduces the experience.
+        float predicted[C3] = {};
+        if (predictive > 0.0f) {
+            forEachLearnedBlock(v, [&](float* block, size_t src) {
+                const float* sq = prev + src * C3;
+                if (isSilent(sq, C3)) return;
+                matvecAdd(block, sq, predicted, C3, C3, predictive);
+            });
+        }
+
         // Inhibitory connections and self-persistence are not visited: they stay fixed.
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
@@ -751,7 +775,7 @@ void NeuralCellularMatrix::learn(float modulator) {
                 sq = sqN;
             }
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja,
-                                        soft > 0.0f ? room : nullptr);
+                                        soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
