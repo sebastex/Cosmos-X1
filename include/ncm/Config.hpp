@@ -51,6 +51,9 @@ struct StartingRule {
     // Per-field gain control is the planned fix for the weak spread of streamed text at 0.1.
     float link4d          = 0.1f;  // forward: from an earlier field to a later one
     float link4d_backward = 0.1f;  // feedback: from a later field to an earlier one
+    // With link4d_spread > 0: share of the feedforward scaffold strength carried by the random
+    // sources (split evenly among them); the same-position source keeps the rest.
+    float link4d_spread_share = 0.5f;
 };
 
 // Hebbian learning (spec Section 5A).
@@ -137,6 +140,12 @@ struct Config {
     // Seed of the items (character fingerprints and cue thinning); 0 = the matrix seed. Lets
     // tests vary the items and the matrix's random wiring independently.
     uint32_t codebook_seed = 0;
+    // Pattern separation on the feedforward 4D link (dentate-gyrus-like): besides the voxel
+    // at the same position, each voxel receives fixed scaffold input from this many random
+    // positions of every earlier field. Similar inputs (which overlap position by position)
+    // then drive different combinations of voxels, and local competition keeps the most
+    // strongly driven, so their representations overlap less. 0 = same position only.
+    uint32_t link4d_spread = 0;
 
     float target_activity  = 0.02f; // spec Section 3B
     float inhibitory_share = 0.20f; // spec Section 3C, applies to 2D and 3D cells

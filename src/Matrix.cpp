@@ -303,6 +303,15 @@ void NeuralCellularMatrix::initVoxelWeights() {
             lrTarget_[v * K + l] = uint32_t(t);
         }
     }
+
+    // Pattern-separating 4D sources: random positions within a field, fixed for life.
+    const uint32_t S4 = cfg_.link4d_spread;
+    spreadPos_.assign(V_ * S4, 0);
+    for (size_t v = 0; v < V_; ++v)
+        for (uint32_t l = 0; l < S4; ++l) {
+            const double u = hashUniform(cfg_.seed, kStreamLink4dSpread, uint64_t(v) * S4 + l);
+            spreadPos_[v * S4 + l] = uint32_t(std::min(size_t(u * double(Vf_)), Vf_ - 1));
+        }
 }
 
 void NeuralCellularMatrix::initSurfaces() {
@@ -633,7 +642,9 @@ void NeuralCellularMatrix::step3D() {
                 ++gi;
                 continue;
             }
-            const float link = g < f ? r.link4d : r.link4d_backward; // feedforward vs feedback
+            const uint32_t S4 = cfg_.link4d_spread;
+            const float spreadShare = (g < f && S4 > 0) ? std::clamp(r.link4d_spread_share, 0.0f, 1.0f) : 0.0f;
+            const float link = g < f ? r.link4d * (1.0f - spreadShare) : r.link4d_backward; // feedforward vs feedback
             // The learned part keeps the same asymmetry: feedback transmits at the
             // backward/forward ratio, or learned feedback would rebuild the loops.
             const float plasticScale =
@@ -649,6 +660,18 @@ void NeuralCellularMatrix::step3D() {
                 matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
+        }
+        // Pattern-separating feedforward sources (scaffold only), from every earlier field.
+        if (cfg_.link4d_spread > 0 && f > 0) {
+            const uint32_t S4 = cfg_.link4d_spread;
+            const float each = afferentGain * r.link4d * std::clamp(r.link4d_spread_share, 0.0f, 1.0f) / float(S4);
+            for (uint32_t g = 0; g < f; ++g)
+                for (uint32_t l = 0; l < S4; ++l) {
+                    const size_t vs = size_t(g) * Vf_ + spreadPos_[v * S4 + l];
+                    const float* src = s3 + vs * C3;
+                    if (isSilent(src, C3)) continue;
+                    addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
+                }
         }
 
         // Upward summary from the voxel's sheet, divisively normalized like the line summary:

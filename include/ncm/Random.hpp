@@ -48,6 +48,7 @@ enum Stream : uint64_t {
     kStreamVoxelWeights,
     kStreamLongRange,
     kStreamCodebook,
+    kStreamLink4dSpread,
 };
 
 } // namespace ncm

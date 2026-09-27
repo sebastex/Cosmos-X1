@@ -158,6 +158,7 @@ private:
     // scaled one-to-one channel map applied on the fly) + the plastic parts stored here.
     AVec<float> W3_;               // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused)
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
+    std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
     AVec<float> WL_;               // per voxel: long-range links x C3 x C3
     AVec<float> H_;                // per voxel: 3 other fields x C3 x C3 (4D link)
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
