@@ -125,19 +125,22 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
 // non-negative; a connection's sign comes from its source cell.
 // Returns the total absolute change applied to the block.
 template <uint32_t C>
+// `room` (optional, one value per output channel in [0, 1]) scales strengthening only: soft
+// bounds, so a channel whose plastic budget is already full of memories learns new ones slowly.
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja) {
+                           float oja, const float* room) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
         if (pa == 0.0f && qa == 0.0f) continue;
         float* row = W + size_t(a) * C;
         const float da = pa - avgPost;
+        const float up = room ? room[a] : 1.0f;
         for (uint32_t b = 0; b < C; ++b) {
             const float dw =
                 da * (pre[b] - avgPre) + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
-            const float updated = std::max(0.0f, row[b] + rate * dw);
+            const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? up * dw : dw));
             change += std::fabs(updated - row[b]);
             row[b] = updated;
         }
@@ -690,6 +693,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float budget = std::max(0.0f, cfg_.learning.plastic_budget);
     const float oja = std::max(0.0f, cfg_.learning.oja);
     const bool normalized = cfg_.learning.normalized > 0.5f;
+    const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
     auto avgOf = [&](size_t cell) { return cov * (normalized ? averageN3_[cell] : average3_[cell]); };
     // Normalized plasticity: a cell's pattern scaled so its strongest channel is 1.
     auto normalizeInto = [](const float* x, float* outv, uint32_t n) {
@@ -718,6 +722,20 @@ void NeuralCellularMatrix::learn(float modulator) {
             qi = qiN;
         }
 
+        // Soft bounds: each output channel strengthens in proportion to its unused budget.
+        float room[C3];
+        if (soft > 0.0f) {
+            float used[C3] = {};
+            forEachLearnedBlock(v, [&](float* block, size_t) {
+                for (uint32_t a = 0; a < C3; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) used[a] += block[size_t(a) * C3 + b];
+            });
+            for (uint32_t a = 0; a < C3; ++a) {
+                const float freeShare = budget > 0.0f ? std::clamp(1.0f - used[a] / budget, 0.0f, 1.0f) : 0.0f;
+                room[a] = 1.0f - soft + soft * freeShare;
+            }
+        }
+
         // Inhibitory connections and self-persistence are not visited: they stay fixed.
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
@@ -729,7 +747,8 @@ void NeuralCellularMatrix::learn(float modulator) {
                 sp = spN;
                 sq = sqN;
             }
-            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja);
+            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja,
+                                        soft > 0.0f ? room : nullptr);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.

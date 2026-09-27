@@ -67,6 +67,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"average_tau", &c.learning.average_tau},
         {"encoding_suppression", &c.learning.encoding_suppression},
         {"normalized_plasticity", &c.learning.normalized},
+        {"soft_bound", &c.learning.soft_bound},
         {"fatigue_gain2", &c.level2.fatigue_gain},
         {"fatigue_gain3", &c.level3.fatigue_gain},
         {"fatigue_tau2", &c.level2.fatigue_tau},

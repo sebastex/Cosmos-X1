@@ -85,6 +85,10 @@ struct LearningParams {
     // with the square of activity, so faint streamed input learns far more slowly than held
     // input. 0 = raw amplitudes, 1 = normalized.
     float normalized = 0.0f;
+    // Soft bounds (metaplasticity): strengthening is scaled by 1 - soft_bound * (used budget
+    // share) per output channel, so channels already holding memories learn new ones slowly
+    // (protecting what they store) while unused channels learn at full speed. 0 = off.
+    float soft_bound = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 
