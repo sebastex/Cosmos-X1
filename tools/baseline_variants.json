@@ -1,0 +1,7 @@
+{
+  "champion": {},
+  "+mixed wiring": {"link4d_spread": 4, "link4d_spread_share": 0.5, "link4d": 0.48},
+  "+two-speed memory": {"consolidation_rate": 0.05, "plastic_budget": 0.2, "consolidated_budget": 0.2},
+  "+lighter erasure fix": {"soft_bound": 0.5},
+  "+wiring +lighter": {"link4d_spread": 4, "link4d_spread_share": 0.5, "link4d": 0.48, "soft_bound": 0.5}
+}
