@@ -81,6 +81,10 @@ public:
     const std::array<float, kFields>& fieldGains() const { return fieldGain_; }
     // Total strength of the plastic (learned) part of all connections.
     double totalPlasticStrength() const;
+    // Diagnostic: total learned (plastic) drive the pattern `from` would send into the pattern
+    // `to` (both 3D state vectors, e.g. accumulated activity), normalized by both patterns'
+    // norms. Measures a stored association directly, independent of recall dynamics.
+    double plasticFlow(const std::vector<double>& from, const std::vector<double>& to);
 
     const Config& config() const { return cfg_; }
     const AVec<float>& lineState() const { return s1_.cur; }

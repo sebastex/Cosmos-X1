@@ -73,6 +73,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"trace_tau", &c.learning.trace_tau},
         {"modulator_tau", &c.learning.modulator_tau},
         {"order_tau", &c.learning.order_tau},
+        {"mode_tau", &c.learning.mode_tau},
         {"fatigue_recall", &c.fatigue_recall},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},

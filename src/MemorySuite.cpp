@@ -150,13 +150,17 @@ int runContinualTest(const Config& cfg) {
 }
 
 // CP7 (early order check; order proper is Stage 2): after learning "a then k" and
-// "z then m", cueing the first item of a pair should start to evoke the second more than
-// cueing the second evokes the first, beyond what an untrained twin shows.
+// "z then m", cueing the first item of a pair should evoke the second more than cueing the
+// second evokes the first, beyond what an untrained twin shows. The evoked item is read in
+// the 30 ticks right after the cue: sequence memory plays forward once the cue ends (while
+// the cue is shown its own item dominates). The reading during the cue is still printed.
 int runOrderTest(const Config& cfg) {
     const std::vector<std::pair<std::string, std::string>> pairs = {{"a", "k"}, {"z", "m"}};
     std::printf("CP7 early order check: learn 'a then k' and 'z then m', cue each item\n");
 
     double orderSignal[2] = {0.0, 0.0}; // [untrained, learned]: mean (forward - backward)
+    double storedForward = 0.0, storedBackward = 0.0;   // diagnostic: learned links, learned twin
+    double afterForward[2] = {0.0, 0.0}, afterSignal[2] = {0.0, 0.0}; // diagnostic: right after the cue
     double forward[2] = {0.0, 0.0};
     for (int learning = 1; learning >= 0; --learning) {
         Session s(cfg, learning == 1);
@@ -175,10 +179,19 @@ int runOrderTest(const Config& cfg) {
         double sumForward = 0.0, sumSignal = 0.0;
         for (const auto& [first, second] : pairs) {
             const auto pFirst = reference(first), pSecond = reference(second);
+            if (learning == 1) {
+                storedForward += s.flow(pFirst, pSecond) / double(pairs.size());
+                storedBackward += s.flow(pSecond, pFirst) / double(pairs.size());
+            }
             const auto cueFirst = s.present(first, 30, kCueFraction, false, 15);
-            s.silence(kGap, false);
+            const auto afterFirst = s.silence(30, false, 0);
+            s.silence(kGap - 30, false);
             const auto cueSecond = s.present(second, 30, kCueFraction, false, 15);
-            s.silence(kGap, false);
+            const auto afterSecond = s.silence(30, false, 0);
+            s.silence(kGap - 30, false);
+            const double aFwd = lab::cosine(afterFirst, pSecond);
+            afterForward[learning] += aFwd / double(pairs.size());
+            afterSignal[learning] += (aFwd - lab::cosine(afterSecond, pFirst)) / double(pairs.size());
             const double fwd = lab::cosine(cueFirst, pSecond);
             const double bwd = lab::cosine(cueSecond, pFirst);
             sumForward += fwd;
@@ -187,13 +200,19 @@ int runOrderTest(const Config& cfg) {
         forward[learning] = sumForward / double(pairs.size());
         orderSignal[learning] = sumSignal / double(pairs.size());
     }
-    const double fwdGain = forward[1] - forward[0];
-    const double orderGain = orderSignal[1] - orderSignal[0];
+    const double fwdGain = afterForward[1] - afterForward[0];
+    const double orderGain = afterSignal[1] - afterSignal[0];
     const bool pass = fwdGain >= 0.02 && orderGain >= 0.02;
     std::printf("  cue of first item evokes second: learned %.3f vs untrained %.3f (gain %+.3f, need >= +0.020)\n",
-                forward[1], forward[0], fwdGain);
+                afterForward[1], afterForward[0], fwdGain);
     std::printf("  forward minus backward:          learned %+.3f vs untrained %+.3f (gain %+.3f, need >= +0.020)\n",
-                orderSignal[1], orderSignal[0], orderGain);
+                afterSignal[1], afterSignal[0], orderGain);
+    std::printf("  diagnostic, during the cue: first evokes second %.3f vs untrained %.3f (gain %+.3f); "
+                "forward minus backward %+.3f vs %+.3f (gain %+.3f)\n",
+                forward[1], forward[0], forward[1] - forward[0], orderSignal[1], orderSignal[0],
+                orderSignal[1] - orderSignal[0]);
+    std::printf("  diagnostic, stored links: first->second %.4f, second->first %.4f (ratio %.2f)\n",
+                storedForward, storedBackward, storedBackward > 0.0 ? storedForward / storedBackward : 0.0);
     std::printf("  early order signal: %s\n", pass ? "PASS" : "FAIL");
     return pass ? 0 : 3;
 }

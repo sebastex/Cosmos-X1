@@ -110,6 +110,8 @@ RATE_SPACE = {
     # Order needs a strong order term *and* a timing window (measured: order_gain 4 with
     # order_tau 5 passes the early order check; either alone does not), so the range is wider.
     "order_gain": (0.0, 8.0, "f", 0.5),
+    # Encoding/recall mode kinetics: lets a learned sequence play forward after a cue.
+    "mode_tau": (0.0, 80.0, "f", 0.0),
 }
 
 
@@ -193,6 +195,11 @@ def stage0(cand, preset, seed):
     return {"pass": code == 0, "deep_percent": deep, **flags}
 
 
+def learned_margin(label, out):
+    m = re.search(re.escape(label) + r"\s+learned ([+-][0-9.]+)", out)
+    return float(m.group(1)) if m else 0.0
+
+
 def gain_after(label, out):
     m = re.search(re.escape(label) + r".*?gain ([+-][0-9.]+)", out)
     return float(m.group(1)) if m else -1.0
@@ -224,6 +231,9 @@ def stage1(cand, preset, seed):
         "order_signal": gain_after("forward minus backward:", out),
         "checks_passed": len(re.findall(r"^\s+CP\d .*PASS$", out, re.M)),
         "gain": gain_after("specificity (own minus best other):", out),
+        # Absolute recall quality of the learning matrix (not only its gain over the untrained
+        # twin): audit 2026-09-27 found the gain partly inflated by a weaker untrained baseline.
+        "recall_learned_margin": learned_margin("specificity (own minus best other):", out),
     }
 
 
@@ -236,7 +246,11 @@ def score(s0, s1):
     (1.0 at the bar), so the search improves weak checks instead of maximizing one."""
     fitness = 0.0
     fitness += 1.0 * s0["spread"] + 1.0 * s0["sparse"] + 1.0 * s0["settles"]
-    fitness += min(1.0, s0["deep_percent"] / 50.0)          # streamed text should reach deep fields
+    # Streamed text should reach the deep fields: rewarded up to 100% of the Input field's
+    # activity (audit: capped at 50%, deep reach drifted from 74% to ~40%).
+    fitness += min(2.0, s0["deep_percent"] / 50.0)
+    # Absolute recall quality, so weakening the untrained baseline cannot pay off.
+    fitness += 2.0 * s1.get("recall_learned_margin", 0.0)
     fitness += 1.0 if (s1["reliability"] >= 0.5 and s1["reliability"] >= s1["reliability_other"] + 0.2) else 0.0
     for key in ("recall", "capacity", "efficiency30", "streamed"):
         fitness += clamp(s1[key] / 0.05)
@@ -295,15 +309,20 @@ def main():
     ap.add_argument("--resume", action="store_true", help="continue from the best variants in the log")
     ap.add_argument("--seeds-per-gen", type=int, default=1,
                     help="seeds each variant is tested on per generation (fitness = their mean)")
+    ap.add_argument("--log", default="", help="log file name in tools/ (default: the regime's log)")
     ap.add_argument("--inject", default="",
                     help="JSON list (or @file) of partial parameter dicts added to the first population")
     ap.add_argument("--regime", default="graded", choices=("graded", "firing", "rate"),
                     help="firing: search the all-or-none firing regime (own log and best file)")
     args = ap.parse_args()
+    global LOG, BEST
     if args.regime == "firing":
         use_firing_regime()
     elif args.regime == "rate":
         use_rate_regime()
+    if args.log:
+        LOG = ROOT / "tools" / args.log
+        BEST = ROOT / "tools" / (pathlib.Path(args.log).stem + "_best.json")
 
     global THREADS, COOLDOWN, REJECT_BELOW
     THREADS, COOLDOWN, REJECT_BELOW = args.threads, args.cooldown, args.reject_below

@@ -58,10 +58,10 @@ public:
             // While storing, surprise sets encoding mode. During recall the cue is familiar
             // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
             // motor path learns to predict (Stage 3) surprise cannot tell the two apart itself.
-            m_->setModulator(allowLearning ? float(1.0 - guess) : 0.0f);
+            setMode(allowLearning ? float(1.0 - guess) : 0.0f);
         } else {
             m_->clearSensoryInput();
-            m_->setModulator(silenceSuppressed_ ? 1.0f : 0.0f);
+            setMode(silenceSuppressed_ ? 1.0f : 0.0f);
         }
 
         m_->step1D();
@@ -124,6 +124,7 @@ public:
 
     void clearActivity() { m_->clearActivity(); }
     void setLearning(bool on) { learning_ = on; } // diagnostic: pause learning, keep the mode
+    double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
     const NeuralCellularMatrix& matrix() const { return *m_; }
     const CharacterCodebook& codebook() const { return codebook_; }
     float lastModulator() const { return lastModulator_; }
@@ -139,6 +140,18 @@ private:
     uint64_t surpriseCount_ = 0;
     float lastModulator_ = 0.0f;
     float gate_ = 0.0f; // learning signal with neuromodulator kinetics
+    float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
+
+    // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): recall (lower M)
+    // takes effect at once, suppression (higher M) builds up gradually. After a familiar cue
+    // ends, memory circuits stay in recall mode briefly, so what comes next can play out;
+    // new input is first met in recall mode (recognize, then encode). 0 = instantaneous.
+    void setMode(float target) {
+        const float tau = cfg_.learning.mode_tau;
+        if (tau > 0.0f && target > mode_) mode_ += (target - mode_) / std::max(1.0f, tau);
+        else mode_ = target;
+        m_->setModulator(mode_);
+    }
 };
 
 // How specifically a set of cues recalled their own stored patterns.

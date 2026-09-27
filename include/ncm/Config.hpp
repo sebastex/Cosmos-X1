@@ -111,6 +111,10 @@ struct LearningParams {
     // it an order link forms only in the one or two steps where one item hands over to the
     // next. 0 = previous step only.
     float order_tau = 0.0f;
+    // Kinetics of the encoding/recall mode (1D ticks): suppression of memory circuits builds
+    // up over mode_tau after input ends or turns novel; recall takes effect at once. Leaves a
+    // window after a cue in which the next item of a learned sequence can play out. 0 = off.
+    float mode_tau = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

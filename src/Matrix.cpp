@@ -946,6 +946,31 @@ void NeuralCellularMatrix::learn(float modulator) {
     }
 }
 
+double NeuralCellularMatrix::plasticFlow(const std::vector<double>& from, const std::vector<double>& to) {
+    if (from.size() != V_ * C3 || to.size() != V_ * C3) return 0.0;
+    double nf = 0.0, nt = 0.0;
+    for (size_t i = 0; i < from.size(); ++i) {
+        nf += from[i] * from[i];
+        nt += to[i] * to[i];
+    }
+    if (nf <= 0.0 || nt <= 0.0) return 0.0;
+    double flow = 0.0;
+    for (size_t v = 0; v < V_; ++v) {
+        const double* ti = to.data() + v * C3;
+        bool any = false;
+        for (uint32_t a = 0; a < C3; ++a) any = any || ti[a] != 0.0;
+        if (!any) continue;
+        forEachLearnedBlock(v, [&](float* block, size_t src) {
+            const double* fj = from.data() + src * C3;
+            for (uint32_t a = 0; a < C3; ++a) {
+                if (ti[a] == 0.0) continue;
+                for (uint32_t b = 0; b < C3; ++b) flow += ti[a] * double(block[size_t(a) * C3 + b]) * fj[b];
+            }
+        });
+    }
+    return flow / std::sqrt(nf * nt);
+}
+
 double NeuralCellularMatrix::totalPlasticStrength() const {
     double total = 0.0;
     for (const AVec<float>* w : {&W3_, &WL_, &H_})
