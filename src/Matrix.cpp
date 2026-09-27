@@ -157,7 +157,7 @@ template <uint32_t C>
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
                            float oja, const float* room, const float* predicted, const float* assocPost,
-                           const float* assocPre, float hetero) {
+                           const float* assocPre, float hetero, const float* preRoom) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
@@ -172,7 +172,8 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
             const float preTerm = assocPre[b] == 0.0f ? hetero * (0.0f - avgPre) : assocPre[b] - avgPre;
             const float dw =
                 da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
-            const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? up * dw : dw));
+            const float grow = up * (preRoom ? preRoom[b] : 1.0f);
+            const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
             change += std::fabs(updated - row[b]);
             row[b] = updated;
         }
@@ -803,6 +804,26 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
     const bool useTrace = cfg_.learning.trace_tau > 0.0f;
     const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
+    // Presynaptic budget: each source channel's total outgoing plastic strength, refreshed
+    // every 20 learning steps (it changes slowly). A cell already wired strongly into stored
+    // memories forms new outgoing links slowly, so new memories recruit fresh cells instead
+    // of the cells they share with old ones (pattern separation).
+    const float preSoft = std::clamp(cfg_.learning.presynaptic_bound, 0.0f, 1.0f);
+    if (preSoft > 0.0f && (preRoom_.size() != V_ * C3 || learnStats_.calls % 20 == 0)) {
+        std::vector<double> out(V_ * C3, 0.0);
+        for (size_t t = 0; t < V_; ++t)
+            forEachLearnedBlock(t, [&](float* block, size_t src) {
+                double* o = out.data() + src * C3;
+                for (uint32_t a = 0; a < C3; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) o[b] += block[size_t(a) * C3 + b];
+            });
+        preRoom_.resize(V_ * C3);
+        const float outBudget = std::max(1e-6f, cfg_.learning.plastic_budget);
+        for (size_t i = 0; i < V_ * C3; ++i) {
+            const float usedShare = std::clamp(float(out[i]) / outBudget, 0.0f, 1.0f);
+            preRoom_[i] = 1.0f - preSoft * usedShare;
+        }
+    }
     // Order with a timing window (STDP): "earlier" is each cell's decaying recent activity
     // instead of only the previous step, so j -> i also forms when i starts a few steps
     // after j. The antisymmetric form cancels the shared current step.
@@ -874,7 +895,8 @@ void NeuralCellularMatrix::learn(float modulator) {
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja,
                                         soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr,
                                         useTrace ? trace3_.data() + v * C3 : pi,
-                                        useTrace ? trace3_.data() + src * C3 : sp, hetero);
+                                        useTrace ? trace3_.data() + src * C3 : sp, hetero,
+                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.

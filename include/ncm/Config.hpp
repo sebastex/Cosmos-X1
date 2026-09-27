@@ -120,6 +120,11 @@ struct LearningParams {
     // older memories, so full depression erodes them wherever memories share cells.
     // 1 = full covariance (default), 0 = only inputs that were active change.
     float hetero_ltd = 1.0f;
+    // Presynaptic soft bound: strengthening is also scaled by 1 - presynaptic_bound * (share
+    // of the source channel's outgoing budget already used). Cells wired into stored memories
+    // then form new links slowly, so new memories recruit fresh cells (pattern separation).
+    // 0 = off.
+    float presynaptic_bound = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

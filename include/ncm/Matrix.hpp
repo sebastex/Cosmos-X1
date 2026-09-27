@@ -130,6 +130,7 @@ private:
     AVec<float> average3_;
     // Per line: 1 if the line is entirely silent in s1_.cur / s1_.next (event-driven skipping).
     std::vector<uint8_t> lineQuietCur_, lineQuietNext_;
+    std::vector<float> preRoom_; // per source voxel channel: unused share of its outgoing budget
     // Per voxel: 1 if its whole sheet is silent in s2_.cur / s2_.next; sheetSkip_ marks the
     // sheets skipped in the current 2D step.
     std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
