@@ -138,6 +138,10 @@ def mutate(cand, rng, strength):
         else:
             if lo > 0:
                 value = child[name] * math.exp(rng.gauss(0.0, strength))
+            elif child[name] == 0 and rng.random() < 0.5:
+                # An off switch (0) is otherwise only nudged back to 0 half the time: jump to a
+                # random value in the lower part of the range instead.
+                value = rng.uniform(lo, lo + 0.3 * (hi - lo))
             else:
                 value = child[name] + rng.gauss(0.0, strength * (hi - lo) * 0.5)
             child[name] = round(min(hi, max(lo, value)), 4)
