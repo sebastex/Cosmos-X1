@@ -3,3 +3,4 @@ out/
 tools/*.jsonl
 tools/evolve_best.json
 tools/evolve_firing_best.json
+tools/evolve_rate_best.json

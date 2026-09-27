@@ -105,6 +105,23 @@ void printMatrix(const char* title, const RecallOptions& opt, const Result& r) {
 
 } // namespace
 
+// The reliability precondition alone (about a third of the recall test's cost): without
+// learning, does the same full input give the same pattern? Used by fast searches.
+int runReliabilityTest(const Config& cfg, const RecallOptions& opt) {
+    const Result reliability = runProtocol(cfg, opt, false, 1.0f);
+    printMatrix("Reliability (no learning, full input repeated)", opt, reliability);
+    const size_t P = opt.patterns.size();
+    double relOwn = 0.0, relOther = 0.0;
+    for (size_t k = 0; k < P; ++k)
+        for (size_t j = 0; j < P; ++j) (j == k ? relOwn : relOther) += reliability.similarity[k][j];
+    relOwn /= double(P);
+    relOther /= double(P * (P - 1));
+    const bool reliable = relOwn >= 0.5 && relOwn >= relOther + 0.2;
+    std::printf("  input-driven (same input, same pattern): own %.3f vs others %.3f (need own >= 0.5 and >= others + 0.2): %s\n",
+                relOwn, relOther, reliable ? "yes" : "NO");
+    return reliable ? 0 : 3;
+}
+
 int runRecallTest(const Config& cfg, const RecallOptions& opt, double* specificityGain) {
     std::printf("Stage 1 recall test: %zu patterns, stored for %llu ticks each, recalled from %.0f%% cues\n\n",
                 opt.patterns.size(), (unsigned long long)opt.storeTicks, 100.0 * opt.cueFraction);

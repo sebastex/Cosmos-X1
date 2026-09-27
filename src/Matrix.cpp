@@ -93,7 +93,8 @@ inline void finishCell(const float* in, float* out, float& theta, const LevelPar
 // together, which Hebbian learning needs to bind them. Returns the final mean.
 template <uint32_t C>
 inline float competeCell(float* out, float ownDrive, size_t own, const size_t* rivals, uint32_t rivalCount,
-                         const float* drive, uint32_t winners, float sigma = 0.0f, float fireLevel = 0.0f) {
+                         const float* drive, uint32_t winners, float sigma = 0.0f, float fireLevel = 0.0f,
+                         float fireGain = 0.0f) {
     uint32_t stronger = 0;
     bool wins = ownDrive > 0.0f;
     for (uint32_t r = 0; wins && r < rivalCount; ++r) {
@@ -102,6 +103,15 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
             if (++stronger >= winners) wins = false;
     }
     if (wins) {
+        if (fireGain > 0.0f) {
+            // Rate coding (a neuron's firing curve): silent below the firing level, rising
+            // steeply above it, saturating at 1. Signals keep their strength between fields,
+            // and fatigue lowers the rate smoothly instead of switching the cell on and off.
+            float sum = 0.0f;
+            for (uint32_t c = 0; c < C; ++c)
+                sum += (out[c] = std::min(1.0f, fireGain * std::max(0.0f, out[c] - fireLevel)));
+            return sum / float(C);
+        }
         if (fireLevel > 0.0f) {
             // Firing: a winner whose strongest channel reaches the firing level fires at full
             // strength (its pattern across channels kept, strongest channel = 1), like a
@@ -478,7 +488,7 @@ void NeuralCellularMatrix::step2D() {
                 rivals[n++] = v * SS + size_t(ny) * S + size_t(nx);
             }
         const float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.output_sigma,
-                                               cfg_.fire_threshold2);
+                                               cfg_.fire_threshold2, cfg_.fire_gain2);
         adaptThreshold(theta[q], final, lp, target);
         // Fatigue follows the activity of the channels that fire (the mean over all channels
         // understates it by C / channel_winners, so fatigue could never build up).
@@ -638,7 +648,7 @@ void NeuralCellularMatrix::step3D() {
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
         const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3, cfg_.output_sigma,
-                                               cfg_.fire_threshold3);
+                                               cfg_.fire_threshold3, cfg_.fire_gain3);
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);

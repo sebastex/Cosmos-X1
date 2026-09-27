@@ -156,6 +156,12 @@ struct Config {
     // instead of shrinking at every step. 0 = off (graded output).
     float fire_threshold2 = 0.0f; // sheet cells
     float fire_threshold3 = 0.0f; // voxels
+    // Rate coding instead of all-or-none: with a gain > 0, output = min(1, gain * (activity -
+    // fire_threshold)) per channel. All-or-none firing plus fatigue made cells blink on and off
+    // under steady input (unreliable patterns); a steep, saturating firing curve lets fatigue
+    // lower the rate smoothly. 0 = off.
+    float fire_gain2 = 0.0f;
+    float fire_gain3 = 0.0f;
 
     // Per-field gain control: each 3D field scales the 4D link from earlier fields (its only
     // loop-free input) so its activity tracks the target. Faint streamed input is amplified,

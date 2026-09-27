@@ -152,6 +152,11 @@ int main(int argc, char** argv) {
         if (opt.cueFraction > 0.0f) ro.cueFraction = opt.cueFraction;
         return ncm::runRecallTest(cfg, ro);
     }
+    if (opt.test == "reliability") {
+        ncm::RecallOptions ro;
+        if (!opt.patterns.empty()) ro.patterns = opt.patterns;
+        return ncm::runReliabilityTest(cfg, ro);
+    }
     if (opt.test == "capacity") return ncm::runCapacityTest(cfg);
     if (opt.test == "efficiency") return ncm::runEfficiencyTest(cfg);
     if (opt.test == "streamed") return ncm::runStreamedTest(cfg);

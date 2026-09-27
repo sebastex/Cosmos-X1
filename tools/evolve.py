@@ -82,6 +82,42 @@ def use_firing_regime():
     BEST = ROOT / "tools" / "evolve_firing_best.json"
 
 
+# Rate-coded regime (2026-09-27): a steep, saturating firing curve (fire_gain) amplifies the
+# forward paths while every loop (self, neighbours, long-range, sheet loops, voxel-sheet loop,
+# learned memory) is scaled down by the gain, so activity reaches all fields, stays input-driven
+# and settles. Start = the first configuration to pass Stage 0, reliability and recall together
+# (small, seed 1).
+RATE_DROP = ("output_sigma", "normalized_plasticity", "agc_rate", "agc_max", "normalize_upward")
+RATE_SPACE = {
+    "fire_gain2": (1.5, 20.0, "f", 5.0),
+    "fire_gain3": (1.5, 20.0, "f", 5.0),
+    "fire_threshold2": (0.001, 0.1, "f", 0.01),
+    "fire_threshold3": (0.001, 0.1, "f", 0.01),
+    "link4d": (0.02, 0.5, "f", 0.2),
+    "link4d_backward": (0.0, 0.1, "f", 0.02),
+    "voxel_self": (0.01, 0.3, "f", 0.06),
+    "voxel_neighbour": (0.003, 0.1, "f", 0.02),
+    "long_range": (0.003, 0.15, "f", 0.03),
+    "sheet_self": (0.01, 0.3, "f", 0.06),
+    "sheet_neighbour": (0.002, 0.06, "f", 0.012),
+    "downward_gain": (0.001, 0.1, "f", 0.012),
+    "learning_rate": (0.001, 0.1, "f", 0.01),
+    "plastic_budget": (0.1, 4.0, "f", 1.0),
+    "covariance": (0.0, 1.0, "f", 0.5),
+    "encoding_suppression": (0.0, 1.0, "f", 0.95),
+    "modulator_tau": (0.0, 60.0, "f", 0.0),
+}
+
+
+def use_rate_regime():
+    global SPACE, LOG, BEST
+    space = {k: v for k, v in SPACE.items() if k not in RATE_DROP}
+    space.update(RATE_SPACE)
+    SPACE = space
+    LOG = ROOT / "tools" / "evolve_rate_log.jsonl"
+    BEST = ROOT / "tools" / "evolve_rate_best.json"
+
+
 def start_candidate():
     return {k: v[3] for k, v in SPACE.items()}
 
@@ -249,11 +285,13 @@ def main():
     ap.add_argument("--reject-below", type=float, default=None,
                     help="extra quick-recall rejection threshold (off by default; the suite exits early itself)")
     ap.add_argument("--resume", action="store_true", help="continue from the best variants in the log")
-    ap.add_argument("--regime", default="graded", choices=("graded", "firing"),
+    ap.add_argument("--regime", default="graded", choices=("graded", "firing", "rate"),
                     help="firing: search the all-or-none firing regime (own log and best file)")
     args = ap.parse_args()
     if args.regime == "firing":
         use_firing_regime()
+    elif args.regime == "rate":
+        use_rate_regime()
 
     global THREADS, COOLDOWN, REJECT_BELOW
     THREADS, COOLDOWN, REJECT_BELOW = args.threads, args.cooldown, args.reject_below

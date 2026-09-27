@@ -28,6 +28,7 @@ struct RecallOptions {
 // Returns 0 when learning measurably improves recall and every cue finds its own pattern.
 // If `specificityGain` is given, it receives the learned-minus-untrained specificity gain.
 int runRecallTest(const Config& cfg, const RecallOptions& opt, double* specificityGain = nullptr);
+int runReliabilityTest(const Config& cfg, const RecallOptions& opt); // the recall test's precondition only
 
 // Stage 1 memory suite (MemorySuite.cpp). Each returns 0 on pass.
 int runCapacityTest(const Config& cfg);   // CP3: the right memory among 8
