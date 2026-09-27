@@ -247,6 +247,9 @@ Config makePreset(const std::string& name);
 // These are the values rule evolution will search over (spec Section 5E).
 void applySetting(Config& cfg, const std::string& assignment);
 
+// The evolved rule: the best settings found by rule evolution, applied on top of a preset.
+void applyEvolvedRule(Config& cfg);
+
 // Names accepted by applySetting.
 std::string settingNames();
 

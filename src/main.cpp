@@ -25,6 +25,7 @@ namespace {
 
 struct Options {
     std::string preset = "dev";
+    std::string rule = "evolved"; // "evolved" (default) or "starting" (the hand-set rule)
     uint64_t ticks = 600;
     uint64_t inputTicks = 200;
     uint64_t snapEvery = 50;
@@ -59,6 +60,7 @@ bool parse(int argc, char** argv, Options& o) {
             return argv[++i];
         };
         if (a == "--preset") o.preset = value();
+        else if (a == "--rule") o.rule = value();
         else if (a == "--ticks") o.ticks = std::stoull(value());
         else if (a == "--input-ticks") o.inputTicks = std::stoull(value());
         else if (a == "--snap") o.snapEvery = std::max<uint64_t>(1, std::stoull(value()));
@@ -134,6 +136,8 @@ int main(int argc, char** argv) {
     ncm::Config cfg;
     try {
         cfg = ncm::makePreset(opt.preset);
+        if (opt.rule == "evolved") ncm::applyEvolvedRule(cfg);
+        else if (opt.rule != "starting") throw std::invalid_argument("unknown rule '" + opt.rule + "' (use evolved or starting)");
         for (const auto& s : opt.settings) ncm::applySetting(cfg, s);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\n";

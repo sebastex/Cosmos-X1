@@ -1,6 +1,7 @@
 #include "ncm/Config.hpp"
 
 #include <map>
+#include <vector>
 #include <stdexcept>
 
 namespace ncm {
@@ -27,6 +28,46 @@ Config makePreset(const std::string& name) {
         throw std::invalid_argument("unknown preset '" + name + "' (use tiny, small, dev or full)");
     }
     return cfg;
+}
+
+// The evolved rule (spec Section 5E: rule evolution replaces the hand-set starting rule).
+// Adopted 2026-09-27 from the rate-regime search (tools/champion.json): the variant with the
+// best mean fitness over its test seeds (small preset). Applied on top of every preset unless
+// --rule starting is given; --set still overrides single values.
+const std::vector<std::string>& evolvedRule() {
+    static const std::vector<std::string> rule = {
+        "channel_winners3=4",
+        "covariance=0.2356",
+        "downward_gain=0.0224",
+        "encoding_suppression=0.755",
+        "fatigue_gain2=1.0101",
+        "fatigue_gain3=0.0663",
+        "fatigue_tau3=12.9342",
+        "fire_gain2=4.8308",
+        "fire_gain3=4.3577",
+        "fire_threshold2=0.01",
+        "fire_threshold3=0.0521",
+        "hetero_ltd=1",
+        "homeostasis3=0.0012",
+        "learning_rate=0.0059",
+        "line_upward_gain=0.5199",
+        "link4d=0.2",
+        "link4d_backward=0.0217",
+        "long_range=0.0328",
+        "mode_tau=30",
+        "modulation_rate=0",
+        "modulator_tau=0",
+        "order_gain=4",
+        "order_tau=5",
+        "plastic_budget=0.3925",
+        "sheet_neighbour=0.0104",
+        "sheet_self=0.1184",
+        "soft_bound=1",
+        "upward_gain=1.5216",
+        "voxel_neighbour=0.0191",
+        "voxel_self=0.0165",
+        "winners3=4"};
+    return rule;
 }
 
 namespace {
@@ -134,6 +175,10 @@ std::string settingNames() {
     for (const auto& [name, ptr] : settingTable(c)) names += (names.empty() ? "" : ", ") + name;
     for (const auto& [name, ptr] : countTable(c)) names += ", " + name;
     return names;
+}
+
+void applyEvolvedRule(Config& cfg) {
+    for (const auto& a : evolvedRule()) applySetting(cfg, a);
 }
 
 } // namespace ncm
