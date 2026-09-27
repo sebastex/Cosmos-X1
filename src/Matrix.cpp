@@ -131,17 +131,18 @@ template <uint32_t C>
 // association then learns only the unpredicted part of the cell's activity (delta rule).
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja, const float* room, const float* predicted) {
+                           float oja, const float* room, const float* predicted, const float* assocPost,
+                           const float* assocPre) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
-        if (pa == 0.0f && qa == 0.0f) continue;
+        if (pa == 0.0f && qa == 0.0f && assocPost[a] == 0.0f) continue;
         float* row = W + size_t(a) * C;
-        const float da = pa - avgPost - (predicted ? predicted[a] : 0.0f);
+        const float da = assocPost[a] - avgPost - (predicted ? predicted[a] : 0.0f);
         const float up = room ? room[a] : 1.0f;
         for (uint32_t b = 0; b < C; ++b) {
             const float dw =
-                da * (pre[b] - avgPre) + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+                da * (assocPre[b] - avgPre) + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
             const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? up * dw : dw));
             change += std::fabs(updated - row[b]);
             row[b] = updated;
@@ -191,6 +192,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
+    trace3_.assign(V_ * C3, 0.0f);
 
     initInhibitory();
     initSharedRules();
@@ -487,6 +489,7 @@ void NeuralCellularMatrix::step3D() {
     const float target = cfg_.target_activity;
     const float inh = -cfg_.inhibitory_strength;
     const float avgTau = std::max(1.0f, cfg_.learning.average_tau);
+    const float traceTau = cfg_.learning.trace_tau > 0.0f ? std::max(1.0f, cfg_.learning.trace_tau) : 0.0f;
     // Learned excitatory connections transmit less in encoding mode (high modulator).
     const float rec = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) *
                                  std::clamp(modulator_, 0.0f, 1.0f);
@@ -623,6 +626,11 @@ void NeuralCellularMatrix::step3D() {
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
         average3_[v] += (final - average3_[v]) / avgTau;
+        if (traceTau > 0.0f) {
+            float* tr = trace3_.data() + v * C3;
+            const float* cell = out + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / traceTau;
+        }
         {
             const float* cell = out + v * C3;
             float strongest = 0.0f, sum = 0.0f;
@@ -710,6 +718,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     const bool normalized = cfg_.learning.normalized > 0.5f;
     const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
     const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
+    const bool useTrace = cfg_.learning.trace_tau > 0.0f;
     auto avgOf = [&](size_t cell) { return cov * (normalized ? averageN3_[cell] : average3_[cell]); };
     // Normalized plasticity: a cell's pattern scaled so its strongest channel is 1.
     auto normalizeInto = [](const float* x, float* outv, uint32_t n) {
@@ -775,7 +784,9 @@ void NeuralCellularMatrix::learn(float modulator) {
                 sq = sqN;
             }
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja,
-                                        soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr);
+                                        soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr,
+                                        useTrace ? trace3_.data() + v * C3 : pi,
+                                        useTrace ? trace3_.data() + src * C3 : sp);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
@@ -866,6 +877,7 @@ void NeuralCellularMatrix::clearActivity() {
     }
     std::fill(fatigue2_.begin(), fatigue2_.end(), 0.0f);
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
+    std::fill(trace3_.begin(), trace3_.end(), 0.0f);
 }
 
 double NeuralCellularMatrix::motorOverlap(const std::vector<uint32_t>& fingerprint) const {
@@ -918,7 +930,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
-           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(W1_) + bytes(W2_) +
+           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
            bytes(H_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }

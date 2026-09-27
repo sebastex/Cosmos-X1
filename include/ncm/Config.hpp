@@ -98,6 +98,14 @@ struct LearningParams {
     // experience instead of growing until the budget cap. Without it, full-strength recall
     // overshoots and distorts the stored pattern. 0 = plain covariance, 1 = full prediction.
     float predictive = 0.0f;
+    // Trace-based association (calcium-like): association uses each cell's short running
+    // average of activity (time constant in 3D ticks) instead of its instantaneous state, so
+    // sustained patterns are stored and the brief wave of activity that passes through the
+    // fields when an input arrives is not. The order term keeps instantaneous timing. 0 = off.
+    float trace_tau = 0.0f;
+    // Time constant (3D ticks) over which the learning signal builds up after surprise
+    // begins and decays after it ends. 0 = instantaneous.
+    float modulator_tau = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

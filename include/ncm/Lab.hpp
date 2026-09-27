@@ -69,9 +69,16 @@ public:
         if (t.sheet) m_->step2D();
         if (t.voxel) {
             m_->step3D();
-            const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
+            float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
+            // Neuromodulator kinetics: the learning signal builds up over modulator_tau 3D ticks
+            // after surprise begins (and decays in silence), so the wave of activity that passes
+            // through the fields as an input arrives is not stored; the settled pattern is.
+            if (cfg_.learning.modulator_tau > 0.0f) {
+                gate_ += (modulator - gate_) / std::max(1.0f, cfg_.learning.modulator_tau);
+                modulator = gate_;
+            }
             if (learning_ && allowLearning) {
                 m_->learn(modulator);
                 lastModulator_ = modulator;
@@ -116,6 +123,7 @@ public:
     }
 
     void clearActivity() { m_->clearActivity(); }
+    void setLearning(bool on) { learning_ = on; } // diagnostic: pause learning, keep the mode
     const NeuralCellularMatrix& matrix() const { return *m_; }
     const CharacterCodebook& codebook() const { return codebook_; }
     float lastModulator() const { return lastModulator_; }
@@ -130,6 +138,7 @@ private:
     double surpriseSum_ = 0.0;
     uint64_t surpriseCount_ = 0;
     float lastModulator_ = 0.0f;
+    float gate_ = 0.0f; // learning signal with neuromodulator kinetics
 };
 
 // How specifically a set of cues recalled their own stored patterns.

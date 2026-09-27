@@ -1,0 +1,7 @@
+[
+  {},
+  {"modulator_tau": 30},
+  {"modulator_tau": 30, "learning_rate": 0.4},
+  {"trace_tau": 10},
+  {"modulator_tau": 30, "trace_tau": 10, "learning_rate": 0.4}
+]

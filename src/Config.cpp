@@ -70,6 +70,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"normalized_plasticity", &c.learning.normalized},
         {"soft_bound", &c.learning.soft_bound},
         {"predictive", &c.learning.predictive},
+        {"trace_tau", &c.learning.trace_tau},
+        {"modulator_tau", &c.learning.modulator_tau},
         {"fatigue_recall", &c.fatigue_recall},
         {"fatigue_gain2", &c.level2.fatigue_gain},
         {"fatigue_gain3", &c.level3.fatigue_gain},

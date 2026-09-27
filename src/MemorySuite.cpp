@@ -3,6 +3,7 @@
 // matrix that never learns, and passes only if learning makes recall measurably more
 // specific. Bars are fixed in advance.
 
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -240,33 +241,45 @@ namespace ncm {
 // tick by tick (similarity to the stored pattern, active voxels, total activity), on the
 // learning matrix and its untrained twin. Shows whether recall starts right and drifts, or
 // whether learned connections change the pattern from the start.
-int runDriftTest(const Config& cfg, const std::string& item) {
+int runDriftTest(const Config& cfg, const std::string& item, uint64_t learnAfter) {
     std::printf("Recall drift: \"%s\" stored %llu ticks, then full input in recall mode\n", item.c_str(),
                 (unsigned long long)kStore);
     std::vector<std::vector<std::string>> rows(2);
     for (int learning = 1; learning >= 0; --learning) {
         Session s(cfg, learning == 1);
-        const auto stored = s.present(item, kStore, 1.0f, true, kStore / 2);
+        std::vector<double> stored;
+        if (learnAfter > 0) { // diagnostic: no learning while the arrival wave passes
+            s.setLearning(false);
+            s.present(item, learnAfter, 1.0f, true, UINT64_MAX);
+            s.setLearning(learning == 1);
+            stored = s.present(item, kStore - learnAfter, 1.0f, true, kStore / 2 - std::min(learnAfter, kStore / 2));
+        } else {
+            stored = s.present(item, kStore, 1.0f, true, kStore / 2);
+        }
         s.silence(kGap, true);
         for (uint64_t t = 0; t < kCue; ++t) {
             std::vector<double> now;
             s.present(item, 1, 1.0f, false, 0);
             s.accumulate(now);
-            const auto& v = s.matrix().voxelState();
-            size_t active = 0;
-            double total = 0.0;
-            for (size_t i = 0; i < v.size(); i += C3) {
-                float strongest = 0.0f;
-                for (uint32_t c = 0; c < C3; ++c) {
-                    strongest = std::max(strongest, v[i + c]);
-                    total += v[i + c];
+            // Where the recalled activity differs from the stored pattern: activity on channels
+            // that were silent in the stored pattern ("outside"), and the similarity on the
+            // stored pattern's own channels (the shape of the pattern where it should be).
+            double total = 0.0, outside = 0.0, dot = 0.0, nn = 0.0, ns = 0.0;
+            for (size_t i = 0; i < now.size(); ++i) {
+                total += now[i];
+                if (stored[i] <= 0.0) {
+                    outside += now[i];
+                } else {
+                    dot += now[i] * stored[i];
+                    nn += now[i] * now[i];
+                    ns += stored[i] * stored[i];
                 }
-                active += strongest >= cfg.level3.active_level;
             }
             if (t % 5 == 4) {
                 char line[128];
-                std::snprintf(line, sizeof(line), "sim %.3f active %5zu total %8.1f", lab::cosine(now, stored),
-                              active, total);
+                std::snprintf(line, sizeof(line), "sim %.3f outside %4.1f%% shape %.3f total %6.1f",
+                              lab::cosine(now, stored), total > 0.0 ? 100.0 * outside / total : 0.0,
+                              (nn > 0.0 && ns > 0.0) ? dot / std::sqrt(nn * ns) : 0.0, total);
                 rows[learning].push_back(line);
             }
         }
