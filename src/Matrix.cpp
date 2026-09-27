@@ -86,6 +86,14 @@ inline void finishCell(const float* in, float* out, float& theta, const LevelPar
     adaptThreshold(theta, activateCell<C>(in, out, theta), lp, target);
 }
 
+// Scales a cell's output (divisive fatigue) and returns its new mean.
+template <uint32_t C>
+inline float scaleCell(float* out, float factor) {
+    float sum = 0.0f;
+    for (uint32_t c = 0; c < C; ++c) sum += (out[c] *= factor);
+    return sum / float(C);
+}
+
 // Lateral inhibition as local competition (spec Section 3C): a cell keeps its
 // activity only if fewer than `winners` of its neighbours are driven harder
 // (ties go to the lower index); otherwise its neighbours suppress it. Allowing a
@@ -448,6 +456,9 @@ void NeuralCellularMatrix::step2D() {
     // can settle instead of wearing itself out.
     const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
                               (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
+    // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
+    // input is never switched off (subtractive fatigue silenced whole fields under held input).
+    const bool divisiveFatigue = cfg_.fatigue_divisive > 0.5f;
     const float* s1 = s1_.cur.data();
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
@@ -521,7 +532,8 @@ void NeuralCellularMatrix::step2D() {
         }
         if (!isSilent(s3 + v * C3, C3)) matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
 
-        drive2_[q] = activateCell<C2>(in, out + q * C2, theta[q] + lp.fatigue_gain * fatigueMode * fatigue2_[q],
+        drive2_[q] = activateCell<C2>(in, out + q * C2,
+                                      theta[q] + (divisiveFatigue ? 0.0f : lp.fatigue_gain * fatigueMode * fatigue2_[q]),
                                       cfg_.channel_winners2);
     }
 
@@ -546,8 +558,9 @@ void NeuralCellularMatrix::step2D() {
                 if ((dy == 0 && dx == 0) || ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
                 rivals[n++] = v * SS + size_t(ny) * S + size_t(nx);
             }
-        const float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.output_sigma,
-                                               cfg_.fire_threshold2, cfg_.fire_gain2);
+        float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.output_sigma,
+                                         cfg_.fire_threshold2, cfg_.fire_gain2);
+        if (divisiveFatigue && final > 0.0f) final = scaleCell<C2>(out + q * C2, 1.0f / (1.0f + lp.fatigue_gain * fatigueMode * fatigue2_[q]));
         adaptThreshold(theta[q], final, lp, target);
         // Fatigue follows the activity of the channels that fire (the mean over all channels
         // understates it by C / channel_winners, so fatigue could never build up).
@@ -571,6 +584,9 @@ void NeuralCellularMatrix::step3D() {
     // can settle instead of wearing itself out.
     const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
                               (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
+    // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
+    // input is never switched off (subtractive fatigue silenced whole fields under held input).
+    const bool divisiveFatigue = cfg_.fatigue_divisive > 0.5f;
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
     float* out = s3_.next.data();
@@ -706,7 +722,8 @@ void NeuralCellularMatrix::step3D() {
             }
         }
 
-        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigueMode * fatigue3_[v],
+        drive3_[v] = activateCell<C3>(in, out + v * C3,
+                                      theta[v] + (divisiveFatigue ? 0.0f : lp.fatigue_gain * fatigueMode * fatigue3_[v]),
                                       cfg_.channel_winners3);
     }
 
@@ -731,8 +748,9 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3, cfg_.output_sigma,
-                                               cfg_.fire_threshold3, cfg_.fire_gain3);
+        float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3, cfg_.output_sigma,
+                                         cfg_.fire_threshold3, cfg_.fire_gain3);
+        if (divisiveFatigue && final > 0.0f) final = scaleCell<C3>(out + v * C3, 1.0f / (1.0f + lp.fatigue_gain * fatigueMode * fatigue3_[v]));
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);

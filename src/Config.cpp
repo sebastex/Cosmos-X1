@@ -121,6 +121,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidation_rate", &c.learning.consolidation_rate},
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"fatigue_recall", &c.fatigue_recall},
+        {"fatigue_divisive", &c.fatigue_divisive},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},
         {"fire_gain2", &c.fire_gain2},

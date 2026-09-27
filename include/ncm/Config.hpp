@@ -214,6 +214,9 @@ struct Config {
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in
     // silence. 1 = fatigue independent of mode.
     float fatigue_recall = 1.0f;
+    // 1 = fatigue divides a cell's output (rate adaptation; the cell keeps firing under steady
+    // input) instead of raising its threshold (which can silence it). 0 = subtractive.
+    float fatigue_divisive = 0.0f;
 
     // 1D lines carry sequences intact, so homeostasis is off there by default (spec Section 3C).
     // theta_max is high enough that homeostasis can always catch up with a cell's drive;
