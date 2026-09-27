@@ -1,0 +1,209 @@
+[
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 21,
+  "stage0": true,
+  "deep": 52,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.125,
+   "capacity": 0.115,
+   "efficiency": 0.132,
+   "streamed": 0.04,
+   "forgetting": -0.001,
+   "order": 0.135
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 22,
+  "stage0": true,
+  "deep": 47,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.142,
+   "capacity": 0.071,
+   "efficiency": 0.052,
+   "streamed": 0.017,
+   "forgetting": 0.027,
+   "order": 0.132
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 23,
+  "stage0": true,
+  "deep": 46,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.222,
+   "capacity": 0.095,
+   "efficiency": 0.184,
+   "streamed": 0.024,
+   "forgetting": 0.023,
+   "order": 0.074
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 24,
+  "stage0": true,
+  "deep": 43,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.194,
+   "capacity": 0.104,
+   "efficiency": 0.178,
+   "streamed": 0.041,
+   "forgetting": 0.143,
+   "order": 0.119
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 25,
+  "stage0": true,
+  "deep": 51,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.281,
+   "capacity": 0.162,
+   "efficiency": 0.149,
+   "streamed": 0.042,
+   "forgetting": 0.054,
+   "order": 0.078
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 26,
+  "stage0": true,
+  "deep": 50,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.17,
+   "capacity": 0.09,
+   "efficiency": 0.078,
+   "streamed": 0.002,
+   "forgetting": 0.05,
+   "order": 0.126
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 27,
+  "stage0": true,
+  "deep": 49,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": false,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.121,
+   "capacity": 0.094,
+   "efficiency": 0.127,
+   "streamed": 0.015,
+   "forgetting": 0.057,
+   "order": 0.086
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 28,
+  "stage0": true,
+  "deep": 44,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.19,
+   "capacity": 0.112,
+   "efficiency": 0.074,
+   "streamed": 0.013,
+   "forgetting": 0.002,
+   "order": 0.112
+  }
+ },
+ {
+  "variant": "champion + divisive fatigue",
+  "seed": 29,
+  "stage0": true,
+  "deep": 43,
+  "reliable": true,
+  "checks": {
+   "recall": true,
+   "capacity": true,
+   "efficiency": true,
+   "streamed": false,
+   "continual": true,
+   "order": true
+  },
+  "gains": {
+   "recall": 0.193,
+   "capacity": 0.145,
+   "efficiency": 0.099,
+   "streamed": 0.005,
+   "forgetting": -0.008,
+   "order": 0.084
+  }
+ }
+]

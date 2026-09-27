@@ -215,7 +215,8 @@ struct Config {
     // silence. 1 = fatigue independent of mode.
     float fatigue_recall = 1.0f;
     // 1 = fatigue divides a cell's output (rate adaptation; the cell keeps firing under steady
-    // input) instead of raising its threshold (which can silence it). 0 = subtractive.
+    // input) instead of raising its threshold (which can silence it). 0 = subtractive,
+    // 2 = divisive while sensory input is present and subtractive in silence.
     float fatigue_divisive = 0.0f;
 
     // 1D lines carry sequences intact, so homeostasis is off there by default (spec Section 3C).

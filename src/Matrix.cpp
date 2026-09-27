@@ -458,7 +458,9 @@ void NeuralCellularMatrix::step2D() {
                               (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
     // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
     // input is never switched off (subtractive fatigue silenced whole fields under held input).
-    const bool divisiveFatigue = cfg_.fatigue_divisive > 0.5f;
+    // fatigue_divisive 2 = divisive only while sensory input is present (steady input keeps
+    // cells firing) and subtractive in silence (activity that outlasts its input still ends).
+    const bool divisiveFatigue = cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f;
     const float* s1 = s1_.cur.data();
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
@@ -586,7 +588,9 @@ void NeuralCellularMatrix::step3D() {
                               (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
     // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
     // input is never switched off (subtractive fatigue silenced whole fields under held input).
-    const bool divisiveFatigue = cfg_.fatigue_divisive > 0.5f;
+    // fatigue_divisive 2 = divisive only while sensory input is present (steady input keeps
+    // cells firing) and subtractive in silence (activity that outlasts its input still ends).
+    const bool divisiveFatigue = cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f;
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
     float* out = s3_.next.data();
