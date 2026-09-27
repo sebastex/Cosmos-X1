@@ -100,8 +100,32 @@ int runEfficiencyTest(const Config& cfg) {
 int runStreamedTest(const Config& cfg) {
     const std::vector<std::string> items = {"apple ", "river ", "stone "};
     std::printf("CP5 streamed text: words streamed letter by letter, recalled from %.0f%% cues\n", 100.0 * kCueFraction);
-    const Comparison c = storeAndRecall(cfg, items);
+    Comparison c;
+    std::vector<std::vector<double>> sims[2];
+    double selfFlow[3] = {}, crossFlow[3] = {};
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        const Patterns stored = storeAll(s, items, kStore);
+        if (learning == 1)
+            for (size_t k = 0; k < 3; ++k) {
+                selfFlow[k] = s.flow(stored[k], stored[k]);
+                for (size_t j = 0; j < 3; ++j)
+                    if (j != k) crossFlow[k] = std::max(crossFlow[k], s.flow(stored[k], stored[j]));
+            }
+        const Patterns recalled = recallAll(s, items);
+        sims[learning] = lab::similarityMatrix(recalled, stored);
+        (learning ? c.learned : c.untrained) = lab::specificity(sims[learning]);
+    }
     printComparison("streamed words:", c);
+    // Diagnostics: which stored word each cue resembles, and the learned links within and
+    // between words (stored pattern -> stored pattern).
+    for (int l = 1; l >= 0; --l) {
+        std::printf("  diagnostic, %s: cue vs stored (apple river stone)\n", l ? "learned" : "untrained");
+        for (size_t k = 0; k < 3; ++k)
+            std::printf("    %-6s %.3f %.3f %.3f\n", items[k].c_str(), sims[l][k][0], sims[l][k][1], sims[l][k][2]);
+    }
+    std::printf("  diagnostic, stored links within each word: %.4f %.4f %.4f; strongest into another word: %.4f %.4f %.4f\n",
+                selfFlow[0], selfFlow[1], selfFlow[2], crossFlow[0], crossFlow[1], crossFlow[2]);
     return c.pass() ? 0 : 3;
 }
 
