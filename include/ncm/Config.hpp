@@ -80,6 +80,10 @@ struct LearningParams {
     // connections transmit at (1 - encoding_suppression * M). New material is written without
     // being captured by existing memories; familiar input recalls at full strength.
     float encoding_suppression = 0.95f; // protects old memories while new ones are written
+    // The same suppression applied to the learned part of the 4D link (its scaffold, the input
+    // path between fields, is never suppressed). In the hippocampal model acetylcholine turns
+    // down every learned associative pathway and spares only afferent input. 0 = off.
+    float encoding_suppression_4d = 0.0f;
     // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest
     // channel (like all-or-nothing spikes), not raw amplitudes. Without it, learning scales
     // with the square of activity, so faint streamed input learns far more slowly than held

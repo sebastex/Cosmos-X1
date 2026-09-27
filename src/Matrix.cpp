@@ -478,6 +478,9 @@ void NeuralCellularMatrix::step3D() {
     // Learned excitatory connections transmit less in encoding mode (high modulator).
     const float rec = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) *
                                  std::clamp(modulator_, 0.0f, 1.0f);
+    // The learned part of the 4D link is an association too; its scaffold is the input path.
+    const float rec4 = 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d, 0.0f, 1.0f) *
+                                  std::clamp(modulator_, 0.0f, 1.0f);
     const StartingRule& r = cfg_.rule;
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
@@ -550,7 +553,7 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, gain * inh * link);
             } else {
                 addScaled(src, in, C3, gain * link);
-                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale);
+                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
         }
