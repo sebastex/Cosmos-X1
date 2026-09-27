@@ -124,6 +124,7 @@ private:
     AVec<float> fatigue2_;
     AVec<float> fatigue3_;
     AVec<float> average3_;
+    AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
     AVec<float> trace3_;    // per voxel channel: short running average of activity (trace-based association)
     AVec<float> averageN3_; // long-run average of the normalized firing pattern (normalized plasticity)
 

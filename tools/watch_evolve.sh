@@ -13,7 +13,7 @@ INTERVAL="${3:-120}"
 STALL_MIN=90  # a generation is logged only when it finishes (can take ~40-60 min)
 last_lines=$(wc -l < "$LOG" 2>/dev/null || echo 0)
 last_change=$(date +%s)
-seen_out=0
+seen_out=$(wc -l < "$OUT" 2>/dev/null || echo 0)  # report only lines written after the watch starts
 while true; do
   # New lines in the search output.
   if [ -f "$OUT" ]; then

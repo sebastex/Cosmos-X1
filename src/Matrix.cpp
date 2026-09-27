@@ -218,6 +218,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
     trace3_.assign(V_ * C3, 0.0f);
+    orderTrace3_.assign(V_ * C3, 0.0f);
 
     initInhibitory();
     initSharedRules();
@@ -516,6 +517,7 @@ void NeuralCellularMatrix::step3D() {
     const float inh = -cfg_.inhibitory_strength;
     const float avgTau = std::max(1.0f, cfg_.learning.average_tau);
     const float traceTau = cfg_.learning.trace_tau > 0.0f ? std::max(1.0f, cfg_.learning.trace_tau) : 0.0f;
+    const float orderTau = cfg_.learning.order_tau > 0.0f ? std::max(1.0f, cfg_.learning.order_tau) : 0.0f;
     // Learned excitatory connections transmit less in encoding mode (high modulator).
     const float rec = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) *
                                  std::clamp(modulator_, 0.0f, 1.0f);
@@ -658,6 +660,11 @@ void NeuralCellularMatrix::step3D() {
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / traceTau;
         }
+        if (orderTau > 0.0f) {
+            float* tr = orderTrace3_.data() + v * C3;
+            const float* cell = out + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / orderTau;
+        }
         {
             const float* cell = out + v * C3;
             float strongest = 0.0f, sum = 0.0f;
@@ -746,6 +753,10 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
     const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
     const bool useTrace = cfg_.learning.trace_tau > 0.0f;
+    // Order with a timing window (STDP): "earlier" is each cell's decaying recent activity
+    // instead of only the previous step, so j -> i also forms when i starts a few steps
+    // after j. The antisymmetric form cancels the shared current step.
+    const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
     auto avgOf = [&](size_t cell) { return cov * (normalized ? averageN3_[cell] : average3_[cell]); };
     // Normalized plasticity: a cell's pattern scaled so its strongest channel is 1.
     auto normalizeInto = [](const float* x, float* outv, uint32_t n) {
@@ -762,7 +773,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         const float* pi = post + v * C3;
-        const float* qi = prev + v * C3;
+        const float* qi = useOrderTrace ? orderTrace3_.data() + v * C3 : prev + v * C3;
         if (!anyActive(pi, qi, C3)) continue; // only active cells change their incoming connections
         ++learners;
 
@@ -802,7 +813,7 @@ void NeuralCellularMatrix::learn(float modulator) {
         // Inhibitory connections and self-persistence are not visited: they stay fixed.
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
-            const float* sq = prev + src * C3;
+            const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
             float spN[C3], sqN[C3];
             if (normalized) {
                 normalizeInto(sp, spN, C3);
@@ -905,6 +916,7 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(fatigue2_.begin(), fatigue2_.end(), 0.0f);
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
     std::fill(trace3_.begin(), trace3_.end(), 0.0f);
+    std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
 }
 
 double NeuralCellularMatrix::motorOverlap(const std::vector<uint32_t>& fingerprint) const {
@@ -957,7 +969,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
-           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(W1_) + bytes(W2_) +
+           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
            bytes(H_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }

@@ -106,6 +106,11 @@ struct LearningParams {
     // Time constant (3D ticks) over which the learning signal builds up after surprise
     // begins and decays after it ends. 0 = instantaneous.
     float modulator_tau = 0.0f;
+    // Timing window of the order term (3D ticks): "j before i" counts j's decaying recent
+    // activity, as in spike-timing-dependent plasticity, not only the previous step. Without
+    // it an order link forms only in the one or two steps where one item hands over to the
+    // next. 0 = previous step only.
+    float order_tau = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 
