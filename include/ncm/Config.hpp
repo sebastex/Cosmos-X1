@@ -71,12 +71,15 @@ struct LearningParams {
     // Covariance learning: association uses activity above each cell's own long-run
     // average, so features active in every pattern stop being reinforced and what makes
     // each pattern distinct is stored. 0 = plain Hebbian association.
-    float covariance = 1.0f;
+    // 0.5 (tuned at small size, 3 seeds): full covariance over-penalized shared features and
+    // cost capacity on some seeds; with encoding suppression 0.95 it doubled the passes of the
+    // borderline checks (4/9 vs 2/9) and nearly removed forgetting on 2 of 3 seeds.
+    float covariance = 0.5f;
     float average_tau = 500.0f; // 3D ticks over which each cell's average activity is tracked
     // Encoding vs recall (the role acetylcholine plays in the brain): at modulator M, learned
     // connections transmit at (1 - encoding_suppression * M). New material is written without
     // being captured by existing memories; familiar input recalls at full strength.
-    float encoding_suppression = 0.8f;
+    float encoding_suppression = 0.95f; // protects old memories while new ones are written
     // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest
     // channel (like all-or-nothing spikes), not raw amplitudes. Without it, learning scales
     // with the square of activity, so faint streamed input learns far more slowly than held

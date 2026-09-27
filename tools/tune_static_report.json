@@ -1,9 +1,143 @@
 [
   {
+    "params": {
+      "covariance": 0.5,
+      "encoding_suppression": 0.95
+    },
+    "passes": 4,
+    "of": 9,
+    "score": 0.2386666666666667,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.205,
+        "capacity_pass": true,
+        "efficiency30": 0.024,
+        "efficiency_pass": false,
+        "continual_old": 0.198,
+        "continual_new": 0.133,
+        "forgetting": 0.007,
+        "continual_pass": true
+      },
+      {
+        "seed": 2,
+        "capacity": 0.093,
+        "capacity_pass": true,
+        "efficiency30": 0.005,
+        "efficiency_pass": false,
+        "continual_old": 0.031,
+        "continual_new": 0.151,
+        "forgetting": 0.073,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": -0.044,
+        "capacity_pass": false,
+        "efficiency30": 0.137,
+        "efficiency_pass": true,
+        "continual_old": 0.141,
+        "continual_new": -0.125,
+        "forgetting": 0.001,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {
+      "covariance": 0.5,
+      "encoding_suppression": 0.95,
+      "winners3": 2
+    },
+    "passes": 3,
+    "of": 9,
+    "score": 0.12966666666666668,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.191,
+        "capacity_pass": true,
+        "efficiency30": 0.007,
+        "efficiency_pass": false,
+        "continual_old": 0.253,
+        "continual_new": 0.14,
+        "forgetting": 0.079,
+        "continual_pass": false
+      },
+      {
+        "seed": 2,
+        "capacity": 0.058,
+        "capacity_pass": true,
+        "efficiency30": 0.035,
+        "efficiency_pass": false,
+        "continual_old": -0.045,
+        "continual_new": 0.283,
+        "forgetting": 0.109,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": 0.02,
+        "capacity_pass": false,
+        "efficiency30": 0.071,
+        "efficiency_pass": true,
+        "continual_old": 0.161,
+        "continual_new": -0.276,
+        "forgetting": 0.065,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {
+      "covariance": 0.5,
+      "encoding_suppression": 0.95,
+      "order_gain": 0.2
+    },
+    "passes": 4,
+    "of": 9,
+    "score": 0.233,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.193,
+        "capacity_pass": true,
+        "efficiency30": 0.025,
+        "efficiency_pass": false,
+        "continual_old": 0.177,
+        "continual_new": 0.118,
+        "forgetting": 0.009,
+        "continual_pass": true
+      },
+      {
+        "seed": 2,
+        "capacity": 0.091,
+        "capacity_pass": true,
+        "efficiency30": 0.006,
+        "efficiency_pass": false,
+        "continual_old": 0.032,
+        "continual_new": 0.151,
+        "forgetting": 0.078,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": -0.032,
+        "capacity_pass": false,
+        "efficiency30": 0.12,
+        "efficiency_pass": true,
+        "continual_old": 0.171,
+        "continual_new": -0.168,
+        "forgetting": 0.019,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
     "params": {},
-    "passes": 1,
-    "of": 6,
-    "score": 0.18150000000000002,
+    "passes": 2,
+    "of": 9,
+    "score": 0.16966666666666666,
     "rows": [
       {
         "seed": 1,
@@ -26,421 +160,16 @@
         "continual_new": 0.014,
         "forgetting": 0.015,
         "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "learning_rate": 0.15
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.14350000000000002,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.155,
-        "capacity_pass": true,
-        "efficiency30": 0.014,
-        "efficiency_pass": false,
-        "continual_old": 0.134,
-        "continual_new": 0.138,
-        "forgetting": 0.053,
-        "continual_pass": false
       },
       {
-        "seed": 2,
-        "capacity": -0.015,
+        "seed": 3,
+        "capacity": -0.081,
         "capacity_pass": false,
-        "efficiency30": 0.001,
-        "efficiency_pass": false,
-        "continual_old": 0.007,
-        "continual_new": -0.028,
-        "forgetting": 0.005,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "learning_rate": 0.3
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.02300000000000004,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.102,
-        "capacity_pass": true,
-        "efficiency30": 0.033,
-        "efficiency_pass": false,
-        "continual_old": 0.166,
-        "continual_new": 0.166,
-        "forgetting": 0.124,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": 0.003,
-        "capacity_pass": false,
-        "efficiency30": 0.006,
-        "efficiency_pass": false,
-        "continual_old": 0.039,
-        "continual_new": 0.274,
-        "forgetting": 0.077,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "plastic_budget": 0.35
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.13899999999999998,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.089,
-        "capacity_pass": true,
-        "efficiency30": 0.02,
-        "efficiency_pass": false,
-        "continual_old": 0.123,
-        "continual_new": 0.045,
-        "forgetting": 0.03,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": 0.035,
-        "capacity_pass": false,
-        "efficiency30": -0.006,
-        "efficiency_pass": false,
-        "continual_old": 0.017,
-        "continual_new": 0.016,
-        "forgetting": 0.039,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "plastic_budget": 0.7
-    },
-    "passes": 0,
-    "of": 6,
-    "score": -0.402,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": -0.225,
-        "capacity_pass": false,
-        "efficiency30": 0.021,
-        "efficiency_pass": false,
-        "continual_old": 0.035,
-        "continual_new": -0.257,
-        "forgetting": 0.035,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": -0.216,
-        "capacity_pass": false,
-        "efficiency30": -0.006,
-        "efficiency_pass": false,
-        "continual_old": -0.059,
-        "continual_new": 0.094,
-        "forgetting": 0.168,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "channel_winners3": 2
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.1195,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.156,
-        "capacity_pass": true,
-        "efficiency30": 0.024,
-        "efficiency_pass": false,
-        "continual_old": 0.104,
-        "continual_new": 0.201,
-        "forgetting": 0.05,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": -0.09,
-        "capacity_pass": false,
-        "efficiency30": 0.017,
-        "efficiency_pass": false,
-        "continual_old": 0.028,
-        "continual_new": -0.088,
-        "forgetting": 0.05,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "channel_winners3": 4
-    },
-    "passes": 1,
-    "of": 6,
-    "score": -0.03899999999999999,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.127,
-        "capacity_pass": true,
-        "efficiency30": 0.019,
-        "efficiency_pass": false,
-        "continual_old": 0.208,
-        "continual_new": 0.128,
-        "forgetting": 0.142,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": -0.055,
-        "capacity_pass": false,
-        "efficiency30": 0.013,
-        "efficiency_pass": false,
-        "continual_old": 0.062,
-        "continual_new": 0.169,
-        "forgetting": 0.106,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "winners3": 2
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.18650000000000005,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.215,
-        "capacity_pass": true,
-        "efficiency30": 0.008,
-        "efficiency_pass": false,
-        "continual_old": 0.278,
-        "continual_new": 0.177,
-        "forgetting": 0.073,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": 0.019,
-        "capacity_pass": false,
-        "efficiency30": 0.026,
-        "efficiency_pass": false,
-        "continual_old": 0.016,
-        "continual_new": 0.195,
-        "forgetting": 0.059,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "winners3": 4
-    },
-    "passes": 2,
-    "of": 6,
-    "score": 0.15150000000000002,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.149,
-        "capacity_pass": true,
-        "efficiency30": 0.035,
-        "efficiency_pass": false,
-        "continual_old": 0.2,
-        "continual_new": 0.171,
-        "forgetting": 0.034,
-        "continual_pass": true
-      },
-      {
-        "seed": 2,
-        "capacity": -0.114,
-        "capacity_pass": false,
-        "efficiency30": 0.001,
-        "efficiency_pass": false,
-        "continual_old": 0.038,
-        "continual_new": -0.019,
-        "forgetting": 0.052,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "fatigue_gain3": 0.4
-    },
-    "passes": 1,
-    "of": 6,
-    "score": -0.30150000000000005,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.058,
-        "capacity_pass": true,
-        "efficiency30": 0.041,
-        "efficiency_pass": false,
-        "continual_old": 0.141,
-        "continual_new": 0.151,
-        "forgetting": 0.058,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": -0.019,
-        "capacity_pass": false,
-        "efficiency30": -0.014,
-        "efficiency_pass": false,
-        "continual_old": -0.093,
-        "continual_new": 0.262,
-        "forgetting": 0.281,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "fatigue_gain3": 0.9
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.11900000000000001,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.115,
-        "capacity_pass": true,
-        "efficiency30": 0.022,
-        "efficiency_pass": false,
-        "continual_old": 0.093,
-        "continual_new": 0.152,
-        "forgetting": 0.06,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": 0.017,
-        "capacity_pass": false,
-        "efficiency30": -0.0,
-        "efficiency_pass": false,
-        "continual_old": 0.021,
-        "continual_new": -0.019,
-        "forgetting": -0.001,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "covariance": 0.5
-    },
-    "passes": 3,
-    "of": 6,
-    "score": 0.14699999999999996,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.12,
-        "capacity_pass": true,
-        "efficiency30": 0.026,
-        "efficiency_pass": false,
-        "continual_old": 0.185,
-        "continual_new": 0.051,
-        "forgetting": 0.03,
-        "continual_pass": true
-      },
-      {
-        "seed": 2,
-        "capacity": 0.06,
-        "capacity_pass": true,
-        "efficiency30": 0.004,
-        "efficiency_pass": false,
-        "continual_old": 0.025,
-        "continual_new": 0.146,
-        "forgetting": 0.092,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "order_gain": 0.2
-    },
-    "passes": 1,
-    "of": 6,
-    "score": 0.188,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.164,
-        "capacity_pass": true,
-        "efficiency30": 0.021,
-        "efficiency_pass": false,
-        "continual_old": 0.217,
-        "continual_new": 0.196,
-        "forgetting": 0.064,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": 0.005,
-        "capacity_pass": false,
-        "efficiency30": -0.005,
-        "efficiency_pass": false,
-        "continual_old": 0.033,
-        "continual_new": 0.033,
-        "forgetting": 0.026,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "encoding_suppression": 0.95
-    },
-    "passes": 2,
-    "of": 6,
-    "score": 0.23950000000000002,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.202,
-        "capacity_pass": true,
-        "efficiency30": 0.007,
-        "efficiency_pass": false,
-        "continual_old": 0.191,
-        "continual_new": 0.112,
-        "forgetting": 0.048,
-        "continual_pass": true
-      },
-      {
-        "seed": 2,
-        "capacity": 0.019,
-        "capacity_pass": false,
-        "efficiency30": 0.006,
-        "efficiency_pass": false,
-        "continual_old": 0.056,
-        "continual_new": 0.044,
-        "forgetting": 0.048,
+        "efficiency30": 0.115,
+        "efficiency_pass": true,
+        "continual_old": 0.13,
+        "continual_new": -0.268,
+        "forgetting": 0.056,
         "continual_pass": false
       }
     ]
