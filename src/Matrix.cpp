@@ -209,6 +209,11 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     P_ = cfg.lineCells();
 
     s1_.allocate(P_, C1);
+    lineQuietCur_.assign(Q_, 1);
+    lineQuietNext_.assign(Q_, 1);
+    sheetQuietCur_.assign(V_, 1);
+    sheetQuietNext_.assign(V_, 1);
+    sheetSkip_.assign(V_, 0);
     s2_.allocate(Q_, C2);
     s3_.allocate(V_, C3);
     drive2_.assign(Q_, 0.0f);
@@ -350,6 +355,8 @@ void NeuralCellularMatrix::applySurfaceClamps() {
             float* entry = s1_.next.data() + size_t(sensoryQ_[s]) * L_ * C1; // position 0
             const float v = sensoryDrive_[s] ? 1.0f : 0.0f;
             for (uint32_t c = 0; c < C1; ++c) entry[c] = v;
+            const size_t q = sensoryQ_[s];
+            lineQuietNext_[q] = isSilent(s1_.next.data() + q * L_ * C1, size_t(L_) * C1);
         }
     }
     if (motorOn_) {
@@ -357,6 +364,8 @@ void NeuralCellularMatrix::applySurfaceClamps() {
             float* exitCell = s1_.next.data() + (size_t(motorQ_[s]) * L_ + (L_ - 1)) * C1;
             const float v = motorDrive_[s] ? 1.0f : 0.0f;
             for (uint32_t c = 0; c < C1; ++c) exitCell[c] = v;
+            const size_t q = motorQ_[s];
+            lineQuietNext_[q] = isSilent(s1_.next.data() + q * L_ * C1, size_t(L_) * C1);
         }
     }
 }
@@ -380,9 +389,14 @@ void NeuralCellularMatrix::step1D() {
         const float* parent = s2 + q * C2;
         const float* line = s1 + q * L * C1;
         float* lineOut = out + q * L * C1;
-        // A silent line under a silent parent stays silent: skip the arithmetic.
-        if (isSilent(parent, C2) && isSilent(line, size_t(L) * C1)) {
-            std::fill(lineOut, lineOut + size_t(L) * C1, 0.0f);
+        // A silent line under a silent parent stays silent: skip the arithmetic. Quiet flags
+        // (kept per buffer) let such lines be skipped without reading them, and without
+        // rewriting zeros that are already there; results are identical.
+        if (lineQuietCur_[q] && isSilent(parent, C2)) {
+            if (!lineQuietNext_[q]) {
+                std::fill(lineOut, lineOut + size_t(L) * C1, 0.0f);
+                lineQuietNext_[q] = 1;
+            }
             if (lp.homeostasis_rate > 0.0f)
                 for (uint32_t k = 0; k < L; ++k) adaptThreshold(theta[q * L + k], 0.0f, lp, target);
             continue;
@@ -399,10 +413,12 @@ void NeuralCellularMatrix::step1D() {
             if (k == 0) matvecAdd(D1_.data(), parent, in, C1, C2, gd);
             finishCell<C1>(in, lineOut + size_t(k) * C1, theta[q * L + k], lp, target);
         }
+        lineQuietNext_[q] = isSilent(lineOut, size_t(L) * C1);
     }
 
     applySurfaceClamps();
     s1_.swap();
+    lineQuietCur_.swap(lineQuietNext_);
 }
 
 // 2D level: lateral interaction within each sheet, a summary from each cell's own
@@ -425,11 +441,28 @@ void NeuralCellularMatrix::step2D() {
     const uint32_t S = S_, L = L_;
     const size_t SS = SS_;
 
+    // Event-driven skipping of whole sheets: a sheet that is silent, whose lines are all
+    // quiet and whose parent voxel is silent receives no input at all, so every cell's drive
+    // and output are exactly 0; only its threshold and fatigue drift, updated in pass 2.
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(static)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        bool quiet = sheetQuietCur_[v] && isSilent(s3 + v * C3, C3);
+        for (size_t c = 0; quiet && c < SS; ++c) quiet = lineQuietCur_[v * SS + c] != 0;
+        sheetSkip_[v] = quiet ? 1 : 0;
+    }
+
     const int64_t cells = int64_t(Q_);
 #pragma omp parallel for schedule(dynamic, 256)
     for (int64_t qi = 0; qi < cells; ++qi) {
         const size_t q = size_t(qi);
         const size_t v = q / SS;
+        if (sheetSkip_[v]) {
+            if (!sheetQuietNext_[v]) std::fill(out + q * C2, out + (q + 1) * C2, 0.0f);
+            drive2_[q] = 0.0f;
+            continue;
+        }
         const size_t cell = q % SS;
         const int sy = int(cell / S), sx = int(cell % S);
 
@@ -452,7 +485,8 @@ void NeuralCellularMatrix::step2D() {
         {
             float up[C2] = {};
             uint32_t activeCells = 0;
-            for (uint32_t k = 0; k < L; ++k) {
+            // A quiet line contributes nothing: its flag spares reading it.
+            for (uint32_t k = 0; k < (lineQuietCur_[q] ? 0u : L); ++k) {
                 const float* cell = s1 + (q * L + k) * C1;
                 bool active = false;
                 for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
@@ -478,6 +512,11 @@ void NeuralCellularMatrix::step2D() {
     for (int64_t qi = 0; qi < cells; ++qi) {
         const size_t q = size_t(qi);
         const size_t v = q / SS;
+        if (sheetSkip_[v]) { // exactly what the full path gives a cell with no drive
+            adaptThreshold(theta[q], 0.0f, lp, target);
+            fatigue2_[q] += (0.0f - fatigue2_[q]) / std::max(1.0f, lp.fatigue_tau);
+            continue;
+        }
         const size_t cell = q % SS;
         const int sy = int(cell / S), sx = int(cell % S);
         size_t rivals[8];
@@ -496,7 +535,13 @@ void NeuralCellularMatrix::step2D() {
         const float firing2 = final * float(C2) / float(std::clamp<uint32_t>(cfg_.channel_winners2, 1, C2));
         fatigue2_[q] += (firing2 - fatigue2_[q]) / std::max(1.0f, lp.fatigue_tau);
     }
+#pragma omp parallel for schedule(static)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        sheetQuietNext_[v] = sheetSkip_[v] ? 1 : (isSilent(out + v * SS * C2, SS * C2) ? 1 : 0);
+    }
     s2_.swap();
+    sheetQuietCur_.swap(sheetQuietNext_);
 }
 
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
@@ -917,6 +962,10 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
     std::fill(trace3_.begin(), trace3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
+    std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
+    std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
+    std::fill(sheetQuietCur_.begin(), sheetQuietCur_.end(), uint8_t(1));
+    std::fill(sheetQuietNext_.begin(), sheetQuietNext_.end(), uint8_t(1));
 }
 
 double NeuralCellularMatrix::motorOverlap(const std::vector<uint32_t>& fingerprint) const {

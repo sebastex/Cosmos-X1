@@ -124,6 +124,11 @@ private:
     AVec<float> fatigue2_;
     AVec<float> fatigue3_;
     AVec<float> average3_;
+    // Per line: 1 if the line is entirely silent in s1_.cur / s1_.next (event-driven skipping).
+    std::vector<uint8_t> lineQuietCur_, lineQuietNext_;
+    // Per voxel: 1 if its whole sheet is silent in s2_.cur / s2_.next; sheetSkip_ marks the
+    // sheets skipped in the current 2D step.
+    std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
     AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
     AVec<float> trace3_;    // per voxel channel: short running average of activity (trace-based association)
     AVec<float> averageN3_; // long-run average of the normalized firing pattern (normalized plasticity)
