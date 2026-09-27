@@ -57,6 +57,31 @@ SPACE = {
 }
 
 
+# Firing regime (all-or-none output, found 2026-09-27): signals keep their strength between
+# fields. Start = the settings that passed Stage 0 streaming at small seed 1; graded-regime
+# levers that conflict with firing are left out.
+FIRING_DROP = ("output_sigma", "normalized_plasticity", "agc_rate", "agc_max", "normalize_upward")
+FIRING_EXTRA = {
+    "fire_threshold2": (0.005, 0.3, "f", 0.02),
+    "fire_threshold3": (0.05, 0.8, "f", 0.35),
+    "modulator_tau": (0.0, 60.0, "f", 0.0),
+}
+FIRING_START = {"link4d": 0.5, "fatigue_gain2": 0.2, "fatigue_gain3": 0.05, "voxel_neighbour": 0.03,
+                "long_range": 0.05, "voxel_self": 0.3, "covariance": 0.5, "encoding_suppression": 0.95}
+
+
+def use_firing_regime():
+    global SPACE, LOG, BEST
+    space = {k: v for k, v in SPACE.items() if k not in FIRING_DROP}
+    for k, v in FIRING_START.items():
+        lo, hi, kind, _ = space[k]
+        space[k] = (lo, hi, kind, v)
+    space.update(FIRING_EXTRA)
+    SPACE = space
+    LOG = ROOT / "tools" / "evolve_firing_log.jsonl"
+    BEST = ROOT / "tools" / "evolve_firing_best.json"
+
+
 def start_candidate():
     return {k: v[3] for k, v in SPACE.items()}
 
@@ -224,7 +249,11 @@ def main():
     ap.add_argument("--reject-below", type=float, default=None,
                     help="extra quick-recall rejection threshold (off by default; the suite exits early itself)")
     ap.add_argument("--resume", action="store_true", help="continue from the best variants in the log")
+    ap.add_argument("--regime", default="graded", choices=("graded", "firing"),
+                    help="firing: search the all-or-none firing regime (own log and best file)")
     args = ap.parse_args()
+    if args.regime == "firing":
+        use_firing_regime()
 
     global THREADS, COOLDOWN, REJECT_BELOW
     THREADS, COOLDOWN, REJECT_BELOW = args.threads, args.cooldown, args.reject_below
