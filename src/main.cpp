@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     ncm::NeuralCellularMatrix& m = *matrix;
-    ncm::CharacterCodebook codebook(cfg.surfaceLines(), cfg.target_activity, cfg.seed);
+    ncm::CharacterCodebook codebook(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed());
 
     std::printf(" memory: %.1f MB\n", double(m.memoryBytes()) / (1024.0 * 1024.0));
     std::printf(" sensory surface: %zu lines, %zu per character fingerprint\n", cfg.surfaceLines(),

@@ -120,6 +120,9 @@ struct Config {
     uint32_t sheet_dim        = 8;
     uint32_t line_len         = 16;
     uint32_t long_range_links = 4;
+    // Seed of the items (character fingerprints and cue thinning); 0 = the matrix seed. Lets
+    // tests vary the items and the matrix's random wiring independently.
+    uint32_t codebook_seed = 0;
 
     float target_activity  = 0.02f; // spec Section 3B
     float inhibitory_share = 0.20f; // spec Section 3C, applies to 2D and 3D cells
@@ -197,6 +200,7 @@ struct Config {
 
     uint64_t seed = 0xC05305A1ull;
 
+    uint64_t itemSeed() const { return codebook_seed ? uint64_t(codebook_seed) : seed; }
     size_t voxelsPerField() const { return size_t(field_dim) * field_dim * field_dim; }
     size_t voxels() const { return voxelsPerField() * kFields; }
     size_t sheetCellsPerVoxel() const { return size_t(sheet_dim) * sheet_dim; }

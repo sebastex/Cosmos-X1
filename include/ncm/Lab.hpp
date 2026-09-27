@@ -43,7 +43,7 @@ public:
     Session(const Config& cfg, bool learning, bool silenceSuppressed = true)
         : cfg_(cfg), learning_(learning), silenceSuppressed_(silenceSuppressed),
           m_(std::make_unique<NeuralCellularMatrix>(cfg)),
-          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.seed) {}
+          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed()) {}
 
     // One 1D tick. `fingerprint` is what enters the sensory surface (nullptr = silence);
     // `actual` is the full fingerprint of the character being heard, for the surprise check.
@@ -98,7 +98,7 @@ public:
             if (fraction >= 1.0f) {
                 tick(&full, &full, allowLearning);
             } else {
-                const auto cue = thin(full, fraction, cfg_.seed, c);
+                const auto cue = thin(full, fraction, cfg_.itemSeed(), c);
                 tick(&cue, &full, allowLearning);
             }
             if (t >= recordFrom) accumulate(acc);

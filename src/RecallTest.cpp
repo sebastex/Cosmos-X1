@@ -61,7 +61,7 @@ Result runProtocol(const Config& cfg, RecallOptions opt, bool learning, float cu
         for (uint64_t t = 0; t < opt.cueTicks; ++t) {
             const char c = text[t % text.size()];
             const auto& full = cb.fingerprint(char32_t(uint8_t(c)));
-            const auto cue = thin(full, opt.cueFraction, cfg.seed, c);
+            const auto cue = thin(full, opt.cueFraction, cfg.itemSeed(), c);
             session.tick(&cue, &full, false);
             if (t >= opt.cueTicks / 2) session.accumulate(recalled[k]);
         }

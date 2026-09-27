@@ -92,6 +92,7 @@ std::map<std::string, uint32_t*> countTable(Config& c) {
         {"sheet_dim", &c.sheet_dim},
         {"line_len", &c.line_len},
         {"long_range_links", &c.long_range_links},
+        {"codebook_seed", &c.codebook_seed},
         {"winners2", &c.winners2},
         {"winners3", &c.winners3},
         {"inhibition_radius3", &c.inhibition_radius3},
