@@ -112,6 +112,9 @@ RATE_SPACE = {
     "order_gain": (0.0, 8.0, "f", 0.5),
     # Encoding/recall mode kinetics: lets a learned sequence play forward after a cue.
     "mode_tau": (0.0, 80.0, "f", 0.0),
+    # Soft bounds: full neurons learn new memories slowly instead of shrinking old ones
+    # (measured in the firing regime: erasure 0.037/0.090/0.051 -> 0.013/0.040/0.008).
+    "soft_bound": (0.0, 1.0, "f", 0.0),
 }
 
 
