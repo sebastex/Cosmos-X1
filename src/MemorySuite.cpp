@@ -116,18 +116,29 @@ int runContinualTest(const Config& cfg) {
     std::printf("CP6 continual learning: learn 3, recall, learn 3 more, recall all 6\n");
 
     Comparison before, afterOld, afterNew, afterOldOnly;
+    std::vector<std::vector<double>> simAfter[2], simBefore[2]; // [untrained, learned]
+    double selfBefore[3] = {}, selfAfter[3] = {}, crossAfter[3] = {}; // learned twin: stored links
     for (int learning = 1; learning >= 0; --learning) {
         Session s(cfg, learning == 1);
         Patterns stored = storeAll(s, oldItems, kStore);
+        if (learning == 1)
+            for (size_t k = 0; k < 3; ++k) selfBefore[k] = s.flow(stored[k], stored[k]);
         const Patterns recalledBefore = recallAll(s, oldItems);
         const Patterns storedNew = storeAll(s, newItems, kStore);
         stored.insert(stored.end(), storedNew.begin(), storedNew.end());
+        if (learning == 1)
+            for (size_t k = 0; k < 3; ++k) {
+                selfAfter[k] = s.flow(stored[k], stored[k]);
+                for (size_t j = 3; j < 6; ++j) crossAfter[k] = std::max(crossAfter[k], s.flow(stored[k], stored[j]));
+            }
         const Patterns recalledAll = recallAll(s, all);
 
         Patterns oldStored(stored.begin(), stored.begin() + 3);
         (learning ? before.learned : before.untrained) =
             lab::specificity(lab::similarityMatrix(recalledBefore, oldStored));
         const auto sim = lab::similarityMatrix(recalledAll, stored);
+        simAfter[learning] = sim;
+        simBefore[learning] = lab::similarityMatrix(recalledBefore, oldStored);
         (learning ? afterOld.learned : afterOld.untrained) = lab::specificity(sim, {0, 1, 2});
         (learning ? afterNew.learned : afterNew.untrained) = lab::specificity(sim, {3, 4, 5});
         // Diagnostic: old cues against the old memories only (the same competitors as before),
@@ -139,6 +150,24 @@ int runContinualTest(const Config& cfg) {
     printComparison("old memories, before new learning:", before);
     printComparison("old memories, after new learning:", afterOld);
     printComparison("new memories:", afterNew);
+    std::printf("  diagnostic, stored links of each old memory (own pattern -> itself), before -> after new learning:");
+    for (size_t k = 0; k < 3; ++k) std::printf("  %.4f -> %.4f", selfBefore[k], selfAfter[k]);
+    std::printf("\n  diagnostic, strongest link from each old memory into a new one:");
+    for (size_t k = 0; k < 3; ++k) std::printf("  %.4f", crossAfter[k]);
+    std::printf("\n");
+    // Diagnostic: which stored memory each old cue resembles, before and after new learning.
+    const char* names[6] = {"a", "k", "z", "m", "q", "e"};
+    for (int l = 1; l >= 0; --l) {
+        std::printf("  diagnostic, %s: old cue vs stored  (before: a k z | after: a k z m q e)\n",
+                    l ? "learned" : "untrained");
+        for (size_t k = 0; k < 3; ++k) {
+            std::printf("    cue %s  before", names[k]);
+            for (size_t j = 0; j < 3; ++j) std::printf(" %.3f", simBefore[l][k][j]);
+            std::printf("  | after");
+            for (size_t j = 0; j < 6; ++j) std::printf(" %.3f", simAfter[l][k][j]);
+            std::printf("\n");
+        }
+    }
     printComparison("  diagnostic, old vs old only:", afterOldOnly);
     std::printf("  diagnostic: erasure %+.3f (old vs old only), interference from new memories %+.3f\n",
                 before.learned.margin - afterOldOnly.learned.margin,

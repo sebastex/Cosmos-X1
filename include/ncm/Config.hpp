@@ -115,6 +115,11 @@ struct LearningParams {
     // up over mode_tau after input ends or turns novel; recall takes effect at once. Leaves a
     // window after a cue in which the next item of a learned sequence can play out. 0 = off.
     float mode_tau = 0.0f;
+    // Heterosynaptic depression: how much an active cell weakens its inputs from silent cells
+    // (covariance learning's depression term). Those silent inputs include the cells of other,
+    // older memories, so full depression erodes them wherever memories share cells.
+    // 1 = full covariance (default), 0 = only inputs that were active change.
+    float hetero_ltd = 1.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

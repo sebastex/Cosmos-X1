@@ -115,6 +115,10 @@ RATE_SPACE = {
     # Soft bounds: full neurons learn new memories slowly instead of shrinking old ones
     # (measured in the firing regime: erasure 0.037/0.090/0.051 -> 0.013/0.040/0.008).
     "soft_bound": (0.0, 1.0, "f", 0.0),
+    # Sheet modulation (one 8x8 learned matrix per voxel) is overwritten by each new memory,
+    # giving the latest memory a temporary boost that later reads as forgetting.
+    "modulation_rate": (0.0, 1.0, "f", 1.0),
+    "hetero_ltd": (0.0, 1.0, "f", 1.0),
 }
 
 

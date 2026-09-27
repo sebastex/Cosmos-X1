@@ -157,7 +157,7 @@ template <uint32_t C>
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
                            float oja, const float* room, const float* predicted, const float* assocPost,
-                           const float* assocPre) {
+                           const float* assocPre, float hetero) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
@@ -166,8 +166,12 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
         const float da = assocPost[a] - avgPost - (predicted ? predicted[a] : 0.0f);
         const float up = room ? room[a] : 1.0f;
         for (uint32_t b = 0; b < C; ++b) {
+            // Heterosynaptic depression: a silent input of an active cell is weakened by
+            // `hetero` times the covariance term (1 = full covariance, 0 = only active inputs
+            // change). Silent inputs include other memories' cells, so this erases them.
+            const float preTerm = assocPre[b] == 0.0f ? hetero * (0.0f - avgPre) : assocPre[b] - avgPre;
             const float dw =
-                da * (assocPre[b] - avgPre) + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+                da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
             const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? up * dw : dw));
             change += std::fabs(updated - row[b]);
             row[b] = updated;
@@ -798,6 +802,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
     const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
     const bool useTrace = cfg_.learning.trace_tau > 0.0f;
+    const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
     // Order with a timing window (STDP): "earlier" is each cell's decaying recent activity
     // instead of only the previous step, so j -> i also forms when i starts a few steps
     // after j. The antisymmetric form cancels the shared current step.
@@ -869,7 +874,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja,
                                         soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr,
                                         useTrace ? trace3_.data() + v * C3 : pi,
-                                        useTrace ? trace3_.data() + src * C3 : sp);
+                                        useTrace ? trace3_.data() + src * C3 : sp, hetero);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
