@@ -155,13 +155,20 @@ int runContinualTest(const Config& cfg) {
 // the 30 ticks right after the cue: sequence memory plays forward once the cue ends (while
 // the cue is shown its own item dominates). The reading during the cue is still printed.
 int runOrderTest(const Config& cfg) {
-    const std::vector<std::pair<std::string, std::string>> pairs = {{"a", "k"}, {"z", "m"}};
-    std::printf("CP7 early order check: learn 'a then k' and 'z then m', cue each item\n");
+    // Three independent sessions of two pairs each (fresh matrices, different letters),
+    // averaged: with one session of two pairs, chance asymmetries between the items (visible
+    // in the untrained twin, about +-0.05) exceeded the bar. Each session is the same task.
+    const std::vector<std::vector<std::pair<std::string, std::string>>> sets = {
+        {{"a", "k"}, {"z", "m"}}, {{"q", "e"}, {"t", "w"}}, {{"b", "p"}, {"r", "s"}}};
+    std::printf("CP7 early order check: 3 sessions, each learns two pairs (first then second), cue each item\n");
 
     double orderSignal[2] = {0.0, 0.0}; // [untrained, learned]: mean (forward - backward)
     double storedForward = 0.0, storedBackward = 0.0;   // diagnostic: learned links, learned twin
-    double afterForward[2] = {0.0, 0.0}, afterSignal[2] = {0.0, 0.0}; // diagnostic: right after the cue
+    double afterForward[2] = {0.0, 0.0}, afterSignal[2] = {0.0, 0.0}; // right after the cue
+    double afterSpecific[2] = {0.0, 0.0}; // own partner minus the other pair's second item
     double forward[2] = {0.0, 0.0};
+    const double share = 1.0 / double(sets.size());
+    for (const auto& pairs : sets)
     for (int learning = 1; learning >= 0; --learning) {
         Session s(cfg, learning == 1);
         for (int rep = 0; rep < 3; ++rep)
@@ -170,18 +177,30 @@ int runOrderTest(const Config& cfg) {
                 s.present(second, 40, 1.0f, true, UINT64_MAX);
                 s.silence(40, true);
             }
-        // Clean reference pattern for every item, learning off.
+        // Clean reference pattern for every item: encoding mode (as the other checks store
+        // their references) with learning paused. In recall mode the learned forward link
+        // leaked the second item into the first item's reference (audit 2026-09-27).
         auto reference = [&](const std::string& item) {
-            auto p = s.present(item, 40, 1.0f, false, 20);
-            s.silence(kGap, false);
+            s.setLearning(false);
+            auto p = s.present(item, 40, 1.0f, true, 20);
+            s.silence(kGap, true);
+            s.setLearning(learning == 1);
             return p;
         };
-        double sumForward = 0.0, sumSignal = 0.0;
+        std::vector<std::vector<double>> refFirst, refSecond;
         for (const auto& [first, second] : pairs) {
-            const auto pFirst = reference(first), pSecond = reference(second);
+            refFirst.push_back(reference(first));
+            refSecond.push_back(reference(second));
+        }
+        double sumForward = 0.0, sumSignal = 0.0;
+        for (size_t pi = 0; pi < pairs.size(); ++pi) {
+            const auto& [first, second] = pairs[pi];
+            const auto& pFirst = refFirst[pi];
+            const auto& pSecond = refSecond[pi];
+            const auto& pOtherSecond = refSecond[(pi + 1) % pairs.size()];
             if (learning == 1) {
-                storedForward += s.flow(pFirst, pSecond) / double(pairs.size());
-                storedBackward += s.flow(pSecond, pFirst) / double(pairs.size());
+                storedForward += share * s.flow(pFirst, pSecond) / double(pairs.size());
+                storedBackward += share * s.flow(pSecond, pFirst) / double(pairs.size());
             }
             const auto cueFirst = s.present(first, 30, kCueFraction, false, 15);
             const auto afterFirst = s.silence(30, false, 0);
@@ -190,23 +209,28 @@ int runOrderTest(const Config& cfg) {
             const auto afterSecond = s.silence(30, false, 0);
             s.silence(kGap - 30, false);
             const double aFwd = lab::cosine(afterFirst, pSecond);
-            afterForward[learning] += aFwd / double(pairs.size());
-            afterSignal[learning] += (aFwd - lab::cosine(afterSecond, pFirst)) / double(pairs.size());
+            afterForward[learning] += share * aFwd / double(pairs.size());
+            afterSignal[learning] += share * (aFwd - lab::cosine(afterSecond, pFirst)) / double(pairs.size());
+            // The evoked item must be the cue's own partner, not any item that followed something.
+            afterSpecific[learning] += share * (aFwd - lab::cosine(afterFirst, pOtherSecond)) / double(pairs.size());
             const double fwd = lab::cosine(cueFirst, pSecond);
             const double bwd = lab::cosine(cueSecond, pFirst);
             sumForward += fwd;
             sumSignal += fwd - bwd;
         }
-        forward[learning] = sumForward / double(pairs.size());
-        orderSignal[learning] = sumSignal / double(pairs.size());
+        forward[learning] += share * sumForward / double(pairs.size());
+        orderSignal[learning] += share * sumSignal / double(pairs.size());
     }
     const double fwdGain = afterForward[1] - afterForward[0];
     const double orderGain = afterSignal[1] - afterSignal[0];
-    const bool pass = fwdGain >= 0.02 && orderGain >= 0.02;
+    const double specificGain = afterSpecific[1] - afterSpecific[0];
+    const bool pass = fwdGain >= 0.02 && orderGain >= 0.02 && specificGain >= 0.02;
     std::printf("  cue of first item evokes second: learned %.3f vs untrained %.3f (gain %+.3f, need >= +0.020)\n",
                 afterForward[1], afterForward[0], fwdGain);
     std::printf("  forward minus backward:          learned %+.3f vs untrained %+.3f (gain %+.3f, need >= +0.020)\n",
                 afterSignal[1], afterSignal[0], orderGain);
+    std::printf("  own partner minus other pair's second: learned %+.3f vs untrained %+.3f (gain %+.3f, need >= +0.020)\n",
+                afterSpecific[1], afterSpecific[0], specificGain);
     std::printf("  diagnostic, during the cue: first evokes second %.3f vs untrained %.3f (gain %+.3f); "
                 "forward minus backward %+.3f vs %+.3f (gain %+.3f)\n",
                 forward[1], forward[0], forward[1] - forward[0], orderSignal[1], orderSignal[0],

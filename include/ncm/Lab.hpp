@@ -58,10 +58,10 @@ public:
             // While storing, surprise sets encoding mode. During recall the cue is familiar
             // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
             // motor path learns to predict (Stage 3) surprise cannot tell the two apart itself.
-            setMode(allowLearning ? float(1.0 - guess) : 0.0f);
+            setMode(allowLearning ? float(1.0 - guess) : 0.0f, false);
         } else {
             m_->clearSensoryInput();
-            setMode(silenceSuppressed_ ? 1.0f : 0.0f);
+            setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
 
         m_->step1D();
@@ -142,13 +142,14 @@ private:
     float gate_ = 0.0f; // learning signal with neuromodulator kinetics
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
 
-    // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): recall (lower M)
-    // takes effect at once, suppression (higher M) builds up gradually. After a familiar cue
-    // ends, memory circuits stay in recall mode briefly, so what comes next can play out;
-    // new input is first met in recall mode (recognize, then encode). 0 = instantaneous.
-    void setMode(float target) {
+    // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input
+    // ends, suppression builds up gradually, so memory circuits stay in recall mode briefly
+    // and what comes next can play out. While input is present the mode follows it at once:
+    // new material is encoded as it arrives (audit: gradual onset weakened new memories).
+    // 0 = instantaneous.
+    void setMode(float target, bool silence) {
         const float tau = cfg_.learning.mode_tau;
-        if (tau > 0.0f && target > mode_) mode_ += (target - mode_) / std::max(1.0f, tau);
+        if (silence && tau > 0.0f && target > mode_) mode_ += (target - mode_) / std::max(1.0f, tau);
         else mode_ = target;
         m_->setModulator(mode_);
     }

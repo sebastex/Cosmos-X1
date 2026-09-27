@@ -232,6 +232,8 @@ def stage1(cand, preset, seed):
         "forgetting": forgetting,
         "order_forward": gain_after("cue of first item evokes second:", out),
         "order_signal": gain_after("forward minus backward:", out),
+        "order_specific": gain_after("own partner minus other pair's second:", out),
+        "continual_before": gain_after("old memories, before new learning:", out),
         "checks_passed": len(re.findall(r"^\s+CP\d .*PASS$", out, re.M)),
         "gain": gain_after("specificity (own minus best other):", out),
         # Absolute recall quality of the learning matrix (not only its gain over the untrained
@@ -260,6 +262,7 @@ def score(s0, s1):
     fitness += 0.5 * clamp(s1["continual_old"] / 0.05) + 0.5 * clamp(s1["continual_new"] / 0.05)
     fitness -= max(0.0, s1["forgetting"] - 0.05) * 10.0
     fitness += 0.5 * clamp(s1["order_forward"] / 0.02) + 0.5 * clamp(s1["order_signal"] / 0.02)
+    fitness += 0.5 * clamp(s1.get("order_specific", 0.0) / 0.02)
     fitness += 0.5 * s1["checks_passed"]
     return fitness
 
