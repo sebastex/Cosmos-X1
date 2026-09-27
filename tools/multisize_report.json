@@ -1,0 +1,96 @@
+{
+  "params": {},
+  "results": [
+    {
+      "size": "small",
+      "seed": 1,
+      "stage0": false,
+      "suite": false,
+      "checks": [
+        "CP2 recall (3 memories)      PASS",
+        "CP3 capacity (8 memories)    PASS",
+        "CP4 efficiency               FAIL",
+        "CP5 streamed text            FAIL",
+        "CP6 continual learning       FAIL",
+        "CP7 early order              FAIL"
+      ],
+      "seconds": 358
+    },
+    {
+      "size": "small",
+      "seed": 2,
+      "stage0": false,
+      "suite": false,
+      "checks": [
+        "CP2 recall (3 memories)      PASS",
+        "CP3 capacity (8 memories)    FAIL",
+        "CP4 efficiency               FAIL",
+        "CP5 streamed text            FAIL",
+        "CP6 continual learning       FAIL",
+        "CP7 early order              FAIL"
+      ],
+      "seconds": 360
+    },
+    {
+      "size": "small",
+      "seed": 3,
+      "stage0": false,
+      "suite": false,
+      "checks": [
+        "CP2 recall (3 memories)      PASS",
+        "CP3 capacity (8 memories)    FAIL",
+        "CP4 efficiency               PASS",
+        "CP5 streamed text            FAIL",
+        "CP6 continual learning       FAIL",
+        "CP7 early order              FAIL"
+      ],
+      "seconds": 379
+    },
+    {
+      "size": "dev",
+      "seed": 1,
+      "stage0": false,
+      "suite": false,
+      "checks": [
+        "CP2 recall (3 memories)      PASS",
+        "CP3 capacity (8 memories)    PASS",
+        "CP4 efficiency               FAIL",
+        "CP5 streamed text            FAIL",
+        "CP6 continual learning       PASS",
+        "CP7 early order              FAIL"
+      ],
+      "seconds": 935
+    },
+    {
+      "size": "dev",
+      "seed": 2,
+      "stage0": false,
+      "suite": false,
+      "checks": [
+        "CP2 recall (3 memories)      PASS",
+        "CP3 capacity (8 memories)    FAIL",
+        "CP4 efficiency               FAIL",
+        "CP5 streamed text            FAIL",
+        "CP6 continual learning       FAIL",
+        "CP7 early order              FAIL"
+      ],
+      "seconds": 840
+    },
+    {
+      "size": "dev",
+      "seed": 3,
+      "stage0": false,
+      "suite": false,
+      "checks": [
+        "CP2 recall (3 memories)      PASS",
+        "CP3 capacity (8 memories)    PASS",
+        "CP4 efficiency               PASS",
+        "CP5 streamed text            FAIL",
+        "CP6 continual learning       PASS",
+        "CP7 early order              FAIL"
+      ],
+      "seconds": 841
+    }
+  ],
+  "pass": false
+}
