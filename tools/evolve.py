@@ -107,6 +107,9 @@ RATE_SPACE = {
     "encoding_suppression": (0.0, 1.0, "f", 0.95),
     "modulator_tau": (0.0, 60.0, "f", 0.0),
     "order_tau": (0.0, 30.0, "f", 0.0),  # order timing window (added after generation 3)
+    # Order needs a strong order term *and* a timing window (measured: order_gain 4 with
+    # order_tau 5 passes the early order check; either alone does not), so the range is wider.
+    "order_gain": (0.0, 8.0, "f", 0.5),
 }
 
 
@@ -286,6 +289,8 @@ def main():
     ap.add_argument("--reject-below", type=float, default=None,
                     help="extra quick-recall rejection threshold (off by default; the suite exits early itself)")
     ap.add_argument("--resume", action="store_true", help="continue from the best variants in the log")
+    ap.add_argument("--inject", default="",
+                    help="JSON list (or @file) of partial parameter dicts added to the first population")
     ap.add_argument("--regime", default="graded", choices=("graded", "firing", "rate"),
                     help="firing: search the all-or-none firing regime (own log and best file)")
     args = ap.parse_args()
@@ -323,6 +328,12 @@ def main():
             print(f"resuming at generation {first_gen} from {len(entries)} logged runs", flush=True)
     if population is None:
         population = [base] + [mutate(base, rng, 0.3) for _ in range(args.population - 1)]
+    if args.inject:
+        text = pathlib.Path(args.inject[1:]).read_text(encoding="utf-8") if args.inject.startswith("@") else args.inject
+        injected = [{k: d.get(k, population[0].get(k, SPACE[k][3])) for k in SPACE} for d in json.loads(text)]
+        # Injected variants replace the last (most exploratory) members of the population.
+        population = population[: max(0, len(population) - len(injected))] + injected
+        print(f"injected {len(injected)} variants", flush=True)
     verified_seeds = set()
 
     from concurrent.futures import ThreadPoolExecutor
