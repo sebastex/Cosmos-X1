@@ -114,7 +114,7 @@ int runContinualTest(const Config& cfg) {
     all.insert(all.end(), newItems.begin(), newItems.end());
     std::printf("CP6 continual learning: learn 3, recall, learn 3 more, recall all 6\n");
 
-    Comparison before, afterOld, afterNew;
+    Comparison before, afterOld, afterNew, afterOldOnly;
     for (int learning = 1; learning >= 0; --learning) {
         Session s(cfg, learning == 1);
         Patterns stored = storeAll(s, oldItems, kStore);
@@ -129,10 +129,19 @@ int runContinualTest(const Config& cfg) {
         const auto sim = lab::similarityMatrix(recalledAll, stored);
         (learning ? afterOld.learned : afterOld.untrained) = lab::specificity(sim, {0, 1, 2});
         (learning ? afterNew.learned : afterNew.untrained) = lab::specificity(sim, {3, 4, 5});
+        // Diagnostic: old cues against the old memories only (the same competitors as before),
+        // which separates erasure of old memories from interference by the new ones.
+        std::vector<std::vector<double>> oldOnly;
+        for (size_t k = 0; k < 3; ++k) oldOnly.emplace_back(sim[k].begin(), sim[k].begin() + 3);
+        (learning ? afterOldOnly.learned : afterOldOnly.untrained) = lab::specificity(oldOnly);
     }
     printComparison("old memories, before new learning:", before);
     printComparison("old memories, after new learning:", afterOld);
     printComparison("new memories:", afterNew);
+    printComparison("  diagnostic, old vs old only:", afterOldOnly);
+    std::printf("  diagnostic: erasure %+.3f (old vs old only), interference from new memories %+.3f\n",
+                before.learned.margin - afterOldOnly.learned.margin,
+                afterOldOnly.learned.margin - afterOld.learned.margin);
     const double forgetting = before.learned.margin - afterOld.learned.margin;
     const bool keeps = forgetting <= 0.05;
     std::printf("  forgetting of old memories: %+.3f (need <= +0.050): %s\n", forgetting, keeps ? "PASS" : "FAIL");

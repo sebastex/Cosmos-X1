@@ -1,22 +1,237 @@
 [
   {
     "params": {
-      "covariance": 0.5,
-      "encoding_suppression": 0.95
+      "soft_bound": 1.0
     },
-    "passes": 4,
+    "passes": 3,
     "of": 9,
-    "score": 0.2386666666666667,
+    "score": -0.09533333333333334,
     "rows": [
       {
         "seed": 1,
-        "capacity": 0.205,
+        "capacity": 0.075,
+        "capacity_pass": true,
+        "efficiency30": 0.02,
+        "efficiency_pass": false,
+        "continual_old": -0.118,
+        "continual_new": -0.222,
+        "forgetting": 0.281,
+        "continual_pass": false
+      },
+      {
+        "seed": 2,
+        "capacity": 0.009,
+        "capacity_pass": false,
+        "efficiency30": 0.004,
+        "efficiency_pass": false,
+        "continual_old": 0.017,
+        "continual_new": 0.02,
+        "forgetting": 0.032,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": 0.093,
+        "capacity_pass": true,
+        "efficiency30": 0.107,
+        "efficiency_pass": true,
+        "continual_old": 0.237,
+        "continual_new": -0.153,
+        "forgetting": 0.023,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {
+      "soft_bound": 1.0,
+      "learning_rate": 0.4
+    },
+    "passes": 4,
+    "of": 9,
+    "score": -0.12966666666666668,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.102,
+        "capacity_pass": true,
+        "efficiency30": 0.032,
+        "efficiency_pass": false,
+        "continual_old": 0.186,
+        "continual_new": 0.07,
+        "forgetting": 0.044,
+        "continual_pass": true
+      },
+      {
+        "seed": 2,
+        "capacity": 0.063,
+        "capacity_pass": true,
+        "efficiency30": -0.005,
+        "efficiency_pass": false,
+        "continual_old": -0.166,
+        "continual_new": 0.271,
+        "forgetting": 0.254,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": -0.087,
+        "capacity_pass": false,
+        "efficiency30": 0.169,
+        "efficiency_pass": true,
+        "continual_old": 0.013,
+        "continual_new": -0.361,
+        "forgetting": 0.078,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {
+      "soft_bound": 1.0,
+      "learning_rate": 0.6
+    },
+    "passes": 4,
+    "of": 9,
+    "score": -0.026999999999999996,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.059,
+        "capacity_pass": true,
+        "efficiency30": 0.033,
+        "efficiency_pass": false,
+        "continual_old": 0.213,
+        "continual_new": 0.093,
+        "forgetting": 0.016,
+        "continual_pass": true
+      },
+      {
+        "seed": 2,
+        "capacity": 0.07,
+        "capacity_pass": false,
+        "efficiency30": 0.055,
+        "efficiency_pass": true,
+        "continual_old": 0.023,
+        "continual_new": 0.192,
+        "forgetting": 0.096,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": -0.105,
+        "capacity_pass": false,
+        "efficiency30": 0.141,
+        "efficiency_pass": true,
+        "continual_old": -0.182,
+        "continual_new": -0.289,
+        "forgetting": 0.129,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {
+      "soft_bound": 0.5,
+      "learning_rate": 0.4
+    },
+    "passes": 3,
+    "of": 9,
+    "score": 0.06866666666666667,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.116,
+        "capacity_pass": true,
+        "efficiency30": 0.036,
+        "efficiency_pass": false,
+        "continual_old": 0.183,
+        "continual_new": 0.142,
+        "forgetting": 0.059,
+        "continual_pass": false
+      },
+      {
+        "seed": 2,
+        "capacity": 0.074,
+        "capacity_pass": true,
+        "efficiency30": 0.012,
+        "efficiency_pass": false,
+        "continual_old": 0.033,
+        "continual_new": 0.213,
+        "forgetting": 0.013,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": -0.12,
+        "capacity_pass": false,
+        "efficiency30": 0.164,
+        "efficiency_pass": true,
+        "continual_old": -0.103,
+        "continual_new": -0.15,
+        "forgetting": 0.104,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {
+      "learning_rate": 0.4
+    },
+    "passes": 3,
+    "of": 9,
+    "score": -0.01099999999999998,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.067,
+        "capacity_pass": true,
+        "efficiency30": 0.052,
+        "efficiency_pass": true,
+        "continual_old": 0.187,
+        "continual_new": 0.088,
+        "forgetting": 0.064,
+        "continual_pass": false
+      },
+      {
+        "seed": 2,
+        "capacity": -0.008,
+        "capacity_pass": false,
+        "efficiency30": 0.015,
+        "efficiency_pass": false,
+        "continual_old": 0.014,
+        "continual_new": 0.184,
+        "forgetting": 0.029,
+        "continual_pass": false
+      },
+      {
+        "seed": 3,
+        "capacity": -0.147,
+        "capacity_pass": false,
+        "efficiency30": 0.139,
+        "efficiency_pass": true,
+        "continual_old": -0.151,
+        "continual_new": -0.122,
+        "forgetting": 0.103,
+        "continual_pass": false
+      }
+    ]
+  },
+  {
+    "params": {},
+    "passes": 4,
+    "of": 9,
+    "score": 0.22833333333333336,
+    "rows": [
+      {
+        "seed": 1,
+        "capacity": 0.208,
         "capacity_pass": true,
         "efficiency30": 0.024,
         "efficiency_pass": false,
         "continual_old": 0.198,
-        "continual_new": 0.133,
-        "forgetting": 0.007,
+        "continual_new": 0.14,
+        "forgetting": 0.008,
         "continual_pass": true
       },
       {
@@ -25,9 +240,9 @@
         "capacity_pass": true,
         "efficiency30": 0.005,
         "efficiency_pass": false,
-        "continual_old": 0.031,
-        "continual_new": 0.151,
-        "forgetting": 0.073,
+        "continual_old": 0.023,
+        "continual_new": 0.152,
+        "forgetting": 0.08,
         "continual_pass": false
       },
       {
@@ -36,140 +251,9 @@
         "capacity_pass": false,
         "efficiency30": 0.137,
         "efficiency_pass": true,
-        "continual_old": 0.141,
-        "continual_new": -0.125,
-        "forgetting": 0.001,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "covariance": 0.5,
-      "encoding_suppression": 0.95,
-      "winners3": 2
-    },
-    "passes": 3,
-    "of": 9,
-    "score": 0.12966666666666668,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.191,
-        "capacity_pass": true,
-        "efficiency30": 0.007,
-        "efficiency_pass": false,
-        "continual_old": 0.253,
-        "continual_new": 0.14,
-        "forgetting": 0.079,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": 0.058,
-        "capacity_pass": true,
-        "efficiency30": 0.035,
-        "efficiency_pass": false,
-        "continual_old": -0.045,
-        "continual_new": 0.283,
-        "forgetting": 0.109,
-        "continual_pass": false
-      },
-      {
-        "seed": 3,
-        "capacity": 0.02,
-        "capacity_pass": false,
-        "efficiency30": 0.071,
-        "efficiency_pass": true,
-        "continual_old": 0.161,
-        "continual_new": -0.276,
-        "forgetting": 0.065,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {
-      "covariance": 0.5,
-      "encoding_suppression": 0.95,
-      "order_gain": 0.2
-    },
-    "passes": 4,
-    "of": 9,
-    "score": 0.233,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.193,
-        "capacity_pass": true,
-        "efficiency30": 0.025,
-        "efficiency_pass": false,
-        "continual_old": 0.177,
-        "continual_new": 0.118,
-        "forgetting": 0.009,
-        "continual_pass": true
-      },
-      {
-        "seed": 2,
-        "capacity": 0.091,
-        "capacity_pass": true,
-        "efficiency30": 0.006,
-        "efficiency_pass": false,
-        "continual_old": 0.032,
-        "continual_new": 0.151,
-        "forgetting": 0.078,
-        "continual_pass": false
-      },
-      {
-        "seed": 3,
-        "capacity": -0.032,
-        "capacity_pass": false,
-        "efficiency30": 0.12,
-        "efficiency_pass": true,
-        "continual_old": 0.171,
-        "continual_new": -0.168,
-        "forgetting": 0.019,
-        "continual_pass": false
-      }
-    ]
-  },
-  {
-    "params": {},
-    "passes": 2,
-    "of": 9,
-    "score": 0.16966666666666666,
-    "rows": [
-      {
-        "seed": 1,
-        "capacity": 0.17,
-        "capacity_pass": true,
-        "efficiency30": 0.021,
-        "efficiency_pass": false,
-        "continual_old": 0.213,
-        "continual_new": 0.199,
-        "forgetting": 0.066,
-        "continual_pass": false
-      },
-      {
-        "seed": 2,
-        "capacity": -0.013,
-        "capacity_pass": false,
-        "efficiency30": -0.006,
-        "efficiency_pass": false,
-        "continual_old": 0.039,
-        "continual_new": 0.014,
-        "forgetting": 0.015,
-        "continual_pass": false
-      },
-      {
-        "seed": 3,
-        "capacity": -0.081,
-        "capacity_pass": false,
-        "efficiency30": 0.115,
-        "efficiency_pass": true,
-        "continual_old": 0.13,
-        "continual_new": -0.268,
-        "forgetting": 0.056,
+        "continual_old": 0.139,
+        "continual_new": -0.117,
+        "forgetting": 0.004,
         "continual_pass": false
       }
     ]
