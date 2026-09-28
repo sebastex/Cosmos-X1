@@ -40,6 +40,8 @@ int runDriftTest(const Config& cfg, const std::string& item, uint64_t learnAfter
 int runContextTest(const Config& cfg); // diagnostic: context coding of shared letters
 int runProfileTest(const Config& cfg); // diagnostic: memory profile under harsher conditions
 int runRetentionTest(const Config& cfg); // CP6b: retention of 8 memories while 16 more are learned
+int runStreamDiagTest(const Config& cfg); // diagnostic: learning signal and recall over time for streamed words
+int runSettleTest(const Config& cfg, const std::string& item); // diagnostic: settling and fading time
 int runOccupancyTest(const Config& cfg, const std::string& item); // diagnostic: active voxels per depth layer
 // Multiplies every test duration (storing, gaps, cues) by `scale` (default 1).
 void setTestTimeScale(double scale);

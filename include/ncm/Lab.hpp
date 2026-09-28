@@ -80,6 +80,8 @@ public:
                 modulator = gate_;
             }
             if (learning_ && allowLearning) {
+                modSum_ += modulator;
+                ++modCount_;
                 m_->learn(modulator);
                 lastModulator_ = modulator;
             }
@@ -128,6 +130,9 @@ public:
     const NeuralCellularMatrix& matrix() const { return *m_; }
     const CharacterCodebook& codebook() const { return codebook_; }
     float lastModulator() const { return lastModulator_; }
+    // Mean learning signal over the learning steps since the last reset (diagnostic).
+    double meanModulator() const { return modCount_ ? modSum_ / double(modCount_) : 0.0; }
+    void resetModulatorMean() { modSum_ = 0.0; modCount_ = 0; }
 
 private:
     Config cfg_;
@@ -140,6 +145,8 @@ private:
     uint64_t surpriseCount_ = 0;
     float lastModulator_ = 0.0f;
     float gate_ = 0.0f; // learning signal with neuromodulator kinetics
+    double modSum_ = 0.0;
+    uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input

@@ -663,4 +663,111 @@ int runOccupancyTest(const Config& cfg, const std::string& item) {
     return 0;
 }
 
+// Diagnostic for streamed words: the learning signal while each word streams in, and recall
+// over time (own similarity and best other, in 10-tick windows of the cue) for the learning
+// matrix and its untrained twin, plus per-field own similarity over the recorded window.
+int runStreamDiagTest(const Config& cfg) {
+    const std::vector<std::string> items = {"apple ", "river ", "stone "};
+    std::printf("Streamed-word diagnostic\n");
+    std::vector<std::string> rows[2];
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        Patterns stored;
+        for (const auto& item : items) {
+            s.resetModulatorMean();
+            stored.push_back(s.present(item, kStore, 1.0f, true, kStore / 2));
+            if (learning == 1)
+                std::printf("  storing \"%s\": mean learning signal %.3f\n", item.c_str(), s.meanModulator());
+            s.silence(kGap, true);
+        }
+        const size_t perField = stored[0].size() / kFields;
+        for (size_t k = 0; k < items.size(); ++k) {
+            char line[256];
+            int n = std::snprintf(line, sizeof(line), "    %-6s", items[k].c_str());
+            std::vector<double> window, total;
+            for (uint64_t t = 0; t < kCue; ++t) {
+                auto chunk = s.present(items[k].substr(t % items[k].size(), 1), 1, kCueFraction, false, 0);
+                if (window.size() != chunk.size()) window.assign(chunk.size(), 0.0);
+                for (size_t i = 0; i < chunk.size(); ++i) window[i] += chunk[i];
+                if (t >= kCue / 2) {
+                    if (total.size() != chunk.size()) total.assign(chunk.size(), 0.0);
+                    for (size_t i = 0; i < chunk.size(); ++i) total[i] += chunk[i];
+                }
+                if (t % 10 == 9) {
+                    double own = lab::cosine(window, stored[k]), other = -1.0;
+                    for (size_t j = 0; j < items.size(); ++j)
+                        if (j != k) other = std::max(other, lab::cosine(window, stored[j]));
+                    n += std::snprintf(line + n, sizeof(line) - size_t(n), " %.2f/%.2f", own, other);
+                    std::fill(window.begin(), window.end(), 0.0);
+                }
+            }
+            n += std::snprintf(line + n, sizeof(line) - size_t(n), " | fields");
+            for (uint32_t f = 0; f < kFields; ++f)
+                n += std::snprintf(line + n, sizeof(line) - size_t(n), " %.2f",
+                                   lab::cosine(total, stored[k], f * perField, (f + 1) * perField));
+            rows[learning].push_back(line);
+            s.silence(kGap, false);
+        }
+    }
+    for (int l = 1; l >= 0; --l) {
+        std::printf("  %s: own/best-other per 10-tick window of the cue | own per field (recorded window)\n",
+                    l ? "LEARNED" : "UNTRAINED");
+        for (const auto& r : rows[l]) std::printf("%s\n", r.c_str());
+    }
+    return 0;
+}
+
+// Settling time (untrained): a letter is held for 150 ticks. The steady pattern is the mean 3D
+// state over ticks 110-150. Settle = first tick from which the state's similarity to the
+// steady pattern stays >= 0.9; per field too. Fade = ticks after the input stops until total
+// activity falls below 5% of its steady level. Also reports how deep activity reaches.
+int runSettleTest(const Config& cfg, const std::string& item) {
+    Session s(cfg, false);
+    const uint64_t on = 150, off = 150;
+    std::vector<std::vector<double>> states;
+    for (uint64_t t = 0; t < on; ++t) {
+        std::vector<double> now;
+        s.present(item, 1, 1.0f, false, 0);
+        s.accumulate(now);
+        states.push_back(now);
+    }
+    std::vector<double> steady(states[0].size(), 0.0);
+    for (uint64_t t = 110; t < on; ++t)
+        for (size_t i = 0; i < steady.size(); ++i) steady[i] += states[t][i];
+    const size_t perField = steady.size() / kFields;
+    auto settleTick = [&](size_t b, size_t e) {
+        int64_t last = -1;
+        for (uint64_t t = 0; t < on; ++t)
+            if (lab::cosine(states[t], steady, b, e) < 0.9) last = int64_t(t);
+        return last + 1;
+    };
+    double steadyTotal = 0.0;
+    for (double x : steady) steadyTotal += x;
+    steadyTotal /= 40.0;
+    int64_t fade = -1;
+    for (uint64_t t = 0; t < off; ++t) {
+        std::vector<double> now;
+        s.silence(1, false, 0);
+        s.accumulate(now);
+        double total = 0.0;
+        for (double x : now) total += x;
+        if (total < 0.05 * steadyTotal) {
+            fade = int64_t(t) + 1;
+            break;
+        }
+    }
+    std::printf("Settling: \"%s\" held %llu ticks (untrained), field side %u\n", item.c_str(), (unsigned long long)on,
+                cfg.field_dim);
+    std::printf("  settle tick (similarity to steady >= 0.9 from then on): all %lld |", (long long)settleTick(0, steady.size()));
+    for (uint32_t f = 0; f < kFields; ++f)
+        std::printf(" field %u %lld", f, (long long)settleTick(f * perField, (f + 1) * perField));
+    std::printf("\n  fade ticks after input stops (activity < 5%% of steady): %lld\n", (long long)fade);
+    std::printf("  similarity to steady, every 5 ticks (all fields):");
+    for (uint64_t t = 4; t < on; t += 5) std::printf(" %.2f", lab::cosine(states[t], steady));
+    std::printf("\n  consecutive-tick similarity, last 20 ticks:");
+    for (uint64_t t = on - 20; t < on; ++t) std::printf(" %.2f", lab::cosine(states[t], states[t - 1]));
+    std::printf("\n");
+    return 0;
+}
+
 } // namespace ncm

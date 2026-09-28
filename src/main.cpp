@@ -175,6 +175,8 @@ int main(int argc, char** argv) {
     if (opt.test == "context") return ncm::runContextTest(cfg);
     if (opt.test == "profile") return ncm::runProfileTest(cfg);
     if (opt.test == "retention") return ncm::runRetentionTest(cfg);
+    if (opt.test == "streamdiag") return ncm::runStreamDiagTest(cfg);
+    if (opt.test == "settle") return ncm::runSettleTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);
     if (opt.test == "occupancy") return ncm::runOccupancyTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);
     if (opt.test == "drift") return ncm::runDriftTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0], opt.storeTicks);
     if (opt.test == "suite") return ncm::runMemorySuite(cfg, opt.earlyExit);
