@@ -38,6 +38,7 @@ int runContinualTest(const Config& cfg);  // CP6: new learning does not erase ol
 int runOrderTest(const Config& cfg);      // CP7: early order signal
 int runDriftTest(const Config& cfg, const std::string& item, uint64_t learnAfter = 0); // diagnostic: recall over time
 int runContextTest(const Config& cfg); // diagnostic: context coding of shared letters
+int runProfileTest(const Config& cfg); // diagnostic: memory profile under harsher conditions
 // All of the above plus the recall test. With earlyExit, stops after the recall test when
 // learning makes recall clearly worse than an untrained matrix (saves compute in searches).
 int runMemorySuite(const Config& cfg, bool earlyExit = false);

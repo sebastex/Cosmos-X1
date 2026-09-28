@@ -4,6 +4,8 @@
 // specific. Bars are fixed in advance.
 
 #include <cmath>
+#include <numeric>
+#include <algorithm>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -444,6 +446,138 @@ int runContextTest(const Config& cfg) {
                     }
             }
             std::printf("    field %u: same word %.3f, different words %.3f\n", f, self, cross / nc);
+        }
+    }
+    return 0;
+}
+
+// Memory profile (harsher, more informative than the pass/fail checks): what recall actually
+// produces. A: recall of 8 memories from 20/40/60/80% cues (accuracy = share of cues whose best
+// match is their own memory). B: conflicting cues (40% of one memory + 40% of another): clean
+// choice or blend. C: are intrusions between memories related to how similar their inputs
+// were (generalization) or unrelated (noise)? D: forgetting curve of 8 memories while 4, 8 and
+// 16 more are learned. Learning matrix vs untrained twin throughout.
+namespace {
+
+struct RecallStats {
+    double accuracy = 0.0, own = 0.0, other = 0.0;
+};
+
+RecallStats recallStats(Session& s, const std::string& items, const Patterns& stored, float fraction) {
+    RecallStats r;
+    const size_t n = items.size();
+    for (size_t k = 0; k < n; ++k) {
+        const auto rec = s.present(std::string(1, items[k]), kCue, fraction, false, kCue / 2);
+        s.silence(kGap, false);
+        double own = lab::cosine(rec, stored[k]), best = -1.0;
+        for (size_t j = 0; j < stored.size(); ++j)
+            if (j != k) best = std::max(best, lab::cosine(rec, stored[j]));
+        r.accuracy += (own > best) ? 1.0 : 0.0;
+        r.own += own;
+        r.other += best;
+    }
+    r.accuracy /= double(n);
+    r.own /= double(n);
+    r.other /= double(n);
+    return r;
+}
+
+std::vector<double> presentMixed(Session& s, char a, char b, float fraction, uint64_t seed) {
+    std::vector<double> acc;
+    for (uint64_t t = 0; t < kCue; ++t) {
+        auto cue = lab::thin(s.codebook().fingerprint(char32_t(uint8_t(a))), fraction, seed, a);
+        const auto other = lab::thin(s.codebook().fingerprint(char32_t(uint8_t(b))), fraction, seed, b);
+        cue.insert(cue.end(), other.begin(), other.end());
+        std::sort(cue.begin(), cue.end());
+        cue.erase(std::unique(cue.begin(), cue.end()), cue.end());
+        s.tick(&cue, nullptr, false);
+        if (t >= kCue / 2) s.accumulate(acc);
+    }
+    s.silence(kGap, false);
+    return acc;
+}
+
+} // namespace
+
+int runProfileTest(const Config& cfg) {
+    const std::string items = "akzmqetw";
+    std::printf("Memory profile: %zu memories, learning matrix vs untrained twin\n", items.size());
+    Patterns storedBoth[2];
+    std::vector<std::vector<double>> sim40[2];
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        std::vector<std::string> list;
+        for (char c : items) list.emplace_back(1, c);
+        const Patterns stored = storeAll(s, list, kStore);
+        storedBoth[learning] = stored;
+        std::printf("  %s\n", learning ? "LEARNED" : "UNTRAINED");
+        std::printf("    A. cue strength -> accuracy (right memory is best match), own similarity, best other\n");
+        for (float f : {0.2f, 0.4f, 0.6f, 0.8f}) {
+            const RecallStats r = recallStats(s, items, stored, f);
+            std::printf("       %3.0f%% cue: accuracy %3.0f%%  own %.3f  best other %.3f\n", 100.0 * f, 100.0 * r.accuracy,
+                        r.own, r.other);
+        }
+        // 40% cue similarity table for C.
+        sim40[learning].assign(items.size(), std::vector<double>(items.size(), 0.0));
+        for (size_t k = 0; k < items.size(); ++k) {
+            const auto rec = s.present(std::string(1, items[k]), kCue, 0.4f, false, kCue / 2);
+            s.silence(kGap, false);
+            for (size_t j = 0; j < items.size(); ++j) sim40[learning][k][j] = lab::cosine(rec, stored[j]);
+        }
+        std::printf("    B. conflicting cues (40%% of X + 40%% of Y): similarity to X, to Y, best other\n");
+        const char pairs[4][2] = {{'a', 'k'}, {'z', 'm'}, {'q', 'e'}, {'t', 'w'}};
+        for (const auto& pr : pairs) {
+            const auto rec = presentMixed(s, pr[0], pr[1], 0.4f, cfg.itemSeed());
+            const size_t ix = items.find(pr[0]), iy = items.find(pr[1]);
+            double best = -1.0;
+            for (size_t j = 0; j < items.size(); ++j)
+                if (j != ix && j != iy) best = std::max(best, lab::cosine(rec, stored[j]));
+            std::printf("       %c+%c: %.3f %.3f  other %.3f\n", pr[0], pr[1], lab::cosine(rec, stored[ix]),
+                        lab::cosine(rec, stored[iy]), best);
+        }
+    }
+    // C: intrusions vs input similarity (untrained stored patterns = what the inputs look like).
+    {
+        std::vector<double> xs, ys;
+        for (size_t k = 0; k < items.size(); ++k)
+            for (size_t j = 0; j < items.size(); ++j)
+                if (j != k) {
+                    xs.push_back(lab::cosine(storedBoth[0][k], storedBoth[0][j]));
+                    ys.push_back(sim40[1][k][j] - sim40[0][k][j]); // intrusion added by learning
+                }
+        const double mx = std::accumulate(xs.begin(), xs.end(), 0.0) / double(xs.size());
+        const double my = std::accumulate(ys.begin(), ys.end(), 0.0) / double(ys.size());
+        double num = 0.0, dx = 0.0, dy = 0.0;
+        for (size_t i = 0; i < xs.size(); ++i) {
+            num += (xs[i] - mx) * (ys[i] - my);
+            dx += (xs[i] - mx) * (xs[i] - mx);
+            dy += (ys[i] - my) * (ys[i] - my);
+        }
+        std::printf("  C. intrusion added by learning vs input similarity of the two memories: correlation %+.2f "
+                    "(mean added intrusion %+.3f)\n", (dx > 0 && dy > 0) ? num / std::sqrt(dx * dy) : 0.0, my);
+    }
+    // D: forgetting curve.
+    {
+        const std::string batches[3] = {"bdfg", "hjlp", "nosuvxyc"};
+        for (int learning = 1; learning >= 0; --learning) {
+            Session s(cfg, learning == 1);
+            std::vector<std::string> list;
+            for (char c : items) list.emplace_back(1, c);
+            const Patterns stored = storeAll(s, list, kStore);
+            std::printf("  D. forgetting curve (%s): 8 old memories, 40%% cues\n", learning ? "learned" : "untrained");
+            RecallStats r = recallStats(s, items, stored, 0.4f);
+            std::printf("       after   0 new: accuracy %3.0f%%  own %.3f  best other %.3f\n", 100.0 * r.accuracy, r.own,
+                        r.other);
+            size_t added = 0;
+            for (const auto& b : batches) {
+                std::vector<std::string> more;
+                for (char c : b) more.emplace_back(1, c);
+                storeAll(s, more, kStore);
+                added += b.size();
+                r = recallStats(s, items, stored, 0.4f);
+                std::printf("       after %3zu new: accuracy %3.0f%%  own %.3f  best other %.3f\n", added,
+                            100.0 * r.accuracy, r.own, r.other);
+            }
         }
     }
     return 0;
