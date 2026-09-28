@@ -143,6 +143,7 @@ private:
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
+    std::vector<float> voxelGain_; // local gain control: per-voxel gain on incoming signals
 
     // Shared rules per level (evolved in Stage 5): row-major [out][in] channel matrices.
     AVec<float> W1_; // 3 offsets (left, self, right) x C1 x C1

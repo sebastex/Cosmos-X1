@@ -216,6 +216,12 @@ struct Config {
     float agc_rate = 0.0f;  // per 3D tick, relative adjustment toward the target (off by default)
     float agc_min = 0.25f;
     float agc_max = 16.0f;
+    // Local gain control: 1 = each voxel adjusts its own gain from its neighbourhood (radius
+    // agc_radius) instead of one gain per field; silent neighbourhoods relax the gain toward 1
+    // at agc_relax per 3D tick. Scale- and growth-safe (no field-wide statistic).
+    float agc_local = 0.0f;
+    float agc_relax = 0.02f;
+    uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in
     // silence. 1 = fatigue independent of mode.

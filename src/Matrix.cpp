@@ -232,6 +232,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     drive2_.assign(Q_, 0.0f);
     drive3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
+    voxelGain_.assign(V_, 1.0f);
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
@@ -638,7 +639,8 @@ void NeuralCellularMatrix::step3D() {
         const uint32_t f = uint32_t(v / Vf_);
 
         float in[C3] = {};
-        const float afferentGain = fieldGain_[f]; // gain control scales incoming signals only
+        // Gain control scales incoming signals only: per voxel (local) or per field.
+        const float afferentGain = cfg_.agc_local > 0.5f ? voxelGain_[v] : fieldGain_[f];
         const float* w = W3_.data() + v * 27 * C3 * C3;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
@@ -806,7 +808,50 @@ void NeuralCellularMatrix::step3D() {
     // share of clearly firing voxels (strongest channel at or above the active level;
     // faint traces do not count). Multiplicative and bounded. With no input the field stays
     // silent whatever its gain, because only incoming signals are scaled.
-    if (cfg_.agc_rate > 0.0f) {
+    // Local gain control: each voxel adjusts its own gain toward the target share of firing
+    // voxels in its neighbourhood (radius agc_radius); where the neighbourhood is silent the
+    // gain relaxes back toward 1. No field-wide statistic, so a cell sees the same local rule
+    // at any size and when the matrix grows.
+    if (cfg_.agc_rate > 0.0f && cfg_.agc_local > 0.5f) {
+        const float level = lp.active_level;
+        std::vector<uint8_t> firing(V_, 0), anything(V_, 0);
+#pragma omp parallel for schedule(static)
+        for (int64_t vi = 0; vi < voxels; ++vi) {
+            const float* cell = out + size_t(vi) * C3;
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, cell[c]);
+            firing[size_t(vi)] = strongest >= level;
+            anything[size_t(vi)] = strongest > 0.0f;
+        }
+        const int RA = int(std::min<uint32_t>(cfg_.agc_radius, 4));
+        const float relax = std::clamp(cfg_.agc_relax, 0.0f, 1.0f);
+#pragma omp parallel for schedule(dynamic, 256)
+        for (int64_t vi = 0; vi < voxels; ++vi) {
+            const size_t v = size_t(vi);
+            const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
+            const uint32_t f = uint32_t(v / Vf_);
+            uint32_t count = 0, active = 0;
+            bool heard = false;
+            for (int dz = -RA; dz <= RA; ++dz)
+                for (int dy = -RA; dy <= RA; ++dy)
+                    for (int dx = -RA; dx <= RA; ++dx) {
+                        const int nx = int(x) + dx, ny = int(y) + dy, nz = int(z) + dz;
+                        if (nx < 0 || ny < 0 || nz < 0 || nx >= int(N) || ny >= int(N) || nz >= int(N)) continue;
+                        const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
+                        ++count;
+                        active += firing[vn];
+                        heard = heard || anything[vn];
+                    }
+            float& g = voxelGain_[v];
+            if (!heard) {
+                g += (1.0f - g) * relax;
+                continue;
+            }
+            const float share = float(active) / float(std::max<uint32_t>(1, count));
+            const float error = (target - share) / std::max(target, 1e-6f);
+            g = std::clamp(g * std::exp(cfg_.agc_rate * std::clamp(error, -1.0f, 1.0f)), cfg_.agc_min, cfg_.agc_max);
+        }
+    } else if (cfg_.agc_rate > 0.0f) {
         const float level = lp.active_level;
         for (uint32_t f = 0; f < kFields; ++f) {
             size_t active = 0;
