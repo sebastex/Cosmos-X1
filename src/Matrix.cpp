@@ -233,6 +233,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     drive3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
     voxelGain_.assign(V_, 1.0f);
+    if (cfg.learning.sheet_rate > 0.0f) P2_.assign(Q_ * C2 * C2, 0.0f);
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
@@ -488,6 +489,8 @@ void NeuralCellularMatrix::step2D() {
     float* out = s2_.next.data();
     float* theta = s2_.theta.data();
     const float gd = cfg_.downward_gain;
+    const float rec2 = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) *
+                                  std::clamp(modulator_, 0.0f, 1.0f);
     const LevelParams lp = cfg_.level2;
     const float target = cfg_.target_activity;
     const float inh = -cfg_.inhibitory_strength;
@@ -520,6 +523,8 @@ void NeuralCellularMatrix::step2D() {
         const int sy = int(cell / S), sx = int(cell % S);
 
         float in[C2] = {};
+        float neighbours[C2] = {}; // summed excitatory neighbour state (input to sheet learning)
+        bool anyNeighbour = false;
         for (int dy = -1; dy <= 1; ++dy)
             for (int dx = -1; dx <= 1; ++dx) {
                 const int ny = sy + dy, nx = sx + dx;
@@ -530,7 +535,14 @@ void NeuralCellularMatrix::step2D() {
                 // Self-persistence is not a synapse; lateral inputs carry the sender's sign.
                 const float sign = (o == 4 || !inhib2_[qn]) ? 1.0f : inh;
                 matvecAdd(W2_.data() + size_t(o) * C2 * C2, s2 + qn * C2, in, C2, C2, sign);
+                if (o != 4 && !inhib2_[qn]) {
+                    addScaled(s2 + qn * C2, neighbours, C2, 1.0f);
+                    anyNeighbour = true;
+                }
             }
+        // Sheet learning: a learned block from the cell's summed neighbourhood (same Hebbian rule
+        // as the 3D level), transmitted at the encoding/recall mode like other learned links.
+        if (!P2_.empty() && anyNeighbour) matvecAdd(P2_.data() + q * C2 * C2, neighbours, in, C2, C2, rec2);
         if (!isSilent(s2 + q * C2, C2)) matvecAdd(M2_.data() + v * C2 * C2, s2 + q * C2, in, C2, C2, 1.0f);
         // Upward summary with divisive normalization: scaled by 1/sqrt(active line cells), so
         // a streamed character (one active cell per line) and a held one (a full line) drive
@@ -1096,6 +1108,48 @@ void NeuralCellularMatrix::learn(float modulator) {
     // (previous state -> current state), averaged over the sheet, with Oja's bound and
     // the same synaptic-scaling budget as every other plastic connection. (Uncapped, it
     // grew until the sheets sustained their own activity and pulled memories together.)
+    // Sheet learning: each active sheet cell associates its state with its summed
+    // excitatory neighbourhood (plain Hebbian + order term), capped by its own budget.
+    if (!P2_.empty()) {
+        const float sheetRate = rate * cfg_.learning.sheet_rate;
+        const float sheetBudget = std::max(0.0f, cfg_.learning.sheet_budget);
+        const float* s2c = s2_.cur.data();
+        const float* s2p = s2_.next.data();
+        const uint32_t S = S_;
+        const size_t SS = SS_;
+        const int64_t cells = int64_t(Q_);
+#pragma omp parallel for schedule(dynamic, 256)
+        for (int64_t qi = 0; qi < cells; ++qi) {
+            const size_t q = size_t(qi);
+            const float* post2 = s2c + q * C2;
+            const float* pre2 = s2p + q * C2;
+            if (!anyActive(post2, pre2, C2)) continue;
+            const size_t v = q / SS, cell = q % SS;
+            const int sy = int(cell / S), sx = int(cell % S);
+            float nCur[C2] = {}, nPrev[C2] = {};
+            for (int dy = -1; dy <= 1; ++dy)
+                for (int dx = -1; dx <= 1; ++dx) {
+                    if (dx == 0 && dy == 0) continue;
+                    const int ny = sy + dy, nx = sx + dx;
+                    if (ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
+                    const size_t qn = v * SS + size_t(ny) * S + size_t(nx);
+                    if (inhib2_[qn]) continue;
+                    addScaled(s2c + qn * C2, nCur, C2, 1.0f);
+                    addScaled(s2p + qn * C2, nPrev, C2, 1.0f);
+                }
+            float* block = P2_.data() + q * C2 * C2;
+            hebbianBlock<C2>(block, post2, pre2, nCur, nPrev, 0.0f, 0.0f, sheetRate, lambda, 0.0f, nullptr, nullptr,
+                             post2, nCur, 1.0f, nullptr);
+            for (uint32_t a = 0; a < C2; ++a) {
+                float* row = block + size_t(a) * C2;
+                float total = 0.0f;
+                for (uint32_t b = 0; b < C2; ++b) total += row[b];
+                if (total > sheetBudget)
+                    for (uint32_t b = 0; b < C2; ++b) row[b] *= sheetBudget / total;
+            }
+        }
+    }
+
     const float modRate = std::max(0.0f, cfg_.learning.modulation_rate);
     if (modRate > 0.0f) {
         const float* s2 = s2_.cur.data();

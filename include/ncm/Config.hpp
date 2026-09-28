@@ -138,6 +138,10 @@ struct LearningParams {
     // upward at this rate per learning step and has its own budget. Old memories persist in the
     // slow part when new learning reshapes the fast part, without slowing new learning.
     // 0 = off (no slow part).
+    // Sheet learning: the 2D level learns too (same Hebbian rule), so detail inside a voxel
+    // (e.g. streamed letters) can be stored. Learning-rate multiplier; 0 = off.
+    float sheet_rate = 0.0f;
+    float sheet_budget = 0.5f; // per output channel of each sheet cell
     float consolidation_rate = 0.0f;
     float consolidated_budget = 0.5f; // per output channel, like plastic_budget
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)

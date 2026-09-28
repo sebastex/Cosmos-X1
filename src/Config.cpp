@@ -134,6 +134,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"hetero_ltd", &c.learning.hetero_ltd},
         {"presynaptic_bound", &c.learning.presynaptic_bound},
         {"consolidation_rate", &c.learning.consolidation_rate},
+        {"sheet_rate", &c.learning.sheet_rate},
+        {"sheet_budget", &c.learning.sheet_budget},
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"fatigue_recall", &c.fatigue_recall},
         {"fatigue_divisive", &c.fatigue_divisive},
