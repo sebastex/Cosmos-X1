@@ -47,6 +47,9 @@ const std::vector<std::string>& evolvedRule() {
         // Two winners per competition neighbourhood: density ~2% (the sparse target) at every
         // size with the volume projection (4 winners gave ~4%).
         "winners3=2",
+        // Input-field depth: interior Input voxels hear random sensory-face voxels, so the Input
+        // field uses its whole volume too (helps the bigger matrix most).
+        "input_depth_spread=4", "input_depth_gain=0.2",
         "channel_winners3=4",
         "covariance=0.2356",
         "downward_gain=0.0224",
