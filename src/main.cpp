@@ -39,7 +39,8 @@ struct Options {
     bool silenceRecall = false; // diagnostic: full-strength recall mode during silence
     bool earlyExit = false;     // suite: stop after recall if learning clearly hurts it
     uint64_t storeTicks = 0;    // recall test: exposure per stored item (0 = default)
-    float cueFraction = 0.0f;   // recall test: share of the fingerprint kept in cues (0 = default)
+    float cueFraction = 0.0f;
+    double timeScale = 1.0;     // tests: multiplies storing, gap and cue durations   // recall test: share of the fingerprint kept in cues (0 = default)
     std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
 };
@@ -75,6 +76,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--early-exit") o.earlyExit = true;
         else if (a == "--store-ticks") o.storeTicks = std::stoull(value());
         else if (a == "--cue-fraction") o.cueFraction = std::stof(value());
+        else if (a == "--time-scale") o.timeScale = std::stod(value());
         else if (a == "--patterns") {
             o.patterns.clear();
             std::string list = value(), item;
@@ -144,6 +146,7 @@ int main(int argc, char** argv) {
         return 2;
     }
     if (opt.seedSet) cfg.seed = opt.seed;
+    ncm::setTestTimeScale(opt.timeScale);
 
     if (opt.test == "recall") {
         std::printf("COSMOS X1: NEURAL CELLULAR MATRIX, preset %s\n", opt.preset.c_str());
@@ -154,6 +157,9 @@ int main(int argc, char** argv) {
         if (!opt.patterns.empty()) ro.patterns = opt.patterns;
         if (opt.storeTicks > 0) ro.storeTicks = opt.storeTicks;
         if (opt.cueFraction > 0.0f) ro.cueFraction = opt.cueFraction;
+        ro.storeTicks = uint64_t(double(ro.storeTicks) * opt.timeScale + 0.5);
+        ro.gapTicks = uint64_t(double(ro.gapTicks) * opt.timeScale + 0.5);
+        ro.cueTicks = uint64_t(double(ro.cueTicks) * opt.timeScale + 0.5);
         return ncm::runRecallTest(cfg, ro);
     }
     if (opt.test == "reliability") {

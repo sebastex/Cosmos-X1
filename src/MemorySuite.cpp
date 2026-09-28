@@ -19,9 +19,13 @@ namespace {
 using lab::Session;
 using lab::Specificity;
 
-constexpr uint64_t kStore = 120; // 1D ticks per stored item
-constexpr uint64_t kGap = 60;    // silence between items
-constexpr uint64_t kCue = 60;    // 1D ticks per cue
+// Test durations in 1D ticks, all multiplied by the test time scale (setTestTimeScale): a
+// bigger matrix takes longer to settle, so tests of scale invariance stretch them with size.
+uint64_t kStore = 120; // per stored item
+uint64_t kGap = 60;    // silence between items
+uint64_t kCue = 60;    // per cue
+double gScale = 1.0;
+uint64_t T(uint64_t ticks) { return uint64_t(double(ticks) * gScale + 0.5); }
 constexpr float kCueFraction = 0.4f;
 constexpr double kBar = 0.05;    // required specificity gain over the untrained twin
 
@@ -71,6 +75,13 @@ Comparison storeAndRecall(const Config& cfg, const std::vector<std::string>& ite
 
 } // namespace
 
+void setTestTimeScale(double scale) {
+    gScale = scale > 0.0 ? scale : 1.0;
+    kStore = T(120);
+    kGap = T(60);
+    kCue = T(60);
+}
+
 // CP3: with many memories stored, a fragment brings back its own memory, not a neighbour's.
 int runCapacityTest(const Config& cfg) {
     const std::vector<std::string> items = {"a", "k", "z", "m", "q", "e", "t", "w"};
@@ -87,12 +98,12 @@ int runEfficiencyTest(const Config& cfg) {
     std::printf("CP4 efficiency: memory strength after short and long exposure\n");
     bool shortPass = false;
     // (120 ticks is the recall test's own exposure, so it is not repeated here.)
-    for (uint64_t ticks : {15ull, 30ull, 60ull}) {
+    for (uint64_t ticks : {T(15), T(30), T(60)}) {
         const Comparison c = storeAndRecall(cfg, items, ticks);
         char label[64];
         std::snprintf(label, sizeof(label), "exposure %llu ticks:", (unsigned long long)ticks);
         printComparison(label, c);
-        if (ticks == 30) shortPass = c.pass();
+        if (ticks == T(30)) shortPass = c.pass();
     }
     std::printf("  memory usable after 30 ticks: %s\n", shortPass ? "PASS" : "FAIL");
     return shortPass ? 0 : 3;
@@ -228,16 +239,16 @@ int runOrderTest(const Config& cfg) {
         Session s(cfg, learning == 1);
         for (int rep = 0; rep < 3; ++rep)
             for (const auto& [first, second] : pairs) {
-                s.present(first, 40, 1.0f, true, UINT64_MAX);
-                s.present(second, 40, 1.0f, true, UINT64_MAX);
-                s.silence(40, true);
+                s.present(first, T(40), 1.0f, true, UINT64_MAX);
+                s.present(second, T(40), 1.0f, true, UINT64_MAX);
+                s.silence(T(40), true);
             }
         // Clean reference pattern for every item: encoding mode (as the other checks store
         // their references) with learning paused. In recall mode the learned forward link
         // leaked the second item into the first item's reference (audit 2026-09-27).
         auto reference = [&](const std::string& item) {
             s.setLearning(false);
-            auto p = s.present(item, 40, 1.0f, true, 20);
+            auto p = s.present(item, T(40), 1.0f, true, T(20));
             s.silence(kGap, true);
             s.setLearning(learning == 1);
             return p;
@@ -257,12 +268,12 @@ int runOrderTest(const Config& cfg) {
                 storedForward += share * s.flow(pFirst, pSecond) / double(pairs.size());
                 storedBackward += share * s.flow(pSecond, pFirst) / double(pairs.size());
             }
-            const auto cueFirst = s.present(first, 30, kCueFraction, false, 15);
-            const auto afterFirst = s.silence(30, false, 0);
-            s.silence(kGap - 30, false);
-            const auto cueSecond = s.present(second, 30, kCueFraction, false, 15);
-            const auto afterSecond = s.silence(30, false, 0);
-            s.silence(kGap - 30, false);
+            const auto cueFirst = s.present(first, T(30), kCueFraction, false, T(15));
+            const auto afterFirst = s.silence(T(30), false, 0);
+            s.silence(kGap - T(30), false);
+            const auto cueSecond = s.present(second, T(30), kCueFraction, false, T(15));
+            const auto afterSecond = s.silence(T(30), false, 0);
+            s.silence(kGap - T(30), false);
             const double aFwd = lab::cosine(afterFirst, pSecond);
             afterForward[learning] += share * aFwd / double(pairs.size());
             afterSignal[learning] += share * (aFwd - lab::cosine(afterSecond, pFirst)) / double(pairs.size());
