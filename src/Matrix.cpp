@@ -884,10 +884,13 @@ void NeuralCellularMatrix::step3D() {
                 if (strongest > 0.0f) anything = true;
                 if (strongest >= level) ++active;
             }
-            // Adjust only while there is something to hear: a silent field holds its gain.
-            // (Raising it through silence over-amplified the next input and made responses
-            // depend on how long the silence lasted.)
-            if (!anything) continue;
+            // Adjust only while there is something to hear. A silent field either holds its gain
+            // (agc_relax_field 0; raising it through silence over-amplified the next input) or
+            // relaxes it toward 1, so every input starts from the same state (repeatability).
+            if (!anything) {
+                fieldGain_[f] += (1.0f - fieldGain_[f]) * std::clamp(cfg_.agc_relax_field, 0.0f, 1.0f);
+                continue;
+            }
             const float share = float(active) / float(Vf_);
             const float error = (target - share) / std::max(target, 1e-6f);
             fieldGain_[f] = std::clamp(fieldGain_[f] * std::exp(cfg_.agc_rate * std::clamp(error, -1.0f, 1.0f)),

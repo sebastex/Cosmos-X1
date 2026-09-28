@@ -224,6 +224,7 @@ struct Config {
     // at agc_relax per 3D tick. Scale- and growth-safe (no field-wide statistic).
     float agc_local = 0.0f;
     float agc_relax = 0.02f;
+    float agc_relax_field = 0.0f; // field-wide gain control: relaxation toward 1 per 3D tick in silence
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

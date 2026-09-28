@@ -43,7 +43,10 @@ const std::vector<std::string>& evolvedRule() {
         "fatigue_divisive2=1",
         // Per-field gain control: each deep field keeps its activity near the target however
         // strong the input is (weak inputs left the deep fields silent, strong ones overdrove).
-        "agc_rate=0.05", "agc_max=16",
+        "agc_rate=0.15", "agc_max=16", "agc_relax_field=0.1",
+        // Two winners per competition neighbourhood: density ~2% (the sparse target) at every
+        // size with the volume projection (4 winners gave ~4%).
+        "winners3=2",
         "channel_winners3=4",
         "covariance=0.2356",
         "downward_gain=0.0224",
@@ -73,8 +76,7 @@ const std::vector<std::string>& evolvedRule() {
         "soft_bound=1",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
-        "voxel_self=0.0165",
-        "winners3=4"};
+        "voxel_self=0.0165"};
     return rule;
 }
 
@@ -137,6 +139,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
         {"agc_local", &c.agc_local},
         {"agc_relax", &c.agc_relax},
+        {"agc_relax_field", &c.agc_relax_field},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},
         {"fire_gain2", &c.fire_gain2},
