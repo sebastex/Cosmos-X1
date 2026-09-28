@@ -1,0 +1,13 @@
+{
+ "link4d_spread_gain": 3.8069,
+ "agc_rate": 0.0646,
+ "agc_relax_field": 0.1264,
+ "fatigue_gain3": 0.0638,
+ "fatigue_gain2": 1.01,
+ "winners3": 3,
+ "fire_gain3": 3.5738,
+ "fire_threshold3": 0.0256,
+ "input_depth_gain": 0.179,
+ "link4d": 0.2482,
+ "voxel_self": 0.0165
+}

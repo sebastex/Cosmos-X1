@@ -39,33 +39,34 @@ const std::vector<std::string>& evolvedRule() {
     // 4D projection (deep fields use their whole volume; count scales with size) and divisive
     // fatigue in the sheets (weak steady input is never silenced).
     static const std::vector<std::string> rule = {
-        "link4d_spread=16", "link4d_spread_scaled=1", "link4d_spread_share=0.5", "link4d_spread_gain=16",
+        "link4d_spread=16", "link4d_spread_scaled=1", "link4d_spread_share=0.5", "link4d_spread_gain=3.8069",
         "fatigue_divisive2=1",
         // Per-field gain control: each deep field keeps its activity near the target however
         // strong the input is (weak inputs left the deep fields silent, strong ones overdrove).
-        "agc_rate=0.15", "agc_max=16", "agc_relax_field=0.1",
-        // Two winners per competition neighbourhood: density ~2% (the sparse target) at every
-        // size with the volume projection (4 winners gave ~4%).
-        "winners3=2",
+        "agc_rate=0.0646", "agc_max=16", "agc_relax_field=0.1264",
+        // Competition, gain control and projection strength balanced by a short search
+        // (tools/foundation_search.py) for steadiness under held input, volume use, repeatability
+        // and recall at small and dev sizes, strong and weak inputs.
+        "winners3=3",
         // Input-field depth: interior Input voxels hear random sensory-face voxels, so the Input
         // field uses its whole volume too (helps the bigger matrix most).
-        "input_depth_spread=4", "input_depth_gain=0.2",
+        "input_depth_spread=4", "input_depth_gain=0.179",
         "channel_winners3=4",
         "covariance=0.2356",
         "downward_gain=0.0224",
         "encoding_suppression=0.755",
         "fatigue_gain2=1.0101",
-        "fatigue_gain3=0.0663",
+        "fatigue_gain3=0.0638",
         "fatigue_tau3=12.9342",
         "fire_gain2=4.8308",
-        "fire_gain3=4.3577",
+        "fire_gain3=3.5738",
         "fire_threshold2=0.01",
-        "fire_threshold3=0.0521",
+        "fire_threshold3=0.0256",
         "hetero_ltd=1",
         "homeostasis3=0.0012",
         "learning_rate=0.0059",
         "line_upward_gain=0.5199",
-        "link4d=0.2",
+        "link4d=0.2482",
         "link4d_backward=0.0217",
         "long_range=0.0328",
         "mode_tau=30",
