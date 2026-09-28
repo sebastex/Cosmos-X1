@@ -218,6 +218,12 @@ struct Config {
     // input) instead of raising its threshold (which can silence it). 0 = subtractive,
     // 2 = divisive while sensory input is present and subtractive in silence.
     float fatigue_divisive = 0.0f;
+    // Maximum threshold rise from (subtractive) fatigue; 0 = no cap. Ends weak leftover
+    // activity without silencing input-driven cells (held input collapsed on some seeds).
+    float fatigue_cap = 0.0f;
+    // 1 = divisive fatigue in the 2D sheets only (they relay the input; a weak but real input
+    // is never silenced there), leaving the 3D cells (where memories live) as set above.
+    float fatigue_divisive2 = 0.0f;
 
     // 1D lines carry sequences intact, so homeostasis is off there by default (spec Section 3C).
     // theta_max is high enough that homeostasis can always catch up with a cell's drive;

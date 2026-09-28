@@ -460,7 +460,12 @@ void NeuralCellularMatrix::step2D() {
     // input is never switched off (subtractive fatigue silenced whole fields under held input).
     // fatigue_divisive 2 = divisive only while sensory input is present (steady input keeps
     // cells firing) and subtractive in silence (activity that outlasts its input still ends).
-    const bool divisiveFatigue = cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f;
+    const bool divisiveFatigue = cfg_.fatigue_divisive2 > 0.5f ||
+                                 (cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f);
+    // Capped fatigue: the threshold rise is limited to fatigue_cap, enough to end the weak
+    // activity that outlasts its input but not to silence cells a present input drives.
+    const float fatigueCap = cfg_.fatigue_cap;
+    auto fatigueShift = [fatigueCap](float shift) { return fatigueCap > 0.0f ? std::min(shift, fatigueCap) : shift; };
     const float* s1 = s1_.cur.data();
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
@@ -535,7 +540,7 @@ void NeuralCellularMatrix::step2D() {
         if (!isSilent(s3 + v * C3, C3)) matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
 
         drive2_[q] = activateCell<C2>(in, out + q * C2,
-                                      theta[q] + (divisiveFatigue ? 0.0f : lp.fatigue_gain * fatigueMode * fatigue2_[q]),
+                                      theta[q] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue2_[q])),
                                       cfg_.channel_winners2);
     }
 
@@ -591,6 +596,10 @@ void NeuralCellularMatrix::step3D() {
     // fatigue_divisive 2 = divisive only while sensory input is present (steady input keeps
     // cells firing) and subtractive in silence (activity that outlasts its input still ends).
     const bool divisiveFatigue = cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f;
+    // Capped fatigue: the threshold rise is limited to fatigue_cap, enough to end the weak
+    // activity that outlasts its input but not to silence cells a present input drives.
+    const float fatigueCap = cfg_.fatigue_cap;
+    auto fatigueShift = [fatigueCap](float shift) { return fatigueCap > 0.0f ? std::min(shift, fatigueCap) : shift; };
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
     float* out = s3_.next.data();
@@ -727,7 +736,7 @@ void NeuralCellularMatrix::step3D() {
         }
 
         drive3_[v] = activateCell<C3>(in, out + v * C3,
-                                      theta[v] + (divisiveFatigue ? 0.0f : lp.fatigue_gain * fatigueMode * fatigue3_[v]),
+                                      theta[v] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue3_[v])),
                                       cfg_.channel_winners3);
     }
 

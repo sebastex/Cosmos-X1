@@ -125,6 +125,9 @@ RATE_SPACE = {
     # Consolidation (fast + slow plastic parts); budgets should roughly split the total.
     "consolidation_rate": (0.0, 0.2, "f", 0.0),
     "consolidated_budget": (0.05, 2.0, "f", 0.5),
+    # Fatigue: divisive in the 2D sheets (no silent collapse under weak held input) and a cap.
+    "fatigue_divisive2": (0, 1, "b", 0),
+    "fatigue_cap": (0.0, 0.5, "f", 0.0),
 }
 
 
