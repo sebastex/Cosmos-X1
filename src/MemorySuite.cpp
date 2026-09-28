@@ -319,6 +319,8 @@ int runMemorySuite(const Config& cfg, bool earlyExit) {
     results.push_back({"CP5 streamed text", runStreamedTest(cfg)});
     std::printf("\n=== CP6 ===\n");
     results.push_back({"CP6 continual learning", runContinualTest(cfg)});
+    std::printf("\n=== CP6b ===\n");
+    results.push_back({"CP6b retention (8+16)", runRetentionTest(cfg)});
     std::printf("\n=== CP7 ===\n");
     results.push_back({"CP7 early order", runOrderTest(cfg)});
 
@@ -581,6 +583,40 @@ int runProfileTest(const Config& cfg) {
         }
     }
     return 0;
+}
+
+// CP6b retention under load (harsher than CP6): 8 memories are stored, then 16 more. Old
+// memories must still all be recalled correctly from 40% cues, lose at most 0.05 of their
+// margin (own minus best other, among the 8), and keep a gain of at least 0.05 over the
+// untrained twin. With 8 items the last one's freshness weighs 1/8, not 1/3 as in CP6.
+int runRetentionTest(const Config& cfg) {
+    const std::string oldItems = "akzmqetw", newItems = "bdfghjlpnosuvxyc";
+    std::printf("CP6b retention under load: 8 memories, then 16 more, recalled from 40%% cues\n");
+    RecallStats before[2], after[2];
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        std::vector<std::string> list, more;
+        for (char c : oldItems) list.emplace_back(1, c);
+        for (char c : newItems) more.emplace_back(1, c);
+        const Patterns stored = storeAll(s, list, kStore);
+        before[learning] = recallStats(s, oldItems, stored, 0.4f);
+        storeAll(s, more, kStore);
+        after[learning] = recallStats(s, oldItems, stored, 0.4f);
+    }
+    const double marginBefore = before[1].own - before[1].other, marginAfter = after[1].own - after[1].other;
+    const double drop = marginBefore - marginAfter;
+    const double gainAfter = marginAfter - (after[0].own - after[0].other);
+    std::printf("  learned:   before accuracy %3.0f%% margin %+.3f | after 16 new accuracy %3.0f%% margin %+.3f\n",
+                100.0 * before[1].accuracy, marginBefore, 100.0 * after[1].accuracy, marginAfter);
+    std::printf("  untrained: after accuracy %3.0f%% margin %+.3f\n", 100.0 * after[0].accuracy,
+                after[0].own - after[0].other);
+    const bool allRight = after[1].accuracy >= 0.999;
+    const bool keeps = drop <= 0.05;
+    const bool beats = gainAfter >= 0.05;
+    std::printf("  all old memories recalled correctly: %s; margin lost %+.3f (need <= +0.050): %s; "
+                "gain over untrained %+.3f (need >= +0.050): %s\n",
+                allRight ? "yes" : "NO", drop, keeps ? "yes" : "NO", gainAfter, beats ? "yes" : "NO");
+    return (allRight && keeps && beats) ? 0 : 3;
 }
 
 } // namespace ncm

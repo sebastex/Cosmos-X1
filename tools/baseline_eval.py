@@ -45,7 +45,8 @@ def run(name, params, preset, seed, threads):
         "checks": {k: bool(re.search(r"^\s+" + re.escape(label) + r"\s+PASS", s1, re.M)) for k, label in (
             ("recall", "CP2 recall (3 memories)"), ("capacity", "CP3 capacity (8 memories)"),
             ("efficiency", "CP4 efficiency"), ("streamed", "CP5 streamed text"),
-            ("continual", "CP6 continual learning"), ("order", "CP7 early order"))},
+            ("continual", "CP6 continual learning"), ("retention", "CP6b retention (8+16)"),
+            ("order", "CP7 early order"))},
         "gains": {"recall": gain("specificity (own minus best other):", s1), "capacity": gain("8 memories:", s1),
                   "efficiency": gain("exposure 30 ticks:", s1), "streamed": gain("streamed words:", s1),
                   "forgetting": float(m.group(1)) if m else float("nan"),
@@ -77,8 +78,11 @@ def main():
         rs = [r for r in results if r["variant"] == n]
         s0 = sum(r["stage0"] for r in rs)
         parts = []
-        for k in ("recall", "capacity", "efficiency", "streamed", "continual", "order"):
+        for k in ("recall", "capacity", "efficiency", "streamed", "continual", "retention", "order"):
             g = "forgetting" if k == "continual" else k
+            if g not in rs[0]["gains"]:
+                parts.append(f"{k} {sum(r['checks'][k] for r in rs)}/{len(rs)}")
+                continue
             vals = [r["gains"][g] for r in rs if r["gains"][g] == r["gains"][g]]
             parts.append(f"{k} {sum(r['checks'][k] for r in rs)}/{len(rs)} ({st.mean(vals):+.3f})" if vals else k)
         allsix = sum(all(r["checks"].values()) and r["stage0"] for r in rs)
