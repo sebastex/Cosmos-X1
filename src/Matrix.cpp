@@ -713,7 +713,10 @@ void NeuralCellularMatrix::step3D() {
             const float each = afferentGain * r.link4d * std::clamp(r.link4d_spread_share, 0.0f, 1.0f) *
                                r.link4d_spread_gain / float(std::max<uint32_t>(1, cfg_.link4d_spread));
             for (uint32_t g = 0; g < f; ++g)
-                for (uint32_t l = 0; l < S4; ++l) {
+                // Only the Input field's activity is a thin slab whose active share falls with
+                // size; fields fed by the projection fill their volume at a constant share, so
+                // sources from them use the reference count (keeps density size-invariant).
+                for (uint32_t l = 0; l < (g == 0 ? S4 : std::min<uint32_t>(S4, cfg_.link4d_spread)); ++l) {
                     const size_t vs = size_t(g) * Vf_ + spreadPos_[v * S4 + l];
                     const float* src = s3 + vs * C3;
                     if (isSilent(src, C3)) continue;

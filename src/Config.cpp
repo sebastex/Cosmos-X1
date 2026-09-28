@@ -35,7 +35,15 @@ Config makePreset(const std::string& name) {
 // best mean fitness over its test seeds (small preset). Applied on top of every preset unless
 // --rule starting is given; --set still overrides single values.
 const std::vector<std::string>& evolvedRule() {
+    // Foundation fixes adopted 2026-09-28 (applied after the evolved values): the volume-filling
+    // 4D projection (deep fields use their whole volume; count scales with size) and divisive
+    // fatigue in the sheets (weak steady input is never silenced).
     static const std::vector<std::string> rule = {
+        "link4d_spread=16", "link4d_spread_scaled=1", "link4d_spread_share=0.5", "link4d_spread_gain=16",
+        "fatigue_divisive2=1",
+        // Per-field gain control: each deep field keeps its activity near the target however
+        // strong the input is (weak inputs left the deep fields silent, strong ones overdrove).
+        "agc_rate=0.05", "agc_max=16",
         "channel_winners3=4",
         "covariance=0.2356",
         "downward_gain=0.0224",
