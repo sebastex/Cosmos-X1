@@ -58,6 +58,7 @@ struct StartingRule {
     // equal to link4d_spread = each source as strong as the whole same-position link, so a
     // target can fire from one or two active sources and competition keeps the strongest).
     float link4d_spread_gain = 1.0f;
+    float input_depth_gain = 0.2f; // strength of each Input-field depth source
 };
 
 // Hebbian learning (spec Section 5A).
@@ -157,6 +158,8 @@ struct Config {
     // then drive different combinations of voxels, and local competition keeps the most
     // strongly driven, so their representations overlap less. 0 = same position only.
     uint32_t link4d_spread = 0;
+    // Input-field depth: random sensory-face sources per interior Input voxel (0 = off).
+    uint32_t input_depth_spread = 0;
     // 1 = the number of random 4D sources scales with the field side (link4d_spread at side 12).
     float link4d_spread_scaled = 0.0f;
 

@@ -49,6 +49,7 @@ enum Stream : uint64_t {
     kStreamLongRange,
     kStreamCodebook,
     kStreamLink4dSpread,
+    kStreamInputDepth,
 };
 
 } // namespace ncm

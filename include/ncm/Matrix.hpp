@@ -160,7 +160,8 @@ private:
     AVec<float> W3_;               // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused)
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
     std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
-    uint32_t spreadK_ = 0;            // random 4D sources per voxel (link4d_spread, scaled with size if set)
+    uint32_t spreadK_ = 0;
+    std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)            // random 4D sources per voxel (link4d_spread, scaled with size if set)
     AVec<float> WL_;               // per voxel: long-range links x C3 x C3
     AVec<float> H_;                // per voxel: 3 other fields x C3 x C3 (4D link)
     // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when

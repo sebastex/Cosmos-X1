@@ -325,6 +325,15 @@ void NeuralCellularMatrix::initVoxelWeights() {
     spreadK_ = cfg_.link4d_spread;
     if (cfg_.link4d_spread_scaled > 0.5f && spreadK_ > 0)
         spreadK_ = std::max<uint32_t>(1, uint32_t(double(cfg_.link4d_spread) * double(N_) / 12.0 + 0.5));
+    // Input-field depth sources: each interior voxel of the Input field (x > 0) gets fixed
+    // random sources on the field's sensory face (x = 0). The face's active share is the same
+    // at every size, so the count is not scaled (growth-safe).
+    const uint32_t KD = cfg_.input_depth_spread;
+    inputDepthPos_.assign(Vf_ * KD, 0);
+    for (size_t v = 0; v < Vf_ * KD; ++v) {
+        const double u = hashUniform(cfg_.seed, kStreamInputDepth, uint64_t(v));
+        inputDepthPos_[v] = uint32_t(std::min(size_t(u * double(size_t(N_) * N_)), size_t(N_) * N_ - 1));
+    }
     const uint32_t S4 = spreadK_;
     spreadPos_.assign(V_ * S4, 0);
     for (size_t v = 0; v < V_; ++v)
@@ -706,6 +715,18 @@ void NeuralCellularMatrix::step3D() {
                     matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
+        }
+        // Input-field depth: interior voxels hear random voxels of the sensory face (feedforward).
+        if (f == 0 && x > 0 && cfg_.input_depth_spread > 0) {
+            const uint32_t KD = cfg_.input_depth_spread;
+            const float each = r.input_depth_gain;
+            for (uint32_t l = 0; l < KD; ++l) {
+                const uint32_t yz = inputDepthPos_[v * KD + l];
+                const size_t vs = voxelIndex(0, 0, yz % N, yz / N);
+                const float* src = s3 + vs * C3;
+                if (isSilent(src, C3)) continue;
+                addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
+            }
         }
         // Pattern-separating feedforward sources (scaffold only), from every earlier field.
         if (spreadK_ > 0 && f > 0) {
