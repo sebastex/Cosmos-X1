@@ -630,4 +630,37 @@ int runRetentionTest(const Config& cfg) {
     return (allRight && keeps && beats) ? 0 : 3;
 }
 
+// Diagnostic: where activity sits. A letter is held (no learning); for each field, active voxels
+// (strongest channel >= 0.1) are counted per depth layer x (x = 0 is the sensory face of the
+// Input field), with the share of the field's volume that is active.
+int runOccupancyTest(const Config& cfg, const std::string& item) {
+    Session s(cfg, false);
+    s.present(item, kStore, 1.0f, false, UINT64_MAX);
+    const auto& v = s.matrix().voxelState();
+    const uint32_t N = cfg.field_dim;
+    const size_t perField = size_t(N) * N * N;
+    std::printf("Occupancy: \"%s\" held %llu ticks, field side %u; active voxels per depth layer x\n", item.c_str(),
+                (unsigned long long)kStore, N);
+    for (uint32_t f = 0; f < kFields; ++f) {
+        std::vector<size_t> perLayer(N, 0);
+        size_t total = 0;
+        for (size_t i = 0; i < perField; ++i) {
+            const float* cell = v.data() + (f * perField + i) * C3;
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, cell[c]);
+            if (strongest >= 0.1f) {
+                ++perLayer[i % N];
+                ++total;
+            }
+        }
+        size_t layers = 0;
+        for (size_t n : perLayer) layers += n > 0;
+        std::printf("  field %u: %4zu active (%.2f%% of volume), %2zu of %u layers used |", f, total,
+                    100.0 * double(total) / double(perField), layers, N);
+        for (size_t n : perLayer) std::printf(" %zu", n);
+        std::printf("\n");
+    }
+    return 0;
+}
+
 } // namespace ncm

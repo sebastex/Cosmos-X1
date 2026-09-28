@@ -40,6 +40,7 @@ int runDriftTest(const Config& cfg, const std::string& item, uint64_t learnAfter
 int runContextTest(const Config& cfg); // diagnostic: context coding of shared letters
 int runProfileTest(const Config& cfg); // diagnostic: memory profile under harsher conditions
 int runRetentionTest(const Config& cfg); // CP6b: retention of 8 memories while 16 more are learned
+int runOccupancyTest(const Config& cfg, const std::string& item); // diagnostic: active voxels per depth layer
 // Multiplies every test duration (storing, gaps, cues) by `scale` (default 1).
 void setTestTimeScale(double scale);
 // All of the above plus the recall test. With earlyExit, stops after the recall test when

@@ -317,8 +317,14 @@ void NeuralCellularMatrix::initVoxelWeights() {
         }
     }
 
-    // Pattern-separating 4D sources: random positions within a field, fixed for life.
-    const uint32_t S4 = cfg_.link4d_spread;
+    // Pattern-separating 4D sources: random positions within a field, fixed for life. With
+    // link4d_spread_scaled the count grows with the field's side length (link4d_spread is the
+    // count at side 12): the active share of a field falls as 1/side (activity enters through a
+    // face), so each target then sees the same expected number of active sources at any size.
+    spreadK_ = cfg_.link4d_spread;
+    if (cfg_.link4d_spread_scaled > 0.5f && spreadK_ > 0)
+        spreadK_ = std::max<uint32_t>(1, uint32_t(double(cfg_.link4d_spread) * double(N_) / 12.0 + 0.5));
+    const uint32_t S4 = spreadK_;
     spreadPos_.assign(V_ * S4, 0);
     for (size_t v = 0; v < V_; ++v)
         for (uint32_t l = 0; l < S4; ++l) {
@@ -678,7 +684,7 @@ void NeuralCellularMatrix::step3D() {
                 ++gi;
                 continue;
             }
-            const uint32_t S4 = cfg_.link4d_spread;
+            const uint32_t S4 = spreadK_;
             const float spreadShare = (g < f && S4 > 0) ? std::clamp(r.link4d_spread_share, 0.0f, 1.0f) : 0.0f;
             const float link = g < f ? r.link4d * (1.0f - spreadShare) : r.link4d_backward; // feedforward vs feedback
             // The learned part keeps the same asymmetry: feedback transmits at the
@@ -700,9 +706,12 @@ void NeuralCellularMatrix::step3D() {
             ++gi;
         }
         // Pattern-separating feedforward sources (scaffold only), from every earlier field.
-        if (cfg_.link4d_spread > 0 && f > 0) {
-            const uint32_t S4 = cfg_.link4d_spread;
-            const float each = afferentGain * r.link4d * std::clamp(r.link4d_spread_share, 0.0f, 1.0f) / float(S4);
+        if (spreadK_ > 0 && f > 0) {
+            const uint32_t S4 = spreadK_;
+            // Weight per source is set by the reference count, so the expected drive (active
+            // sources x weight) is the same at every size when the count is scaled.
+            const float each = afferentGain * r.link4d * std::clamp(r.link4d_spread_share, 0.0f, 1.0f) *
+                               r.link4d_spread_gain / float(std::max<uint32_t>(1, cfg_.link4d_spread));
             for (uint32_t g = 0; g < f; ++g)
                 for (uint32_t l = 0; l < S4; ++l) {
                     const size_t vs = size_t(g) * Vf_ + spreadPos_[v * S4 + l];

@@ -54,6 +54,10 @@ struct StartingRule {
     // With link4d_spread > 0: share of the feedforward scaffold strength carried by the random
     // sources (split evenly among them); the same-position source keeps the rest.
     float link4d_spread_share = 0.5f;
+    // Multiplies the strength of each random 4D source (1 = the shared strength split evenly;
+    // equal to link4d_spread = each source as strong as the whole same-position link, so a
+    // target can fire from one or two active sources and competition keeps the strongest).
+    float link4d_spread_gain = 1.0f;
 };
 
 // Hebbian learning (spec Section 5A).
@@ -153,6 +157,8 @@ struct Config {
     // then drive different combinations of voxels, and local competition keeps the most
     // strongly driven, so their representations overlap less. 0 = same position only.
     uint32_t link4d_spread = 0;
+    // 1 = the number of random 4D sources scales with the field side (link4d_spread at side 12).
+    float link4d_spread_scaled = 0.0f;
 
     float target_activity  = 0.02f; // spec Section 3B
     float inhibitory_share = 0.20f; // spec Section 3C, applies to 2D and 3D cells
