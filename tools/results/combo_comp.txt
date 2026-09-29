@@ -1,0 +1,1 @@
+combo          comp22:+0.085  comp23:+0.070  comp24:+0.112  comp25:+0.072  comp26:+0.078  comp27:+0.112  comp28:+0.097  comp29:+0.077  comp30:+0.109  comp31:+0.112  comp32:+0.108  comp33:+0.052  comp34:+0.105  comp35:+0.127  comp36:+0.081  comp37:+0.101  comp38:+0.060  comp39:+0.086  comp40:+0.111  comp41:+0.080

@@ -1,0 +1,9 @@
+combo                  seed 30: stage0 ok deep 43% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+combo                  seed 31: stage0 ok deep 42% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+combo                  seed 32: stage0 ok deep 45% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+combo                  seed 33: stage0 ok deep 43% recall - capacity Y efficiency Y streamed Y completion Y continual Y retention - order Y
+combo                  seed 34: stage0 ok deep 49% recall - capacity Y efficiency Y streamed Y completion Y continual - retention - order Y
+combo                  seed 35: stage0 ok deep 45% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention - order Y
+
+=== summary (passes out of 6 seeds; mean gain) ===
+combo                  stage0 6/6 | recall 4/6 (+0.396)  capacity 6/6 (+0.362)  efficiency 6/6 (+0.333)  streamed 6/6 (+0.093)  completion 6/6 (+0.102)  continual 5/6 (+0.027)  retention 3/6  order 6/6 (+0.260) | ALL 3/6
