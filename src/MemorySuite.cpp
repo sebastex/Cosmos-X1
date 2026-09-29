@@ -962,4 +962,189 @@ int runHealthTest(const Config& cfg) {
     return 0;
 }
 
+// Hum (diagnostic): where the activity that lingers after recall comes from. 8 memories are
+// stored as in CP3, then each is cued (40%) and followed through 60 ticks of silence. Every 5
+// ticks, per field: firing voxels, active sheet cells and line cells, and the net input of the
+// firing voxels by source (learned within field / learned 4D / fixed local (self + neighbours)
+// / fixed long-range / fixed 4D link / input depth / fixed spread projection / upward from the
+// voxel's own sheet), averaged per firing voxel; plus mode, gains and transmitter resource.
+int runHumTest(const Config& cfg) {
+    const std::vector<std::string> items = {"a", "k", "z", "m", "q", "e", "t", "w"};
+    const char* names[kFields] = {"Input", "Memory", "Reasoning", "Output"};
+    const int bins = int(T(60) / T(5));
+    std::printf("Hum: activity after recall, by source (sums over %zu cues)\n", items.size());
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        storeAll(s, items, kStore);
+        const auto& m = s.matrix();
+        const size_t V = m.voxelState().size() / C3, Vf = V / kFields;
+        const size_t sheetPerField = m.sheetState().size() / kFields, linePerField = m.lineState().size() / kFields;
+        // [bin][field]: firing, sheet cells, line cells, sources...
+        std::vector<std::array<std::array<double, 3 + kSources>, kFields>> acc(bins);
+        std::vector<double> resource(bins, 0.0), mod(bins, 0.0);
+        std::vector<std::array<double, kFields>> gain(bins);
+        for (const auto& item : items) {
+            s.present(item, kCue, kCueFraction, false, UINT64_MAX);
+            for (int b = 0; b < bins; ++b) {
+                s.silence(T(5), false);
+                const auto src = m.driveSources();
+                const auto& g = m.fieldGains();
+                for (uint32_t f = 0; f < kFields; ++f) {
+                    auto& a = acc[b][f];
+                    a[0] += src[f].firing;
+                    size_t sheets = 0, lines = 0;
+                    for (size_t i = f * sheetPerField; i < (f + 1) * sheetPerField; ++i) sheets += m.sheetState()[i] > 0.0f;
+                    for (size_t i = f * linePerField; i < (f + 1) * linePerField; ++i) lines += m.lineState()[i] > 0.0f;
+                    a[1] += double(sheets);
+                    a[2] += double(lines);
+                    for (uint32_t k = 0; k < kSources; ++k) a[3 + k] += src[f].net[k];
+                    gain[b][f] += g[f] / double(items.size());
+                }
+                resource[b] += m.meanResource() / double(items.size());
+                mod[b] += s.lastMode() / double(items.size());
+            }
+            s.silence(kGap, false);
+        }
+        (void)Vf;
+        std::printf("  %s\n", learning ? "LEARNED" : "UNTRAINED");
+        std::printf("    tick field      firing  sheet-ch  line-ch | per firing voxel: learnW  learn4D  local  longR  fix4D  depth  spread  upward | gain\n");
+        for (int b = 0; b < bins; ++b) {
+            for (uint32_t f = 0; f < kFields; ++f) {
+                const auto& a = acc[b][f];
+                const double n = double(items.size()), fv = std::max(1.0, a[0]);
+                std::printf("    %4d %-10s %6.1f  %8.1f  %7.1f |                  ", int((b + 1) * T(5)), names[f], a[0] / n,
+                            a[1] / n, a[2] / n);
+                for (uint32_t k = 0; k < kSources; ++k) std::printf(" %6.3f", a[3 + k] / fv);
+                std::printf(" | %.2f\n", gain[b][f]);
+            }
+            std::printf("         mode (1 = memories suppressed) %.2f, transmitter resource %.3f\n", mod[b], resource[b]);
+        }
+    }
+    return 0;
+}
+
+// Chain (diagnostic): can a learned word carry itself forward? After the CP5b words are learned,
+// each word is heard again (no learning) and the 3D state is summed per letter position. The
+// learned flow (Matrix::plasticFlow) between those states shows, per word:
+//   next  = position i -> i+1 of the same word (the chain completion needs),
+//   back  = i+1 -> i, self = i -> i, other = best flow from i into any position of another word.
+// Also: the learning signal during storage, how alike the letter states of different words are,
+// and each field's share of the chain flow.
+int runChainTest(const Config& cfg) {
+    const std::vector<std::string> items = {"apple ", "river ", "storm "};
+    Session s(cfg, true);
+    s.resetModulatorMean();
+    storeAll(s, items, kStore);
+    std::printf("Chain: learning signal during storage %.3f, total learned strength %.1f\n", s.meanModulator(),
+                s.matrix().totalPlasticStrength());
+    std::vector<std::vector<std::vector<double>>> P(items.size());
+    for (size_t w = 0; w < items.size(); ++w) {
+        const std::string& word = items[w];
+        P[w].assign(word.size(), {});
+        for (uint64_t t = 0; t < kStore; ++t) {
+            s.present(std::string(1, word[t % word.size()]), 1, 1.0f, false, UINT64_MAX);
+            if (t >= word.size()) s.accumulate(P[w][t % word.size()]);
+        }
+        s.silence(kGap, false);
+    }
+    auto& m = const_cast<NeuralCellularMatrix&>(s.matrix());
+    double sumNext = 0.0, sumOther = 0.0, simOwn = 0.0, simOther = 0.0;
+    int n = 0, no = 0;
+    for (size_t w = 0; w < items.size(); ++w) {
+        const std::string& word = items[w];
+        std::printf("  %-7s  pos  next    back    self    other(best) | similarity next-letter / other-word\n",
+                    ("\"" + word.substr(0, word.size() - 1) + "\"").c_str());
+        for (size_t i = 0; i < word.size(); ++i) {
+            const size_t j = (i + 1) % word.size();
+            const double next = m.plasticFlow(P[w][i], P[w][j]);
+            const double back = m.plasticFlow(P[w][j], P[w][i]);
+            const double self = m.plasticFlow(P[w][i], P[w][i]);
+            double other = 0.0, sim = 0.0;
+            int ns = 0;
+            for (size_t v = 0; v < items.size(); ++v)
+                if (v != w)
+                    for (size_t k = 0; k < items[v].size(); ++k) {
+                        other = std::max(other, m.plasticFlow(P[w][i], P[v][k]));
+                        sim += lab::cosine(P[w][i], P[v][k]);
+                        ++ns;
+                    }
+            const double simNext = lab::cosine(P[w][i], P[w][j]);
+            std::printf("           %c->%c %.4f  %.4f  %.4f  %.4f      | %.3f / %.3f\n", word[i] == ' ' ? '_' : word[i],
+                        word[j] == ' ' ? '_' : word[j], next, back, self, other, simNext, sim / ns);
+            sumNext += next;
+            sumOther += other;
+            simOwn += simNext;
+            simOther += sim / ns;
+            ++n;
+            ++no;
+        }
+    }
+    std::printf("  mean: next %.4f vs best other %.4f (ratio %.2f); letter-state similarity next %.3f vs other words %.3f\n",
+                sumNext / n, sumOther / n, sumOther > 0 ? sumNext / sumOther : 0.0, simOwn / n, simOther / no);
+    // Per field: flow of the chain restricted to each target field.
+    const size_t perField = P[0][0].size() / kFields;
+    std::printf("  other-word letter-state similarity by field:");
+    for (uint32_t f = 0; f < kFields; ++f) {
+        double sim = 0.0;
+        int ns = 0;
+        for (size_t w = 0; w < items.size(); ++w)
+            for (size_t v = w + 1; v < items.size(); ++v)
+                for (size_t i = 0; i < items[w].size(); ++i)
+                    for (size_t k = 0; k < items[v].size(); ++k) {
+                        sim += lab::cosine(P[w][i], P[v][k], f * perField, (f + 1) * perField);
+                        ++ns;
+                    }
+        std::printf(" %s %.3f", f == 0 ? "Input" : f == 1 ? "Memory" : f == 2 ? "Reasoning" : "Output", sim / ns);
+    }
+    std::printf("\n  single letters (held, untrained twin) similarity by field, words' letters pooled:");
+    {
+        Session u(cfg, false);
+        std::string letters = "aplerivstom ";
+        std::vector<std::vector<double>> L;
+        for (char c : letters) {
+            L.push_back(u.present(std::string(1, c), kStore, 1.0f, false, kStore / 2));
+            u.silence(kGap, false);
+        }
+        for (uint32_t f = 0; f < kFields; ++f) {
+            double sim = 0.0;
+            int ns = 0;
+            for (size_t i = 0; i < L.size(); ++i)
+                for (size_t k = i + 1; k < L.size(); ++k) {
+                    sim += lab::cosine(L[i], L[k], f * perField, (f + 1) * perField);
+                    ++ns;
+                }
+            std::printf(" %s %.3f", f == 0 ? "Input" : f == 1 ? "Memory" : f == 2 ? "Reasoning" : "Output", sim / ns);
+        }
+        // Fingerprint overlap of the letters themselves (the sensory code).
+        double fo = 0.0;
+        int nf = 0;
+        for (size_t i = 0; i < letters.size(); ++i)
+            for (size_t k = i + 1; k < letters.size(); ++k) {
+                const auto& A = u.codebook().fingerprint(char32_t(uint8_t(letters[i])));
+                const auto& B = u.codebook().fingerprint(char32_t(uint8_t(letters[k])));
+                size_t shared = 0;
+                for (uint32_t x : A) shared += std::count(B.begin(), B.end(), x);
+                fo += double(shared) / double(std::max<size_t>(1, A.size()));
+                ++nf;
+            }
+        std::printf("\n  fingerprint overlap between letters (share of lines shared): %.3f", fo / nf);
+    }
+    std::printf("\n");
+    std::printf("  chain flow by target field:");
+    const char* names[kFields] = {"Input", "Memory", "Reasoning", "Output"};
+    for (uint32_t f = 0; f < kFields; ++f) {
+        double fl = 0.0;
+        for (size_t w = 0; w < items.size(); ++w)
+            for (size_t i = 0; i < items[w].size(); ++i) {
+                std::vector<double> to = P[w][(i + 1) % items[w].size()];
+                for (size_t k = 0; k < to.size(); ++k)
+                    if (k / perField != f) to[k] = 0.0;
+                fl += m.plasticFlow(P[w][i], to);
+            }
+        std::printf(" %s %.4f", names[f], fl / n);
+    }
+    std::printf("\n");
+    return 0;
+}
+
 } // namespace ncm

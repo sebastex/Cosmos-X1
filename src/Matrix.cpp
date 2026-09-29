@@ -242,6 +242,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     trace3_.assign(V_ * C3, 0.0f);
     orderTrace3_.assign(V_ * C3, 0.0f);
     resource3_.assign(V_ * C3, 1.0f);
+    diagSource3_.assign(V_ * kSources, 0.0f);
 
     initInhibitory();
     initSharedRules();
@@ -666,6 +667,11 @@ void NeuralCellularMatrix::step3D() {
         float in[C3] = {};
         float pl[C3] = {};  // learned recurrent part of the input (within the field)
         float pl4[C3] = {}; // learned part of the 4D link (between fields)
+        auto sumIn = [&]() {
+            float t = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) t += in[c];
+            return t;
+        };
         // Learned connections transmit the source's activity times its transmitter resource.
         float depressed[C3];
         auto learnedSource = [&](size_t sv, const float* src) -> const float* {
@@ -698,6 +704,7 @@ void NeuralCellularMatrix::step3D() {
                     }
                 }
 
+        const float cLocal = sumIn();
         for (uint32_t l = 0; l < K; ++l) {
             const size_t t = lrTarget_[v * K + l];
             const float* src = s3 + t * C3;
@@ -712,6 +719,7 @@ void NeuralCellularMatrix::step3D() {
             }
         }
 
+        const float cLong = sumIn();
         // The 4D link is the path input takes between fields, so encoding mode does not
         // suppress it: acetylcholine turns down a region's internal loops, not its input.
         uint32_t gi = 0;
@@ -745,6 +753,7 @@ void NeuralCellularMatrix::step3D() {
             }
             ++gi;
         }
+        const float c4D = sumIn();
         // Input-field depth: interior voxels hear random voxels of the sensory face (feedforward).
         if (f == 0 && x > 0 && cfg_.input_depth_spread > 0) {
             const uint32_t KD = cfg_.input_depth_spread;
@@ -757,6 +766,7 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
             }
         }
+        const float cDepth = sumIn();
         // Pattern-separating feedforward sources (scaffold only), from every earlier field.
         if (spreadK_ > 0 && f > 0) {
             const uint32_t S4 = spreadK_;
@@ -776,6 +786,7 @@ void NeuralCellularMatrix::step3D() {
                 }
         }
 
+        const float cSpread = sumIn();
         // Upward summary from the voxel's sheet, divisively normalized like the line summary:
         // scaled by 1/sqrt(active sheet cells), so sparse (streamed) and dense (held) input
         // drive the voxel in the same useful range.
@@ -802,6 +813,20 @@ void NeuralCellularMatrix::step3D() {
         {
             // Gain control turning the field down also turns down its learned recurrent input.
             const float plScale = cfg_.agc_plastic > 0.5f ? std::min(1.0f, afferentGain) : 1.0f;
+            const float cUp = sumIn();
+            float* ds = diagSource3_.data() + v * kSources;
+            ds[kFixedLocal] = cLocal;
+            ds[kFixedLongRange] = cLong - cLocal;
+            ds[kFixed4D] = c4D - cLong;
+            ds[kInputDepth] = cDepth - c4D;
+            ds[kFixedSpread] = cSpread - cDepth;
+            ds[kUpward] = cUp - cSpread;
+            ds[kLearnedWithin] = 0.0f;
+            ds[kLearned4D] = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) {
+                ds[kLearnedWithin] += plScale * pl[c];
+                ds[kLearned4D] += pl4[c];
+            }
             float plSum = 0.0f, inSum = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) {
                 const float learned = plScale * pl[c] + pl4[c];
@@ -917,7 +942,7 @@ void NeuralCellularMatrix::step3D() {
                         heard = heard || anything[vn];
                     }
             float& g = voxelGain_[v];
-            if (!heard) {
+            if (!heard || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
                 g += (1.0f - g) * relax;
                 continue;
             }
@@ -940,7 +965,7 @@ void NeuralCellularMatrix::step3D() {
             // Adjust only while there is something to hear. A silent field either holds its gain
             // (agc_relax_field 0; raising it through silence over-amplified the next input) or
             // relaxes it toward 1, so every input starts from the same state (repeatability).
-            if (!anything) {
+            if (!anything || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
                 fieldGain_[f] += (1.0f - fieldGain_[f]) * std::clamp(cfg_.agc_relax_field, 0.0f, 1.0f);
                 continue;
             }
@@ -1393,6 +1418,23 @@ std::array<WeightHealth, kFields> NeuralCellularMatrix::weightHealth() {
         h.topSourceShare = total > 0.0 ? top / total : 0.0;
     }
     return out;
+}
+
+std::array<DriveSources, kFields> NeuralCellularMatrix::driveSources() const {
+    std::array<DriveSources, kFields> out{};
+    for (size_t v = 0; v < V_; ++v) {
+        if (isSilent(s3_.cur.data() + v * C3, C3)) continue;
+        DriveSources& d = out[v / Vf_];
+        d.firing += 1.0;
+        for (uint32_t k = 0; k < kSources; ++k) d.net[k] += diagSource3_[v * kSources + k];
+    }
+    return out;
+}
+
+double NeuralCellularMatrix::meanResource() const {
+    double t = 0.0;
+    for (float r : resource3_) t += r;
+    return resource3_.empty() ? 1.0 : t / double(resource3_.size());
 }
 
 } // namespace ncm

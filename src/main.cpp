@@ -177,6 +177,8 @@ int main(int argc, char** argv) {
     if (opt.test == "retention") return ncm::runRetentionTest(cfg);
     if (opt.test == "streamdiag") return ncm::runStreamDiagTest(cfg);
     if (opt.test == "health") return ncm::runHealthTest(cfg);
+    if (opt.test == "hum") return ncm::runHumTest(cfg);
+    if (opt.test == "chain") return ncm::runChainTest(cfg);
     if (opt.test == "completion") return ncm::runCompletionTest(cfg, opt.storeTicks > 0 ? opt.storeTicks : 3);
     if (opt.test == "settle") return ncm::runSettleTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);
     if (opt.test == "occupancy") return ncm::runOccupancyTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);

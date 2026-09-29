@@ -42,6 +42,14 @@ struct DriveBreakdown {
 // Diagnostic: how the learned connections of a field are used. Fill = a channel's incoming learned
 // strength / plastic budget; topSourceShare = share of all outgoing learned strength held by the
 // top 1% of source channels (hubs).
+// Diagnostic: net input of the firing voxels of a field on the last step, by source.
+enum DriveSource : uint32_t {
+    kLearnedWithin, kLearned4D, kFixedLocal, kFixedLongRange, kFixed4D, kInputDepth, kFixedSpread, kUpward, kSources
+};
+struct DriveSources {
+    double firing = 0.0;               // firing voxels
+    std::array<double, kSources> net{}; // summed over firing voxels
+};
 struct WeightHealth {
     double meanFill = 0.0, shareFull = 0.0, shareUsed = 0.0, topSourceShare = 0.0;
 };
@@ -99,6 +107,8 @@ public:
     double plasticFlow(const std::vector<double>& from, const std::vector<double>& to);
     std::array<DriveBreakdown, kFields> driveBreakdown() const;
     std::array<WeightHealth, kFields> weightHealth();
+    std::array<DriveSources, kFields> driveSources() const;
+    double meanResource() const; // short-term depression: mean transmitter resource (1 = rested)
 
     const Config& config() const { return cfg_; }
     const AVec<float>& lineState() const { return s1_.cur; }
@@ -140,6 +150,7 @@ private:
     AVec<float> diagPlastic3_; // learned part of each voxel's input on the last step (diagnostic)
     AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
     AVec<float> resource3_;    // short-term depression: transmitter resource per voxel channel
+    AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
 
     // Fatigue per cell (2D and 3D), and each voxel's long-run average activity (covariance learning).
     AVec<float> fatigue2_;

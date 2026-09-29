@@ -240,6 +240,10 @@ struct Config {
     // path: when a field is too active because memories drive it, the memories are turned down
     // instead of the cue. Gain above 1 never amplifies learned input (loops would self-sustain).
     float agc_plastic = 0.0f;
+    // 1 = gain control adapts only while the senses receive input; in silence every gain relaxes
+    // toward 1 (at agc_relax_field / agc_relax). Otherwise a faint echo after the input ends is
+    // taken for weak input, and the rising gain turns the echo into self-sustaining activity.
+    float agc_input_only = 0.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

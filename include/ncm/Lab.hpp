@@ -130,6 +130,7 @@ public:
     const NeuralCellularMatrix& matrix() const { return *m_; }
     const CharacterCodebook& codebook() const { return codebook_; }
     float lastModulator() const { return lastModulator_; }
+    float lastMode() const { return mode_; } // encoding/recall mode applied (1 = learned links suppressed)
     // Mean learning signal over the learning steps since the last reset (diagnostic).
     double meanModulator() const { return modCount_ ? modSum_ / double(modCount_) : 0.0; }
     void resetModulatorMean() { modSum_ = 0.0; modCount_ = 0; }
