@@ -44,7 +44,8 @@ struct DriveBreakdown {
 // top 1% of source channels (hubs).
 // Diagnostic: net input of the firing voxels of a field on the last step, by source.
 enum DriveSource : uint32_t {
-    kLearnedWithin, kLearned4D, kFixedLocal, kFixedLongRange, kFixed4D, kInputDepth, kFixedSpread, kUpward, kSources
+    kLearnedWithin, kLearned4D, kFixedLocal, kFixedLongRange, kFixed4D, kInputDepth, kFixedSpread, kUpward,
+    kLearnedInhibition, kSources
 };
 struct DriveSources {
     double firing = 0.0;               // firing voxels
@@ -109,6 +110,7 @@ public:
     std::array<WeightHealth, kFields> weightHealth();
     std::array<DriveSources, kFields> driveSources() const;
     double meanResource() const; // short-term depression: mean transmitter resource (1 = rested)
+    std::array<double, kFields> meanInhibitionWeight() const; // learned inhibition per field
 
     const Config& config() const { return cfg_; }
     const AVec<float>& lineState() const { return s1_.cur; }
@@ -151,6 +153,8 @@ private:
     AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
     AVec<float> resource3_;    // short-term depression: transmitter resource per voxel channel
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
+    AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)
+    AVec<float> pool3_;        // neighbourhood activity each voxel heard on the last step
 
     // Fatigue per cell (2D and 3D), and each voxel's long-run average activity (covariance learning).
     AVec<float> fatigue2_;

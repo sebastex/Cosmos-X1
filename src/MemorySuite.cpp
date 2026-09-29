@@ -949,6 +949,23 @@ int runHealthTest(const Config& cfg) {
                 std::printf("             %4llu  %-10s %.3f          %.2f             %+.3f      %.2f\n",
                             (unsigned long long)points[pi], names[f], a[0] / n, a[1] / n, a[2] / n, a[3] / n);
             }
+        {
+            const auto wi = s.matrix().meanInhibitionWeight();
+            const auto& st = s.matrix().voxelState();
+            std::printf("    INHIB    learned inhibition weight per field:");
+            for (uint32_t f = 0; f < kFields; ++f) std::printf(" %s %.3f", names[f], wi[f]);
+            double ySum = 0.0;
+            size_t yN = 0;
+            for (size_t v = 0; v < st.size() / C3; ++v) {
+                double y = 0.0;
+                for (uint32_t c = 0; c < C3; ++c) y += st[v * C3 + c];
+                if (y > 0.0) {
+                    ySum += y / C3;
+                    ++yN;
+                }
+            }
+            std::printf(" | mean channel output of firing voxels now %.3f\n", yN ? ySum / double(yN) : 0.0);
+        }
         std::printf("    ENDS IN  ");
         for (size_t k = 0; k < items.size(); ++k)
             std::printf("%s->%s%s ", items[k].c_str(), items[endsIn[k]].c_str(), endsIn[k] == k ? "" : "(!)");
@@ -1007,7 +1024,7 @@ int runHumTest(const Config& cfg) {
         }
         (void)Vf;
         std::printf("  %s\n", learning ? "LEARNED" : "UNTRAINED");
-        std::printf("    tick field      firing  sheet-ch  line-ch | per firing voxel: learnW  learn4D  local  longR  fix4D  depth  spread  upward | gain\n");
+        std::printf("    tick field      firing  sheet-ch  line-ch | per firing voxel: learnW  learn4D  local  longR  fix4D  depth  spread  upward  inhib | gain\n");
         for (int b = 0; b < bins; ++b) {
             for (uint32_t f = 0; f < kFields; ++f) {
                 const auto& a = acc[b][f];

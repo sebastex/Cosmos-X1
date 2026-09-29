@@ -243,6 +243,8 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     orderTrace3_.assign(V_ * C3, 0.0f);
     resource3_.assign(V_ * C3, 1.0f);
     diagSource3_.assign(V_ * kSources, 0.0f);
+    inhibW3_.assign(V_, 0.0f);
+    pool3_.assign(V_, 0.0f);
 
     initInhibitory();
     initSharedRules();
@@ -654,6 +656,7 @@ void NeuralCellularMatrix::step3D() {
     const uint32_t K = cfg_.long_range_links;
     const size_t SS = SS_;
     const bool depression = cfg_.learning.depression_use > 0.0f;
+    const bool learnedInhibition = cfg_.learning.istdp_rate > 0.0f;
 
     const int64_t voxels = int64_t(V_);
 #pragma omp parallel for schedule(dynamic, 256)
@@ -683,6 +686,8 @@ void NeuralCellularMatrix::step3D() {
         // Gain control scales incoming signals only: per voxel (local) or per field.
         const float afferentGain = cfg_.agc_local > 0.5f ? voxelGain_[v] : fieldGain_[f];
         const float* w = W3_.data() + v * 27 * C3 * C3;
+        float poolSum = 0.0f;
+        uint32_t poolCount = 0;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
                 for (int dx = -1; dx <= 1; ++dx) {
@@ -691,7 +696,9 @@ void NeuralCellularMatrix::step3D() {
                     const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                     const uint32_t o = uint32_t((dz + 1) * 9 + (dy + 1) * 3 + (dx + 1));
                     const float* src = s3 + vn * C3;
+                    ++poolCount;
                     if (isSilent(src, C3)) continue; // silent sources contribute nothing
+                    for (uint32_t c = 0; c < C3; ++c) poolSum += src[c];
                     if (o == 13) {
                         addScaled(src, in, C3, r.voxel_self); // self-persistence: fixed
                     } else if (inhib3_[vn]) {
@@ -814,6 +821,14 @@ void NeuralCellularMatrix::step3D() {
             // Gain control turning the field down also turns down its learned recurrent input.
             const float plScale = cfg_.agc_plastic > 0.5f ? std::min(1.0f, afferentGain) : 1.0f;
             const float cUp = sumIn();
+            // Learned inhibition from the local interneuron pool (same on every channel).
+            const float pool = poolCount ? poolSum / float(poolCount * C3) : 0.0f;
+            pool3_[v] = pool;
+            float inhibition = 0.0f;
+            if (learnedInhibition) {
+                inhibition = inhibW3_[v] * pool;
+                for (uint32_t c = 0; c < C3; ++c) in[c] -= inhibition;
+            }
             float* ds = diagSource3_.data() + v * kSources;
             ds[kFixedLocal] = cLocal;
             ds[kFixedLongRange] = cLong - cLocal;
@@ -821,6 +836,7 @@ void NeuralCellularMatrix::step3D() {
             ds[kInputDepth] = cDepth - c4D;
             ds[kFixedSpread] = cSpread - cDepth;
             ds[kUpward] = cUp - cSpread;
+            ds[kLearnedInhibition] = -inhibition * float(C3);
             ds[kLearnedWithin] = 0.0f;
             ds[kLearned4D] = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) {
@@ -908,6 +924,23 @@ void NeuralCellularMatrix::step3D() {
         for (int64_t i = 0; i < int64_t(V_ * C3); ++i) {
             float& r = resource3_[size_t(i)];
             r = std::clamp(r + (1.0f - r) * recover - use * out[size_t(i)] * r, 0.0f, 1.0f);
+        }
+    }
+
+    // Inhibitory plasticity: a voxel above its target activity while its neighbourhood is busy
+    // strengthens its inhibition, one below it weakens it (Vogels et al. 2011, rate form).
+    if (learnedInhibition) {
+        const float eta = cfg_.learning.istdp_rate, rho = cfg_.learning.istdp_target;
+        const float wMax = std::max(0.0f, cfg_.learning.istdp_max);
+#pragma omp parallel for schedule(static)
+        for (int64_t vi = 0; vi < voxels; ++vi) {
+            const size_t v = size_t(vi);
+            const float pool = pool3_[v];
+            if (pool <= 0.0f) continue;
+            float y = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) y += out[v * C3 + c];
+            y /= float(C3);
+            inhibW3_[v] = std::clamp(inhibW3_[v] + eta * pool * (y - rho), 0.0f, wMax);
         }
     }
 
@@ -1435,6 +1468,12 @@ double NeuralCellularMatrix::meanResource() const {
     double t = 0.0;
     for (float r : resource3_) t += r;
     return resource3_.empty() ? 1.0 : t / double(resource3_.size());
+}
+
+std::array<double, kFields> NeuralCellularMatrix::meanInhibitionWeight() const {
+    std::array<double, kFields> out{};
+    for (size_t v = 0; v < V_; ++v) out[v / Vf_] += inhibW3_[v] / double(Vf_);
+    return out;
 }
 
 } // namespace ncm

@@ -97,6 +97,15 @@ struct LearningParams {
     // depression_use * activity * r per 3D tick, and r recovers toward 1 with time constant
     // depression_tau (3D ticks). A memory that keeps itself active wears out its own links and
     // lets go, and a chain moves on to its next element. 0 = off.
+    // Learned inhibition (inhibitory plasticity, E/I balance): each voxel receives inhibition
+    // w_inh * pool, where pool is the mean activity of its 3x3x3 neighbourhood (a local
+    // interneuron pool). w_inh learns on every 3D step, whether or not memories are being
+    // written: dw = istdp_rate * pool * (y - istdp_target), y = the voxel's mean channel output.
+    // A voxel firing above target while its neighbourhood is busy gains inhibition; one firing
+    // below loses it. As learned excitation grows, inhibition grows with it. 0 = off.
+    float istdp_rate = 0.0f;
+    float istdp_target = 0.02f;
+    float istdp_max = 50.0f;
     float depression_use = 0.0f;
     float depression_tau = 20.0f;
     // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest
