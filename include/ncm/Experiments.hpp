@@ -42,6 +42,8 @@ int runProfileTest(const Config& cfg); // diagnostic: memory profile under harsh
 int runRetentionTest(const Config& cfg); // CP6b: retention of 8 memories while 16 more are learned
 int runStreamDiagTest(const Config& cfg); // diagnostic: learning signal and recall over time for streamed words
 int runSettleTest(const Config& cfg, const std::string& item); // diagnostic: settling and fading time
+int runCompletionTest(const Config& cfg, uint64_t prefix = 3); // CP5b: complete a streamed word from its start
+int runHealthTest(const Config& cfg); // diagnostic: which subsystem misbehaves when memories blur
 int runOccupancyTest(const Config& cfg, const std::string& item); // diagnostic: active voxels per depth layer
 // Multiplies every test duration (storing, gaps, cues) by `scale` (default 1).
 void setTestTimeScale(double scale);

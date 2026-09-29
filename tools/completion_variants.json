@@ -1,0 +1,2 @@
+{"default": {},
+ "wiring64": {"plastic_budget": 2, "learning_rate": 0.02, "presynaptic_bound": 1, "covariance": 1, "long_range_links": 64, "long_range": 0.00205}}

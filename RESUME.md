@@ -1,36 +1,25 @@
-# Where to resume (paused 2026-09-28 ~00:25)
+# Resume point (2026-09-29, paused by user)
 
-Nothing needs to be redone. Everything below is committed, and all search and evaluation results are saved in `tools/`.
+## Where we are: Stage 1, word completion (CP5b) vs memory capacity (CP3)
+- Root cause of weak word completion: learnable links too sparse for scattered sparse codes
+  (each active cell had ~1 learnable partner in the next letter's cells). Fix: long_range_links=64
+  (long_range=0.00205 keeps fixed drive equal) + anti-hub rules (presynaptic_bound=1, covariance=1).
+- Completion also needs strong links (plastic_budget=2, learning_rate=0.02): 20/20 seeds pass
+  (seeds 22-41, small). Without strong links: 0/20.
+- But strong links blur 8-memory recall (CP3 s22 gain -0.269) and break CP2/CP6/CP6b.
+- `--test health` diagnostic (new) found: learned input 80-88% of drive (drowns cue), gain control
+  only turns down input path (gain 0.25), attractors never switch off, hub cells (top1% = 45%).
+- New options (default off): agc_plastic=1 (gain control also turns down learned input),
+  depression_use / depression_tau (short-term synaptic depression of learned links).
+  These fix hubs and blur (CP3 up to +0.324) but weaken completion. Trade-off not yet solved.
+- Best so far (full = 64 links + antihub + budget 2 / rate .02):
+    t.3/60 b3 (depression_use .3, tau 60, budget 3): capa22 +0.324 PASS, comp22 .048x comp23 .085 comp33 .021x
+    t.2/40 b3: capa22 +0.065 (1 miss), comp 22/23 pass, comp33 .048x
+- Remaining symptom: low "hum" of activity after recall never reaches zero -> bleeds into next cue;
+  m->t miss on s22.
+- Tools: tools/fixgrid.py (VARIANTS json env, TESTS env), tools/cgrid.py. Use build/cosmos_x1_diag.exe.
+- Default rule unchanged (all new options off). Nothing adopted yet.
 
-## Current baseline
-- **Default rule:** the evolved champion (`src/Config.cpp` `evolvedRule()`, `tools/champion.json`). `--rule starting` gives the old hand-set rule.
-- **Champion, small preset, fresh seeds 21–40, full suite:**
-  - Stage 0: 20/20
-  - recall, capacity, efficiency, order: 18/20
-  - continual: 13/20
-  - streamed: 0/20
-  - Reports: `tools/baseline_report_round1.json` (seeds 21–25, champion plus 4 additions) and the terminal output of the 15-seed run.
-- **Failures 38/39** are a total collapse: subtractive fatigue silences the matrix under held input.
-
-## In progress when paused
-1. **`fatigue_divisive=1`** (committed option, off by default):
-   - Fixes the collapse on seeds 38/39.
-   - The 20-seed eval was stopped after 9 seeds; the partial result is in `tools/baseline_report_divisive_partial.json`.
-   - Continual was worse on 21–25: 2/5, against 5/5 for the champion.
-2. **`fatigue_divisive=2`** (hybrid: divisive while input is present, subtractive in silence; built, not yet committed at pause time — committed now):
-   - s22 forgetting 0.021, s24 0.137, s38 fixed (recall +0.104).
-   - Was about to compare full CP6 lines (champion vs hybrid, seeds 22/24) to see which CP6 sub-condition fails.
-3. **Evolution search** (round 3) is paused. Resume with:
-   `python tools/evolve.py --regime rate --resume --log evolve_round3_log.jsonl --seeds-per-gen 3 --preset small --population 12 --generations 30 --parallel 2 --immigrants 2 --rng 97`
-
-## Open decision (user)
-- **CP5 streamed words** cannot pass with the current design: sub-voxel detail has no learning.
-- Option 1: give 2D sheet cells learnable connections (spec change).
-- Option 2: move streamed-word memory to Stage 2.
-
-## Next steps
-1. Finish the fatigue fix (divisive vs hybrid), then run the 20-seed eval (`tools/baseline_eval.py`).
-2. Adopt the fix into `evolvedRule()` if it beats the champion.
-3. Fix continual interference (overlap).
-4. Act on the CP5 decision.
-5. Verify at the dev preset.
+## Next ideas
+- Resolve completion-vs-capacity: e.g. depression only in encoding-free recall, or completion read
+  over a shorter window; check the "hum" floor source; then multi-seed CP2-CP7 + CP5b at small+dev.

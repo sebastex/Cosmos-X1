@@ -133,7 +133,7 @@ int runStreamedTest(const Config& cfg) {
     // Diagnostics: which stored word each cue resembles, and the learned links within and
     // between words (stored pattern -> stored pattern).
     for (int l = 1; l >= 0; --l) {
-        std::printf("  diagnostic, %s: cue vs stored (apple river stone)\n", l ? "learned" : "untrained");
+        std::printf("  diagnostic, %s: cue vs stored (apple river storm)\n", l ? "learned" : "untrained");
         for (size_t k = 0; k < 3; ++k)
             std::printf("    %-6s %.3f %.3f %.3f\n", items[k].c_str(), sims[l][k][0], sims[l][k][1], sims[l][k][2]);
     }
@@ -767,6 +767,198 @@ int runSettleTest(const Config& cfg, const std::string& item) {
     std::printf("\n  consecutive-tick similarity, last 20 ticks:");
     for (uint64_t t = on - 20; t < on; ++t) std::printf(" %.2f", lab::cosine(states[t], states[t - 1]));
     std::printf("\n");
+    return 0;
+}
+
+// CP5b word completion (streamed language input): words are learned streamed letter by letter;
+// then only the first `prefix` letters are heard once, followed by silence. The activity in
+// the window after the prefix is compared with each word's stored (streamed) pattern: learning
+// must make it resemble the cue's own word more than the other words, beyond an untrained twin.
+int runCompletionTest(const Config& cfg, uint64_t prefix) {
+    // Words with different endings: completing a word's tail must not look like another word
+    // only because they end the same way ("apple"/"stone" share "e").
+    const std::vector<std::string> items = {"apple ", "river ", "storm "};
+    std::printf("CP5b word completion: learn 3 streamed words, hear the first %llu letters, read what follows\n",
+                (unsigned long long)prefix);
+    Specificity spec[2];
+    std::vector<std::vector<double>> sims[2];
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        const Patterns stored = storeAll(s, items, kStore);
+        Patterns after;
+        for (const auto& item : items) {
+            s.present(item.substr(0, prefix), prefix, 1.0f, false, UINT64_MAX);
+            // Record the window after the prefix; every 5 ticks, how much activity remains and the
+            // bin's own-word similarity minus the best other word (does the state move toward its
+            // own word as the prefix's echo fades, or only fade?).
+            std::vector<double> acc, bin;
+            std::string trace, margins;
+            const size_t own = size_t(&item - items.data());
+            for (uint64_t t = 0; t < T(40); ++t) {
+                std::vector<double> now;
+                s.silence(1, false, 0);
+                s.accumulate(now);
+                if (acc.size() != now.size()) acc.assign(now.size(), 0.0);
+                if (bin.size() != now.size()) bin.assign(now.size(), 0.0);
+                double total = 0.0;
+                for (size_t i = 0; i < now.size(); ++i) {
+                    acc[i] += now[i];
+                    bin[i] += now[i];
+                    total += now[i];
+                }
+                if (t % 5 == 4) {
+                    char buf[24];
+                    std::snprintf(buf, sizeof(buf), " %.1f", total);
+                    trace += buf;
+                    double best = -1.0;
+                    for (size_t k = 0; k < stored.size(); ++k)
+                        if (k != own) best = std::max(best, lab::cosine(bin, stored[k], 0, bin.size()));
+                    std::snprintf(buf, sizeof(buf), " %+.2f", lab::cosine(bin, stored[own], 0, bin.size()) - best);
+                    margins += buf;
+                    bin.assign(bin.size(), 0.0);
+                }
+            }
+            std::printf("    %s \"%s\": activity after the prefix, every 5 ticks:%s\n", learning ? "learned  " : "untrained",
+                        item.substr(0, prefix).c_str(), trace.c_str());
+            std::printf("      own-word margin per 5 ticks:%s\n", margins.c_str());
+            after.push_back(acc);
+            s.silence(kGap, false);
+        }
+        sims[learning] = lab::similarityMatrix(after, stored);
+        spec[learning] = lab::specificity(sims[learning]);
+    }
+    for (int l = 1; l >= 0; --l) {
+        std::printf("  %s: after-prefix activity vs stored words (apple river storm)\n", l ? "learned" : "untrained");
+        for (size_t k = 0; k < items.size(); ++k)
+            std::printf("    %-6s %.3f %.3f %.3f\n", items[k].substr(0, prefix).c_str(), sims[l][k][0], sims[l][k][1],
+                        sims[l][k][2]);
+    }
+    const double gain = spec[1].margin - spec[0].margin;
+    const bool pass = spec[1].identifies && gain >= 0.05;
+    std::printf("  word completion: learned margin %+.3f (identifies all: %s) vs untrained %+.3f -> gain %+.3f "
+                "(need >= +0.050): %s\n", spec[1].margin, spec[1].identifies ? "yes" : "NO", spec[0].margin, gain,
+                pass ? "PASS" : "FAIL");
+    return pass ? 0 : 3;
+}
+
+// Memory health (diagnostic): which subsystem misbehaves when memories blur. 8 memories are
+// stored as in CP3, on a learning matrix and an untrained twin, then each is cued (40%).
+//   STORE    per field: overlap between stored patterns (mean pairwise similarity) and density.
+//   WEIGHTS  per field: fill of the plastic budget, share of channels full / used, and the share
+//            of outgoing learned strength held by the top 1% of source channels (hubs).
+//   RECALL   per field, at points in the cue: learned share of the input of firing voxels,
+//            activity relative to the stored pattern's level, own-memory margin, field gain.
+//   ENDS IN  which memory each cue's activity resembles most at the end of the cue.
+//   AFTER    total activity per field in the silence after the cue (runaway or fading).
+int runHealthTest(const Config& cfg) {
+    const std::vector<std::string> items = {"a", "k", "z", "m", "q", "e", "t", "w"};
+    const char* names[kFields] = {"Input", "Memory", "Reasoning", "Output"};
+    const uint64_t points[] = {T(5), T(15), T(30), kCue - 1};
+    std::printf("Memory health: %zu memories stored, each cued at %.0f%%\n", items.size(), 100.0 * kCueFraction);
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        const Patterns stored = storeAll(s, items, kStore);
+        const size_t perField = stored[0].size() / kFields;
+        const double storedTicks = double(kStore - kStore / 2);
+        std::printf("  %s\n", learning ? "LEARNED" : "UNTRAINED");
+
+        std::printf("    STORE    field      overlap  density\n");
+        for (uint32_t f = 0; f < kFields; ++f) {
+            const size_t b = f * perField, e = (f + 1) * perField;
+            double overlap = 0.0, density = 0.0;
+            int n = 0;
+            for (size_t i = 0; i < stored.size(); ++i) {
+                size_t on = 0;
+                for (size_t k = b; k < e; ++k) on += stored[i][k] > 0.0;
+                density += double(on) / double(perField) / double(stored.size());
+                for (size_t j = i + 1; j < stored.size(); ++j) {
+                    overlap += lab::cosine(stored[i], stored[j], b, e);
+                    ++n;
+                }
+            }
+            std::printf("             %-10s %.3f   %.3f\n", names[f], overlap / n, density);
+        }
+
+        if (learning) {
+            // weightHealth() only reads the weights; the matrix is accessed through the session.
+            const auto health = const_cast<NeuralCellularMatrix&>(s.matrix()).weightHealth();
+            std::printf("    WEIGHTS  field      fill   full   used   top1%%-sources\n");
+            for (uint32_t f = 0; f < kFields; ++f)
+                std::printf("             %-10s %.3f  %.3f  %.3f  %.3f\n", names[f], health[f].meanFill, health[f].shareFull,
+                            health[f].shareUsed, health[f].topSourceShare);
+        }
+
+        // Per point in the cue and field: learned share, activity ratio, margin, gain (summed over cues).
+        const size_t P = sizeof(points) / sizeof(points[0]);
+        std::vector<std::array<double, 4>> acc(P * kFields, std::array<double, 4>{0, 0, 0, 0});
+        std::vector<size_t> endsIn(items.size());
+        std::vector<std::array<double, kFields>> after(8, std::array<double, kFields>{});
+        for (size_t k = 0; k < items.size(); ++k) {
+            std::vector<double> window, bin;
+            size_t pi = 0;
+            for (uint64_t t = 0; t < kCue; ++t) {
+                s.present(items[k], 1, kCueFraction, false, UINT64_MAX);
+                s.accumulate(bin);
+                if (t >= kCue / 2) s.accumulate(window);
+                if (pi < P && t == points[pi]) {
+                    const auto drive = s.matrix().driveBreakdown();
+                    const auto& gains = s.matrix().fieldGains();
+                    for (uint32_t f = 0; f < kFields; ++f) {
+                        const size_t b = f * perField, e = (f + 1) * perField;
+                        double level = 0.0, storedLevel = 0.0;
+                        for (size_t i = b; i < e; ++i) {
+                            level += bin[i];
+                            storedLevel += stored[k][i];
+                        }
+                        const uint64_t binTicks = pi == 0 ? points[0] + 1 : points[pi] - points[pi - 1];
+                        double best = -1.0;
+                        for (size_t j = 0; j < stored.size(); ++j)
+                            if (j != k) best = std::max(best, lab::cosine(bin, stored[j], b, e));
+                        auto& a = acc[pi * kFields + f];
+                        a[0] += drive[f].totalActive > 0.0 ? drive[f].plasticActive / drive[f].totalActive : 0.0;
+                        a[1] += storedLevel > 0.0 ? (level / double(binTicks)) / (storedLevel / storedTicks) : 0.0;
+                        a[2] += lab::cosine(bin, stored[k], b, e) - best;
+                        a[3] += gains[f];
+                    }
+                    bin.assign(bin.size(), 0.0);
+                    ++pi;
+                }
+            }
+            double best = -1.0;
+            for (size_t j = 0; j < stored.size(); ++j) {
+                const double sim = lab::cosine(window, stored[j]);
+                if (sim > best) {
+                    best = sim;
+                    endsIn[k] = j;
+                }
+            }
+            for (int b = 0; b < 8; ++b) {
+                std::vector<double> now;
+                s.silence(T(5), false, T(5) - 1);
+                s.accumulate(now);
+                for (uint32_t f = 0; f < kFields; ++f)
+                    for (size_t i = f * perField; i < (f + 1) * perField; ++i) after[b][f] += now[i] / double(items.size());
+            }
+            s.silence(kGap > T(40) ? kGap - T(40) : 0, false);
+        }
+        std::printf("    RECALL   tick  field      learned-share  activity/stored  own-margin  gain\n");
+        for (size_t pi = 0; pi < P; ++pi)
+            for (uint32_t f = 0; f < kFields; ++f) {
+                const auto& a = acc[pi * kFields + f];
+                const double n = double(items.size());
+                std::printf("             %4llu  %-10s %.3f          %.2f             %+.3f      %.2f\n",
+                            (unsigned long long)points[pi], names[f], a[0] / n, a[1] / n, a[2] / n, a[3] / n);
+            }
+        std::printf("    ENDS IN  ");
+        for (size_t k = 0; k < items.size(); ++k)
+            std::printf("%s->%s%s ", items[k].c_str(), items[endsIn[k]].c_str(), endsIn[k] == k ? "" : "(!)");
+        std::printf("\n    AFTER    activity per field every 5 ticks of silence after the cue:\n");
+        for (uint32_t f = 0; f < kFields; ++f) {
+            std::printf("             %-10s", names[f]);
+            for (int b = 0; b < 8; ++b) std::printf(" %7.1f", after[b][f]);
+            std::printf("\n");
+        }
+    }
     return 0;
 }
 

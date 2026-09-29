@@ -34,6 +34,18 @@ struct MatrixStats {
 // Each level advances with its own step function, written as "update every cell
 // from the current buffers into the next buffers" with no hidden state, so the
 // same logic ports directly to GPU compute shaders later (spec Stage 6).
+// Diagnostic: where a field's 3D input came from on the last step. `plastic` is the learned part,
+// `total` all positive input (learned + fixed paths); the *Active sums cover firing voxels only.
+struct DriveBreakdown {
+    double plastic = 0.0, total = 0.0, plasticActive = 0.0, totalActive = 0.0, activeVoxels = 0.0;
+};
+// Diagnostic: how the learned connections of a field are used. Fill = a channel's incoming learned
+// strength / plastic budget; topSourceShare = share of all outgoing learned strength held by the
+// top 1% of source channels (hubs).
+struct WeightHealth {
+    double meanFill = 0.0, shareFull = 0.0, shareUsed = 0.0, topSourceShare = 0.0;
+};
+
 class NeuralCellularMatrix {
 public:
     explicit NeuralCellularMatrix(const Config& cfg);
@@ -85,6 +97,8 @@ public:
     // `to` (both 3D state vectors, e.g. accumulated activity), normalized by both patterns'
     // norms. Measures a stored association directly, independent of recall dynamics.
     double plasticFlow(const std::vector<double>& from, const std::vector<double>& to);
+    std::array<DriveBreakdown, kFields> driveBreakdown() const;
+    std::array<WeightHealth, kFields> weightHealth();
 
     const Config& config() const { return cfg_; }
     const AVec<float>& lineState() const { return s1_.cur; }
@@ -123,6 +137,9 @@ private:
     // Drive per cell for the local competition (spec Section 3C); scratch, rewritten every step.
     AVec<float> drive2_;
     AVec<float> drive3_;
+    AVec<float> diagPlastic3_; // learned part of each voxel's input on the last step (diagnostic)
+    AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
+    AVec<float> resource3_;    // short-term depression: transmitter resource per voxel channel
 
     // Fatigue per cell (2D and 3D), and each voxel's long-run average activity (covariance learning).
     AVec<float> fatigue2_;

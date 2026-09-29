@@ -231,6 +231,8 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     s3_.allocate(V_, C3);
     drive2_.assign(Q_, 0.0f);
     drive3_.assign(V_, 0.0f);
+    diagPlastic3_.assign(V_, 0.0f);
+    diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
     voxelGain_.assign(V_, 1.0f);
     if (cfg.learning.sheet_rate > 0.0f) P2_.assign(Q_ * C2 * C2, 0.0f);
@@ -239,6 +241,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     averageN3_.assign(V_, cfg.target_activity);
     trace3_.assign(V_ * C3, 0.0f);
     orderTrace3_.assign(V_ * C3, 0.0f);
+    resource3_.assign(V_ * C3, 1.0f);
 
     initInhibitory();
     initSharedRules();
@@ -649,6 +652,7 @@ void NeuralCellularMatrix::step3D() {
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
     const size_t SS = SS_;
+    const bool depression = cfg_.learning.depression_use > 0.0f;
 
     const int64_t voxels = int64_t(V_);
 #pragma omp parallel for schedule(dynamic, 256)
@@ -660,6 +664,16 @@ void NeuralCellularMatrix::step3D() {
         const uint32_t f = uint32_t(v / Vf_);
 
         float in[C3] = {};
+        float pl[C3] = {};  // learned recurrent part of the input (within the field)
+        float pl4[C3] = {}; // learned part of the 4D link (between fields)
+        // Learned connections transmit the source's activity times its transmitter resource.
+        float depressed[C3];
+        auto learnedSource = [&](size_t sv, const float* src) -> const float* {
+            if (!depression) return src;
+            const float* r = resource3_.data() + sv * C3;
+            for (uint32_t c = 0; c < C3; ++c) depressed[c] = src[c] * r[c];
+            return depressed;
+        };
         // Gain control scales incoming signals only: per voxel (local) or per field.
         const float afferentGain = cfg_.agc_local > 0.5f ? voxelGain_[v] : fieldGain_[f];
         const float* w = W3_.data() + v * 27 * C3 * C3;
@@ -678,8 +692,9 @@ void NeuralCellularMatrix::step3D() {
                         addScaled(src, in, C3, inh * r.voxel_neighbour); // inhibitory: fixed scaffold only
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                // scaffold
-                        matvecAdd(w + size_t(o) * C3 * C3, src, in, C3, C3, rec); // plastic memory part
-                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, in, C3, C3, rec);
+                        const float* ls = learnedSource(vn, src);
+                        matvecAdd(w + size_t(o) * C3 * C3, ls, pl, C3, C3, rec); // plastic memory part
+                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, ls, pl, C3, C3, rec);
                     }
                 }
 
@@ -691,8 +706,9 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
                 addScaled(src, in, C3, r.long_range);
-                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, in, C3, C3, rec);
-                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, in, C3, C3, rec);
+                const float* ls = learnedSource(t, src);
+                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, ls, pl, C3, C3, rec);
+                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, ls, pl, C3, C3, rec);
             }
         }
 
@@ -722,9 +738,10 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, gain * inh * link);
             } else {
                 addScaled(src, in, C3, gain * link);
-                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
+                const float* ls = learnedSource(vg, src);
+                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, ls, pl4, C3, C3, gain * plasticScale * rec4);
                 if (!SH_.empty())
-                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, in, C3, C3, gain * plasticScale * rec4);
+                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, ls, pl4, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
         }
@@ -782,6 +799,19 @@ void NeuralCellularMatrix::step3D() {
             }
         }
 
+        {
+            // Gain control turning the field down also turns down its learned recurrent input.
+            const float plScale = cfg_.agc_plastic > 0.5f ? std::min(1.0f, afferentGain) : 1.0f;
+            float plSum = 0.0f, inSum = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) {
+                const float learned = plScale * pl[c] + pl4[c];
+                in[c] += learned;
+                plSum += learned;
+                inSum += std::max(0.0f, in[c]);
+            }
+            diagPlastic3_[v] = plSum;
+            diagInput3_[v] = inSum;
+        }
         drive3_[v] = activateCell<C3>(in, out + v * C3,
                                       theta[v] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue3_[v])),
                                       cfg_.channel_winners3);
@@ -845,6 +875,17 @@ void NeuralCellularMatrix::step3D() {
     // voxels in its neighbourhood (radius agc_radius); where the neighbourhood is silent the
     // gain relaxes back toward 1. No field-wide statistic, so a cell sees the same local rule
     // at any size and when the matrix grows.
+    // Short-term depression: firing uses transmitter resource, which recovers in time.
+    if (depression) {
+        const float use = cfg_.learning.depression_use;
+        const float recover = 1.0f / std::max(1.0f, cfg_.learning.depression_tau);
+#pragma omp parallel for schedule(static)
+        for (int64_t i = 0; i < int64_t(V_ * C3); ++i) {
+            float& r = resource3_[size_t(i)];
+            r = std::clamp(r + (1.0f - r) * recover - use * out[size_t(i)] * r, 0.0f, 1.0f);
+        }
+    }
+
     if (cfg_.agc_rate > 0.0f && cfg_.agc_local > 0.5f) {
         const float level = lp.active_level;
         std::vector<uint8_t> firing(V_, 0), anything(V_, 0);
@@ -1233,6 +1274,7 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
     std::fill(trace3_.begin(), trace3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
+    std::fill(resource3_.begin(), resource3_.end(), 1.0f);
     std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
     std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
     std::fill(sheetQuietCur_.begin(), sheetQuietCur_.end(), uint8_t(1));
@@ -1292,6 +1334,65 @@ size_t NeuralCellularMatrix::memoryBytes() const {
            bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
            bytes(H_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
+}
+
+} // namespace ncm
+
+namespace ncm {
+
+std::array<DriveBreakdown, kFields> NeuralCellularMatrix::driveBreakdown() const {
+    std::array<DriveBreakdown, kFields> out{};
+    for (size_t v = 0; v < V_; ++v) {
+        DriveBreakdown& d = out[v / Vf_];
+        d.plastic += diagPlastic3_[v];
+        d.total += diagInput3_[v];
+        if (s3_.cur[v * C3] != 0.0f || !isSilent(s3_.cur.data() + v * C3, C3)) {
+            d.activeVoxels += 1.0;
+            d.plasticActive += diagPlastic3_[v];
+            d.totalActive += diagInput3_[v];
+        }
+    }
+    return out;
+}
+
+std::array<WeightHealth, kFields> NeuralCellularMatrix::weightHealth() {
+    std::array<WeightHealth, kFields> out{};
+    const float budget = std::max(1e-6f, cfg_.learning.plastic_budget);
+    std::vector<double> outgoing(V_ * C3, 0.0);
+    std::array<std::vector<double>, kFields> fills;
+    for (size_t v = 0; v < V_; ++v) {
+        float used[C3] = {};
+        forEachLearnedBlock(v, [&](float* block, size_t src) {
+            for (uint32_t a = 0; a < C3; ++a)
+                for (uint32_t b = 0; b < C3; ++b) {
+                    used[a] += block[size_t(a) * C3 + b];
+                    outgoing[src * C3 + b] += block[size_t(a) * C3 + b];
+                }
+        });
+        for (uint32_t a = 0; a < C3; ++a) fills[v / Vf_].push_back(used[a] / budget);
+    }
+    for (uint32_t f = 0; f < kFields; ++f) {
+        WeightHealth& h = out[f];
+        const auto& fl = fills[f];
+        double sum = 0.0;
+        size_t full = 0, used = 0;
+        for (double x : fl) {
+            sum += x;
+            full += x > 0.9;
+            used += x > 0.01;
+        }
+        h.meanFill = fl.empty() ? 0.0 : sum / double(fl.size());
+        h.shareFull = fl.empty() ? 0.0 : double(full) / double(fl.size());
+        h.shareUsed = fl.empty() ? 0.0 : double(used) / double(fl.size());
+        std::vector<double> o(outgoing.begin() + size_t(f) * Vf_ * C3, outgoing.begin() + size_t(f + 1) * Vf_ * C3);
+        double total = 0.0;
+        for (double x : o) total += x;
+        std::sort(o.begin(), o.end(), std::greater<double>());
+        double top = 0.0;
+        for (size_t i = 0; i < std::max<size_t>(1, o.size() / 100); ++i) top += o[i];
+        h.topSourceShare = total > 0.0 ? top / total : 0.0;
+    }
+    return out;
 }
 
 } // namespace ncm

@@ -92,6 +92,13 @@ struct LearningParams {
     // path between fields, is never suppressed). In the hippocampal model acetylcholine turns
     // down every learned associative pathway and spares only afferent input. 0 = off.
     float encoding_suppression_4d = 0.0f;
+    // Short-term synaptic depression of learned connections: each source channel has a
+    // transmitter resource r in [0, 1]; learned connections transmit activity * r. Firing uses
+    // depression_use * activity * r per 3D tick, and r recovers toward 1 with time constant
+    // depression_tau (3D ticks). A memory that keeps itself active wears out its own links and
+    // lets go, and a chain moves on to its next element. 0 = off.
+    float depression_use = 0.0f;
+    float depression_tau = 20.0f;
     // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest
     // channel (like all-or-nothing spikes), not raw amplitudes. Without it, learning scales
     // with the square of activity, so faint streamed input learns far more slowly than held
@@ -229,6 +236,10 @@ struct Config {
     float agc_local = 0.0f;
     float agc_relax = 0.02f;
     float agc_relax_field = 0.0f; // field-wide gain control: relaxation toward 1 per 3D tick in silence
+    // 1 = gain control below 1 also turns down the learned (recurrent) input, not only the input
+    // path: when a field is too active because memories drive it, the memories are turned down
+    // instead of the cue. Gain above 1 never amplifies learned input (loops would self-sustain).
+    float agc_plastic = 0.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

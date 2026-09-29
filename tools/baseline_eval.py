@@ -17,7 +17,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-EXE = ROOT / "build" / "cosmos_x1.exe"
+EXE = pathlib.Path(os.environ["NCM_EXE"]) if "NCM_EXE" in os.environ else ROOT / "build" / "cosmos_x1.exe"
 REPORT = ROOT / "tools" / "baseline_report.json"
 
 
