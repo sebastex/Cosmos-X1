@@ -51,10 +51,22 @@ const std::vector<std::string>& evolvedRule() {
         // Input-field depth: interior Input voxels hear random sensory-face voxels, so the Input
         // field uses its whole volume too (helps the bigger matrix most).
         "input_depth_spread=4", "input_depth_gain=0.179",
+        // Streamed-word memory (adopted 2026-09-29, "version B"; diagnosed with --test completion,
+        // chain, health and hum). Learned links reach 64 random partners per voxel (the fixed part
+        // of those links keeps the old total), so sparse, scattered letter patterns can associate.
+        // Anti-hub learning (full covariance, presynaptic budget). Strong learned links let a
+        // word's start reactivate the whole word; they are kept in check by: gain control that
+        // adapts only while there is input (no self-amplified echo), gain control also turning
+        // down learned input, learned 4D links muted while encoding (no capture of new words onto
+        // old cells), full muting of learned links in silence, and learned inhibition (each
+        // voxel's inhibition learns to balance its excitation).
+        "long_range_links=64", "presynaptic_bound=1",
+        "agc_input_only=1", "agc_plastic=1", "encoding_suppression_4d=1",
+        "istdp_rate=50",
         "channel_winners3=4",
-        "covariance=0.2356",
+        "covariance=1",
         "downward_gain=0.0224",
-        "encoding_suppression=0.755",
+        "encoding_suppression=1",
         "fatigue_gain2=1.0101",
         "fatigue_gain3=0.0638",
         "fatigue_tau3=12.9342",
@@ -64,17 +76,17 @@ const std::vector<std::string>& evolvedRule() {
         "fire_threshold3=0.0256",
         "hetero_ltd=1",
         "homeostasis3=0.0012",
-        "learning_rate=0.0059",
+        "learning_rate=0.04",
         "line_upward_gain=0.5199",
         "link4d=0.2482",
         "link4d_backward=0.0217",
-        "long_range=0.0328",
+        "long_range=0.00205",
         "mode_tau=30",
         "modulation_rate=0",
         "modulator_tau=0",
         "order_gain=4",
         "order_tau=5",
-        "plastic_budget=0.3925",
+        "plastic_budget=4",
         "sheet_neighbour=0.0104",
         "sheet_self=0.1184",
         "soft_bound=1",

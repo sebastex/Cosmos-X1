@@ -328,6 +328,8 @@ int runMemorySuite(const Config& cfg, bool earlyExit) {
     results.push_back({"CP4 efficiency", runEfficiencyTest(cfg)});
     std::printf("\n=== CP5 ===\n");
     results.push_back({"CP5 streamed text", runStreamedTest(cfg)});
+    std::printf("\n=== CP5b ===\n");
+    results.push_back({"CP5b word completion", runCompletionTest(cfg, 3)});
     std::printf("\n=== CP6 ===\n");
     results.push_back({"CP6 continual learning", runContinualTest(cfg)});
     std::printf("\n=== CP6b ===\n");
