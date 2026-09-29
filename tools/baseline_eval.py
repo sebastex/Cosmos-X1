@@ -36,6 +36,8 @@ def run(name, params, preset, seed, threads):
                         capture_output=True, text=True, env=env, timeout=3600).stdout
     s1 = subprocess.run(base + ["--test", "suite"], cwd=ROOT, capture_output=True, text=True, env=env,
                         timeout=7200).stdout
+    (ROOT / "out").mkdir(exist_ok=True)
+    (ROOT / "out" / f"suite_{name}_{preset}_{seed}.txt").write_text(s0 + "\n" + s1)
     m = re.search(r"forgetting of old memories: ([+-][0-9.]+)", s1)
     deep = [int(x) for x in re.findall(r"(?:Memory|Reasoning|Output) (\d+)%", s0)[:3]]
     return {
@@ -45,10 +47,11 @@ def run(name, params, preset, seed, threads):
         "checks": {k: bool(re.search(r"^\s+" + re.escape(label) + r"\s+PASS", s1, re.M)) for k, label in (
             ("recall", "CP2 recall (3 memories)"), ("capacity", "CP3 capacity (8 memories)"),
             ("efficiency", "CP4 efficiency"), ("streamed", "CP5 streamed text"),
+            ("completion", "CP5b word completion"),
             ("continual", "CP6 continual learning"), ("retention", "CP6b retention (8+16)"),
             ("order", "CP7 early order"))},
         "gains": {"recall": gain("specificity (own minus best other):", s1), "capacity": gain("8 memories:", s1),
-                  "efficiency": gain("exposure 30 ticks:", s1), "streamed": gain("streamed words:", s1),
+                  "efficiency": gain("exposure 30 ticks:", s1), "streamed": gain("streamed words:", s1), "completion": gain("word completion:", s1),
                   "forgetting": float(m.group(1)) if m else float("nan"),
                   "order": gain("forward minus backward:", s1)},
     }
@@ -78,7 +81,7 @@ def main():
         rs = [r for r in results if r["variant"] == n]
         s0 = sum(r["stage0"] for r in rs)
         parts = []
-        for k in ("recall", "capacity", "efficiency", "streamed", "continual", "retention", "order"):
+        for k in ("recall", "capacity", "efficiency", "streamed", "completion", "continual", "retention", "order"):
             g = "forgetting" if k == "continual" else k
             if g not in rs[0]["gains"]:
                 parts.append(f"{k} {sum(r['checks'][k] for r in rs)}/{len(rs)}")

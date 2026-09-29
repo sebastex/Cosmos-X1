@@ -245,6 +245,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     diagSource3_.assign(V_ * kSources, 0.0f);
     inhibW3_.assign(V_, 0.0f);
     pool3_.assign(V_, 0.0f);
+    inhibSignal3_.assign(V_, 0.0f);
 
     initInhibitory();
     initSharedRules();
@@ -932,15 +933,22 @@ void NeuralCellularMatrix::step3D() {
     if (learnedInhibition) {
         const float eta = cfg_.learning.istdp_rate, rho = cfg_.learning.istdp_target;
         const float wMax = std::max(0.0f, cfg_.learning.istdp_max);
+        const float tau = cfg_.learning.istdp_tau;
 #pragma omp parallel for schedule(static)
         for (int64_t vi = 0; vi < voxels; ++vi) {
             const size_t v = size_t(vi);
             const float pool = pool3_[v];
-            if (pool <= 0.0f) continue;
             float y = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) y += out[v * C3 + c];
             y /= float(C3);
-            inhibW3_[v] = std::clamp(inhibW3_[v] + eta * pool * (y - rho), 0.0f, wMax);
+            float signal = pool * (y - rho);
+            if (tau > 1.0f) {
+                inhibSignal3_[v] += (signal - inhibSignal3_[v]) / tau;
+                signal = inhibSignal3_[v];
+            } else if (pool <= 0.0f) {
+                continue;
+            }
+            inhibW3_[v] = std::clamp(inhibW3_[v] + eta * signal, 0.0f, wMax);
         }
     }
 

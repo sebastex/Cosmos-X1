@@ -1166,4 +1166,80 @@ int runChainTest(const Config& cfg) {
     return 0;
 }
 
+// Overlap (diagnostic): share of sensory lines each pair of letters' fingerprints have in common,
+// and how alike the letters' settled 3D patterns are per field (untrained).
+int runOverlapTest(const Config& cfg) {
+    const std::string letters = "akzmqe";
+    Session u(cfg, false);
+    std::printf("Fingerprint overlap (share of lines shared) and untrained pattern similarity (Input/Memory/Output)\n       ");
+    for (char c : letters) std::printf("        %c         ", c);
+    std::printf("\n");
+    std::vector<std::vector<double>> P;
+    for (char c : letters) {
+        P.push_back(u.present(std::string(1, c), kStore, 1.0f, false, kStore / 2));
+        u.silence(kGap, false);
+    }
+    const size_t perField = P[0].size() / kFields;
+    for (size_t i = 0; i < letters.size(); ++i) {
+        std::printf("  %c  ", letters[i]);
+        for (size_t k = 0; k < letters.size(); ++k) {
+            const auto& A = u.codebook().fingerprint(char32_t(uint8_t(letters[i])));
+            const auto& B = u.codebook().fingerprint(char32_t(uint8_t(letters[k])));
+            size_t shared = 0;
+            for (uint32_t x : A) shared += std::count(B.begin(), B.end(), x);
+            std::printf(" %.2f/%.2f/%.2f/%.2f", double(shared) / double(std::max<size_t>(1, A.size())),
+                        lab::cosine(P[i], P[k], 0, perField), lab::cosine(P[i], P[k], perField, 2 * perField),
+                        lab::cosine(P[i], P[k], 3 * perField, 4 * perField));
+        }
+        std::printf("\n");
+    }
+    return 0;
+}
+
+// Interference (diagnostic): the CP6 sequence (store a k z, recall them, store m q e), then each
+// old item is cued (40%) and followed every 5 ticks: similarity of the recent state to its own
+// memory and to each new memory (all fields), plus per field at the end of the cue. Also the
+// learned inhibition and the learned self-links of each stored memory.
+int runInterferenceTest(const Config& cfg) {
+    const std::vector<std::string> oldItems = {"a", "k", "z"}, newItems = {"m", "q", "e"};
+    Session s(cfg, true);
+    Patterns stored = storeAll(s, oldItems, kStore);
+    recallAll(s, oldItems);
+    const Patterns storedNew = storeAll(s, newItems, kStore);
+    stored.insert(stored.end(), storedNew.begin(), storedNew.end());
+    const size_t perField = stored[0].size() / kFields;
+    std::printf("Interference: learned self-links a k z m q e:");
+    for (const auto& p : stored) std::printf(" %.3f", s.flow(p, p));
+    std::printf("\n  stored pattern size (sum of activity) a k z m q e:");
+    for (const auto& p : stored) {
+        double t = 0.0;
+        for (double x : p) t += x;
+        std::printf(" %.0f", t);
+    }
+    std::printf("\n");
+    for (size_t k = 0; k < oldItems.size(); ++k) {
+        std::printf("  cue %s: every 5 ticks, own / m / q / e\n   ", oldItems[k].c_str());
+        std::vector<double> bin, window;
+        for (uint64_t t = 0; t < kCue; ++t) {
+            s.present(oldItems[k], 1, kCueFraction, false, UINT64_MAX);
+            s.accumulate(bin);
+            if (t >= kCue / 2) s.accumulate(window);
+            if (t % T(5) == T(5) - 1) {
+                std::printf(" [%.2f %.2f %.2f %.2f]", lab::cosine(bin, stored[k]), lab::cosine(bin, stored[3]),
+                            lab::cosine(bin, stored[4]), lab::cosine(bin, stored[5]));
+                bin.assign(bin.size(), 0.0);
+            }
+        }
+        std::printf("\n    per field at the end (own/best new):");
+        for (uint32_t f = 0; f < kFields; ++f) {
+            double best = 0.0;
+            for (size_t j = 3; j < 6; ++j) best = std::max(best, lab::cosine(window, stored[j], f * perField, (f + 1) * perField));
+            std::printf(" %.2f/%.2f", lab::cosine(window, stored[k], f * perField, (f + 1) * perField), best);
+        }
+        std::printf("\n");
+        s.silence(kGap, false);
+    }
+    return 0;
+}
+
 } // namespace ncm

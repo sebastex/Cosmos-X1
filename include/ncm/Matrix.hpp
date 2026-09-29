@@ -155,6 +155,7 @@ private:
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)
     AVec<float> pool3_;        // neighbourhood activity each voxel heard on the last step
+    AVec<float> inhibSignal3_; // averaged inhibitory learning signal pool * (y - target) per voxel
 
     // Fatigue per cell (2D and 3D), and each voxel's long-run average activity (covariance learning).
     AVec<float> fatigue2_;

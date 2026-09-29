@@ -106,6 +106,10 @@ struct LearningParams {
     float istdp_rate = 0.0f;
     float istdp_target = 0.02f;
     float istdp_max = 50.0f;
+    // Averaging window of the inhibitory learning signal (3D steps). 0 = instantaneous. A long
+    // window makes the balance slow (homeostatic): cells that overshoot again and again gain
+    // inhibition, but one recall does not wear its own memory down within the recall.
+    float istdp_tau = 0.0f;
     float depression_use = 0.0f;
     float depression_tau = 20.0f;
     // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest

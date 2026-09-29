@@ -45,7 +45,9 @@ int runSettleTest(const Config& cfg, const std::string& item); // diagnostic: se
 int runCompletionTest(const Config& cfg, uint64_t prefix = 3); // CP5b: complete a streamed word from its start
 int runHealthTest(const Config& cfg); // diagnostic: which subsystem misbehaves when memories blur
 int runHumTest(const Config& cfg);    // diagnostic: where activity lingering after recall comes from
-int runChainTest(const Config& cfg);  // diagnostic: learned links along a word's letters
+int runChainTest(const Config& cfg);
+int runOverlapTest(const Config& cfg);
+int runInterferenceTest(const Config& cfg); // diagnostic: how new memories pull old cues
 int runOccupancyTest(const Config& cfg, const std::string& item); // diagnostic: active voxels per depth layer
 // Multiplies every test duration (storing, gaps, cues) by `scale` (default 1).
 void setTestTimeScale(double scale);
