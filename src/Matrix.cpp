@@ -242,6 +242,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     trace3_.assign(V_ * C3, 0.0f);
     orderTrace3_.assign(V_ * C3, 0.0f);
     resource3_.assign(V_ * C3, 1.0f);
+    membrane3_.assign(V_ * C3, 0.0f);
     diagSource3_.assign(V_ * kSources, 0.0f);
     inhibW3_.assign(V_, 0.0f);
     pool3_.assign(V_, 0.0f);
@@ -854,6 +855,15 @@ void NeuralCellularMatrix::step3D() {
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
         }
+        // Field pace: deeper fields integrate their input over more steps (leaky integration).
+        if (cfg_.field_pace > 1.0f && f > 0) {
+            const float rate = 1.0f / std::pow(cfg_.field_pace, float(f));
+            float* u = membrane3_.data() + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) {
+                u[c] += (in[c] - u[c]) * rate;
+                in[c] = u[c];
+            }
+        }
         drive3_[v] = activateCell<C3>(in, out + v * C3,
                                       theta[v] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue3_[v])),
                                       cfg_.channel_winners3);
@@ -1341,6 +1351,7 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(trace3_.begin(), trace3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
     std::fill(resource3_.begin(), resource3_.end(), 1.0f);
+    std::fill(membrane3_.begin(), membrane3_.end(), 0.0f);
     std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
     std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
     std::fill(sheetQuietCur_.begin(), sheetQuietCur_.end(), uint8_t(1));

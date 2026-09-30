@@ -257,6 +257,12 @@ struct Config {
     // toward 1 (at agc_relax_field / agc_relax). Otherwise a faint echo after the input ends is
     // taken for weak input, and the rising gain turns the echo into self-sustaining activity.
     float agc_input_only = 0.0f;
+    // Hierarchy of speeds between the four fields (4D level): field f integrates its input with
+    // time constant field_pace^f 3D steps (Input 1, then x field_pace per field). 1 = every field
+    // runs at the same speed. With a pace above 1 the Input field follows each letter while deeper
+    // fields change more slowly and can hold one shape for a whole word. The golden ratio (1.618)
+    // continues the ratio between the 1D, 2D and 3D clocks.
+    float field_pace = 1.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

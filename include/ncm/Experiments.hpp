@@ -47,6 +47,9 @@ int runHealthTest(const Config& cfg); // diagnostic: which subsystem misbehaves 
 int runHumTest(const Config& cfg);    // diagnostic: where activity lingering after recall comes from
 int runChainTest(const Config& cfg);
 int runOverlapTest(const Config& cfg);
+int runWordShapeTest(const Config& cfg, bool withSpace = true); // diagnostic: why streamed words look alike
+int runWordCapacityTest(const Config& cfg);  // word version of CP3: 8 streamed words, completion
+int runWordContinualTest(const Config& cfg, bool swapped = false); // word version of CP6: old words kept while new ones are learned
 int runDiscriminationTest(const Config& cfg); // diagnostic: how visible a small input difference is per level
 int runInterferenceTest(const Config& cfg); // diagnostic: how new memories pull old cues
 int runOccupancyTest(const Config& cfg, const std::string& item); // diagnostic: active voxels per depth layer

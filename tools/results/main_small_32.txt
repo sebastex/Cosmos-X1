@@ -1,0 +1,7 @@
+main                   seed 32: stage0 ok deep 43% recall Y capacity Y efficiency Y streamed Y completion Y continual - retention Y order Y
+main                   seed 33: stage0 ok deep 44% recall - capacity Y efficiency Y streamed Y completion Y continual - retention - order Y
+main                   seed 34: stage0 ok deep 47% recall - capacity - efficiency Y streamed Y completion Y continual Y retention Y order Y
+main                   seed 35: stage0 ok deep 46% recall Y capacity - efficiency Y streamed Y completion Y continual Y retention - order Y
+
+=== summary (passes out of 4 seeds; mean gain) ===
+main                   stage0 4/4 | recall 2/4 (+0.413)  capacity 2/4 (+0.342)  efficiency 4/4 (+0.372)  streamed 4/4 (+0.123)  completion 4/4 (+0.132)  continual 2/4 (-0.014)  retention 2/4  order 4/4 (+0.345) | ALL 0/4

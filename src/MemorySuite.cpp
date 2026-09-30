@@ -1308,4 +1308,204 @@ int runDiscriminationTest(const Config& cfg) {
     return 0;
 }
 
+namespace {
+
+// Hears the first `prefix` letters of each word once, then records what follows in silence.
+Patterns completeAll(Session& s, const std::vector<std::string>& items, uint64_t prefix) {
+    Patterns after;
+    for (const auto& item : items) {
+        s.present(item.substr(0, prefix), prefix, 1.0f, false, UINT64_MAX);
+        after.push_back(s.silence(T(40), false, 0));
+        s.silence(kGap, false);
+    }
+    return after;
+}
+
+} // namespace
+
+// Word capacity (word version of CP3): 8 words are learned streamed letter by letter; each is
+// then recalled from its first 3 letters (heard once), read in the silence that follows.
+int runWordCapacityTest(const Config& cfg) {
+    const std::vector<std::string> items = {"apple ", "river ", "storm ", "candy ", "light ", "mouse ", "bench ", "think "};
+    std::printf("Word capacity: %zu streamed words, each completed from its first 3 letters\n", items.size());
+    Comparison c;
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        const Patterns stored = storeAll(s, items, kStore);
+        // Diagnostic: how alike the stored word shapes are (per field), and how full the link budget is.
+        const size_t perField = stored[0].size() / kFields;
+        std::printf("  %s: word shapes alike (Input Memory Reasoning Output):", learning ? "learned  " : "untrained");
+        for (uint32_t f = 0; f < kFields; ++f) {
+            double sim = 0.0;
+            int n = 0;
+            for (size_t i = 0; i < stored.size(); ++i)
+                for (size_t j = i + 1; j < stored.size(); ++j, ++n)
+                    sim += lab::cosine(stored[i], stored[j], f * perField, (f + 1) * perField);
+            std::printf(" %.3f", sim / n);
+        }
+        if (learning) {
+            const auto h = const_cast<NeuralCellularMatrix&>(s.matrix()).weightHealth();
+            std::printf(" | link budget used (mean fill):");
+            for (uint32_t f = 0; f < kFields; ++f) std::printf(" %.3f", h[f].meanFill);
+            std::printf(" full:");
+            for (uint32_t f = 0; f < kFields; ++f) std::printf(" %.3f", h[f].shareFull);
+        }
+        std::printf("\n");
+        (learning ? c.learned : c.untrained) = lab::specificity(lab::similarityMatrix(completeAll(s, items, 3), stored));
+    }
+    printComparison("8 words:", c);
+    return c.pass() ? 0 : 3;
+}
+
+// Word continual learning (word version of CP6): learn 3 words, complete them, learn 3 more,
+// complete all 6. Same pass rule as CP6: old and new words completed beyond the untrained
+// twin, and the old words' margin drops by at most 0.05.
+int runWordContinualTest(const Config& cfg, bool swapped) {
+    std::vector<std::string> oldItems = {"apple ", "river ", "storm "}, newItems = {"candy ", "light ", "mouse "};
+    if (swapped) std::swap(oldItems, newItems); // diagnostic: is a weak second batch due to order or to the words?
+    std::vector<std::string> all = oldItems;
+    all.insert(all.end(), newItems.begin(), newItems.end());
+    std::printf("Word continual learning: learn 3 words, complete them, learn 3 more, complete all 6\n");
+    Comparison before, afterOld, afterNew;
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        Patterns stored = storeAll(s, oldItems, kStore);
+        const auto simBefore = lab::similarityMatrix(completeAll(s, oldItems, 3), stored);
+        const Patterns storedNew = storeAll(s, newItems, kStore);
+        stored.insert(stored.end(), storedNew.begin(), storedNew.end());
+        const auto sim = lab::similarityMatrix(completeAll(s, all, 3), stored);
+        (learning ? before.learned : before.untrained) = lab::specificity(simBefore);
+        (learning ? afterOld.learned : afterOld.untrained) = lab::specificity(sim, {0, 1, 2});
+        (learning ? afterNew.learned : afterNew.untrained) = lab::specificity(sim, {3, 4, 5});
+    }
+    printComparison("old words, before new learning:", before);
+    printComparison("old words, after new learning:", afterOld);
+    printComparison("new words:", afterNew);
+    const double forgetting = before.learned.margin - afterOld.learned.margin;
+    const bool keeps = forgetting <= 0.05;
+    std::printf("  forgetting of old words: %+.3f (need <= +0.050): %s\n", forgetting, keeps ? "PASS" : "FAIL");
+    return (before.pass() && afterOld.pass() && afterNew.pass() && keeps) ? 0 : 3;
+}
+
+// Word shapes (diagnostic): why streamed words look alike. 8 words are streamed (untrained);
+// for every pair: shared letters and similarity of the 3D shapes. Then the same with the
+// common background removed (the mean shape of all words subtracted), and how much of each
+// word's activity lies in cells that are active for most words.
+int runWordShapeTest(const Config& cfg, bool withSpace) {
+    std::vector<std::string> items = {"apple ", "river ", "storm ", "candy ", "light ", "mouse ", "bench ", "think "};
+    if (!withSpace)
+        for (auto& w : items) w.pop_back();
+    Session s(cfg, false);
+    const Patterns P = storeAll(s, items, kStore);
+    const size_t n = P.size(), dim = P[0].size();
+    std::vector<double> mean(dim, 0.0);
+    for (const auto& p : P)
+        for (size_t i = 0; i < dim; ++i) mean[i] += p[i] / double(n);
+    Patterns C = P;
+    for (auto& c : C)
+        for (size_t i = 0; i < dim; ++i) c[i] -= mean[i];
+    std::printf("Word shapes (untrained): pair, shared letters (not counting the space), similarity raw -> background removed\n");
+    double byShared[6] = {}, bySharedC[6] = {};
+    int cnt[6] = {};
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = i + 1; j < n; ++j) {
+            int shared = 0;
+            for (char ch = 'a'; ch <= 'z'; ++ch)
+                shared += items[i].find(ch) != std::string::npos && items[j].find(ch) != std::string::npos;
+            const double raw = lab::cosine(P[i], P[j]), cen = lab::cosine(C[i], C[j]);
+            byShared[std::min(shared, 5)] += raw;
+            bySharedC[std::min(shared, 5)] += cen;
+            ++cnt[std::min(shared, 5)];
+        }
+    for (int k = 0; k < 6; ++k)
+        if (cnt[k])
+            std::printf("  %d shared letters (%2d pairs): alike %.3f -> %+.3f with background removed\n", k, cnt[k],
+                        byShared[k] / cnt[k], bySharedC[k] / cnt[k]);
+    // Share of activity in cells active for at least 6 of the 8 words, and number of such cells.
+    size_t common = 0, any = 0;
+    double actCommon = 0.0, actAll = 0.0;
+    for (size_t i = 0; i < dim; ++i) {
+        int in = 0;
+        double a = 0.0;
+        for (const auto& p : P) {
+            in += p[i] > 0.0;
+            a += p[i];
+        }
+        any += in > 0;
+        actAll += a;
+        if (in >= 6) {
+            ++common;
+            actCommon += a;
+        }
+    }
+    std::printf("  cells active for >= 6 of 8 words: %.1f%% of all active cells, carrying %.1f%% of the activity\n",
+                100.0 * double(common) / double(std::max<size_t>(1, any)), 100.0 * actCommon / std::max(1e-12, actAll));
+    // Share of cells a word's shape uses, against a single held letter's and one moment of a word.
+    {
+        double wordDensity = 0.0;
+        for (const auto& p : P) {
+            size_t on = 0;
+            for (double x : p) on += x > 0.0;
+            wordDensity += double(on) / double(dim) / double(n);
+        }
+        Session u(cfg, false);
+        const std::vector<double> letter = u.present("a", kStore, 1.0f, false, kStore / 2);
+        size_t onL = 0;
+        for (double x : letter) onL += x > 0.0;
+        u.silence(kGap, false);
+        u.present("apple ", kStore - 1, 1.0f, false, UINT64_MAX);
+        const std::vector<double> moment = u.present("apple ", 1, 1.0f, false, 0);
+        size_t onM = 0;
+        for (double x : moment) onM += x > 0.0;
+        std::printf("  share of cells used: a whole word's shape %.1f%%, one moment of a word %.1f%%, a held letter %.1f%%\n",
+                    100.0 * wordDensity, 100.0 * double(onM) / double(dim), 100.0 * double(onL) / double(dim));
+    }
+    // Per field: cells used by one moment and by the whole word, and how alike the 3D state is
+    // from one update to the next and between moments half a word apart (steadiness in time).
+    {
+        Session u(cfg, false);
+        const std::string word = items[0];
+        u.present(word, kStore / 2, 1.0f, false, UINT64_MAX);
+        std::vector<std::vector<double>> moments;
+        for (uint64_t t = 0; t < kStore / 2; ++t) moments.push_back(u.present(std::string(1, word[t % word.size()]), 1, 1.0f, false, 0));
+        const size_t per = dim / kFields;
+        std::printf("  per field (Input Memory Reasoning Output), word %s:\n", word.c_str());
+        const char* label[4] = {"cells in one moment %", "cells over the word % ", "alike 3 ticks apart   ", "alike 12 ticks apart  "};
+        for (int row = 0; row < 4; ++row) {
+            std::printf("    %s", label[row]);
+            for (uint32_t f = 0; f < kFields; ++f) {
+                double v = 0.0;
+                if (row == 0) {
+                    for (const auto& m : moments) {
+                        size_t on = 0;
+                        for (size_t i = f * per; i < (f + 1) * per; ++i) on += m[i] > 0.0;
+                        v += 100.0 * double(on) / double(per) / double(moments.size());
+                    }
+                } else if (row == 1) {
+                    size_t on = 0;
+                    for (size_t i = f * per; i < (f + 1) * per; ++i) {
+                        bool any1 = false;
+                        for (const auto& m : moments) any1 = any1 || m[i] > 0.0;
+                        on += any1;
+                    }
+                    v = 100.0 * double(on) / double(per);
+                } else {
+                    const size_t lag = row == 2 ? 3 : 12;
+                    int c = 0;
+                    for (size_t t = 0; t + lag < moments.size(); ++t, ++c) v += lab::cosine(moments[t], moments[t + lag], f * per, (f + 1) * per);
+                    v /= std::max(1, c);
+                }
+                std::printf(" %7.3f", v);
+            }
+            std::printf("\n");
+        }
+    }
+    // The same for a space-free comparison: how alike is each word to the lone space pattern?
+    const Patterns sp = storeAll(s, {" "}, kStore);
+    double simSpace = 0.0;
+    for (const auto& p : P) simSpace += lab::cosine(p, sp[0]) / double(n);
+    std::printf("  similarity of a word's shape to the shape of the space character alone: %.3f\n", simSpace);
+    return 0;
+}
+
 } // namespace ncm

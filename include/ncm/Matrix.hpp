@@ -152,6 +152,7 @@ private:
     AVec<float> diagPlastic3_; // learned part of each voxel's input on the last step (diagnostic)
     AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
     AVec<float> resource3_;    // short-term depression: transmitter resource per voxel channel
+    AVec<float> membrane3_;    // slowly integrated input per voxel channel (field_pace > 1)
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)
     AVec<float> pool3_;        // neighbourhood activity each voxel heard on the last step
