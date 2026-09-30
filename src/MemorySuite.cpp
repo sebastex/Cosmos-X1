@@ -1646,22 +1646,28 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::string mistakes, mistakesOwn;
                 // Yardstick in the matrix's own present language: every partner word heard alone
                 // by this same matrix now (no learning), a few repeats each.
+                // Heard in listening mode (as while learning: learned links muted by novelty) but
+                // with learning paused, so stored memories do not fire into the reference shapes.
                 Patterns ownAlone;
+                s.setLearning(false);
                 for (size_t k = 0; k <= p; ++k) {
                     const std::string bw2 = words[2 * k + 1] + " ";
-                    ownAlone.push_back(s.present(bw2, 4 * bw2.size(), 1.0f, false, bw2.size()));
+                    ownAlone.push_back(s.present(bw2, 4 * bw2.size(), 1.0f, true, bw2.size()));
                     s.silence(kGap, false);
                 }
+                s.setLearning(learning == 1);
                 // Stored links, read directly (no dynamics): the learned flow from each cue word's
                 // own shape into every partner's shape, and back. Tells "not stored" from "stored
                 // but not expressed".
                 if (learning) {
                     Patterns cueAlone;
+                    s.setLearning(false);
                     for (size_t k = 0; k <= p; ++k) {
                         const std::string aw = words[2 * k] + " ";
-                        cueAlone.push_back(s.present(aw, 4 * aw.size(), 1.0f, false, aw.size()));
+                        cueAlone.push_back(s.present(aw, 4 * aw.size(), 1.0f, true, aw.size()));
                         s.silence(kGap, false);
                     }
+                    s.setLearning(true);
                     size_t linkRight = 0;
                     double fOwn = 0.0, fOther = 0.0, fBack = 0.0, fSelf = 0.0;
                     for (size_t k = 0; k <= p; ++k) {
@@ -1783,6 +1789,53 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             }
         }
     }
+    return 0;
+}
+
+// Pair links (diagnostic): is order stored? One pair ("apple river ", said 10 times with pauses)
+// is learned. The 3D state at every tick position of the pair is summed over the last repeats;
+// the learned flow between those states is printed as a table (row = from, column = to).
+// A stored order shows as strong flow from a position to the positions that follow it and weak
+// flow back. Also printed: how alike the states are, and the flow into an unrelated word.
+int runPairLinksTest(const Config& cfg) {
+    const std::string pair = "apple river ";
+    Session s(cfg, true);
+    std::vector<std::vector<double>> P(pair.size());
+    const int repeats = 10;
+    for (int r = 0; r < repeats; ++r) {
+        for (size_t pos = 0; pos < pair.size(); ++pos) {
+            s.present(std::string(1, pair[pos]), 1, 1.0f, true, UINT64_MAX);
+            if (r >= repeats / 2) s.accumulate(P[pos]);
+        }
+        s.silence(T(30), true);
+    }
+    s.setLearning(false); // listening mode, links unchanged: the stored pair does not fire into it
+    const std::vector<double> other = s.present("candy ", 24, 1.0f, true, 6);
+    s.setLearning(true);
+    s.silence(kGap, false);
+    std::printf("Pair links after learning %c%s%c (10 times, with pauses): learned flow from row to column\n        ", '"', pair.c_str(), '"');
+    for (size_t j = 0; j < pair.size(); ++j) std::printf("   %c   ", pair[j] == ' ' ? '_' : pair[j]);
+    std::printf(" | candy\n");
+    for (size_t i = 0; i < pair.size(); ++i) {
+        std::printf("   %c   ", pair[i] == ' ' ? '_' : pair[i]);
+        for (size_t j = 0; j < pair.size(); ++j) std::printf(" %.3f ", s.flow(P[i], P[j]));
+        std::printf(" | %.3f\n", s.flow(P[i], other));
+    }
+    std::printf("  how alike the states are (row vs column):\n");
+    for (size_t i = 0; i < pair.size(); ++i) {
+        std::printf("   %c   ", pair[i] == ' ' ? '_' : pair[i]);
+        for (size_t j = 0; j < pair.size(); ++j) std::printf(" %.3f ", lab::cosine(P[i], P[j]));
+        std::printf(" | %.3f\n", lab::cosine(P[i], other));
+    }
+    // Word level: first word (positions 0-5) -> second word (6-11) and back.
+    std::vector<double> A, B;
+    for (size_t i = 0; i < pair.size(); ++i) {
+        auto& t = i < 6 ? A : B;
+        if (t.size() != P[i].size()) t.assign(P[i].size(), 0.0);
+        for (size_t k = 0; k < t.size(); ++k) t[k] += P[i][k];
+    }
+    std::printf("  word level: apple->river %.4f, river->apple %.4f, apple->apple %.4f, river->river %.4f, apple->candy %.4f\n",
+                s.flow(A, B), s.flow(B, A), s.flow(A, A), s.flow(B, B), s.flow(A, other));
     return 0;
 }
 

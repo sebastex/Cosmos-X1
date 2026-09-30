@@ -16,6 +16,15 @@ Pair load: pairs learned one after another; hear the first word, is the second o
        wrong (cue>recalled): apple>water light>think cloud>candy
      calibration: word inside its pair vs the same word alone: 5 of 8 recognisable (alike 0.077, best other 0.080)
      wrong partner (cue>recalled): green>mouse plant>river cloud>candy
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 0 of 16 (own +0.0137, best other +0.0852); partner->cue 1 of 16 (+0.0130)
+     STORED LINKS cue->partner: strongest link points to the right partner for 0 of 16
+       strength: cue->own partner 0.1512, cue->best other partner 0.2216, partner->cue 0.1518, cue->itself 0.3553
+  .. learned, 16 pairs: 10 right (62%), older half 5, newer half 5, margin +0.042, chance 6%
+     strict (partner shape heard alone): 2 right (12%)
+     TRUE RECALL (partner heard alone by this same matrix): 4 of 16 right (25%), margin -0.077
+       wrong (cue>recalled): apple>water light>whale bench>tiger green>whale cloud>candy fruit>whale jolly>mouse lemon>mouse ocean>candy robot>mouse table>water voice>mouse
+     calibration: word inside its pair vs the same word alone: 6 of 16 recognisable (alike 0.080, best other 0.088)
+     wrong partner (cue>recalled): green>mouse plant>river cloud>candy fruit>mouse ocean>candy table>river
   .. untrained, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.123, chance 25%
      strict (partner shape heard alone): 1 right (25%)
      TRUE RECALL (partner heard alone by this same matrix): 2 of 4 right (50%), margin -0.035
@@ -24,3 +33,7 @@ Pair load: pairs learned one after another; hear the first word, is the second o
      strict (partner shape heard alone): 2 right (25%)
      TRUE RECALL (partner heard alone by this same matrix): 1 of 8 right (12%), margin -0.058
      calibration: word inside its pair vs the same word alone: 4 of 8 recognisable (alike 0.077, best other 0.083)
+  .. untrained, 16 pairs: 16 right (100%), older half 8, newer half 8, margin +0.075, chance 6%
+     strict (partner shape heard alone): 1 right (6%)
+     TRUE RECALL (partner heard alone by this same matrix): 1 of 16 right (6%), margin -0.066
+     calibration: word inside its pair vs the same word alone: 7 of 16 recognisable (alike 0.080, best other 0.089)
