@@ -283,6 +283,11 @@ struct Config {
     // states, which delays every field by one more step (the Output field hears a word when the
     // next one is already arriving). Feedback from later fields still comes from the previous step.
     float field_sweep = 0.0f;
+    // 1 = while learning, the matrix is always in full encoding mode (stored memories muted),
+    // however familiar the input feels. 0 = encoding mode follows surprise, so familiar input
+    // lets stored memories fire while new links are written (they then get tied to everything
+    // learned later and turn into hubs).
+    float encoding_full = 0.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

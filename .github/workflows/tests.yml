@@ -1,0 +1,47 @@
+# Runs one Cosmos X1 test on many brains (seeds) at once, each on its own machine.
+# Start it from the Actions tab ("Run workflow") or with:
+#   gh workflow run tests.yml -f args="--test pairload --store-ticks 16 --preset dev --set clock_reset=1" -f seeds="22,23,24,25"
+name: tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "Arguments for cosmos_x1 (everything except --seed)"
+        required: true
+        default: "--test pairload --store-ticks 16 --preset dev"
+      seeds:
+        description: "Brains to test (comma-separated seeds)"
+        required: true
+        default: "22,23,24,25"
+
+jobs:
+  seeds:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.make.outputs.list }}
+    steps:
+      - id: make
+        run: echo "list=[$(echo '${{ inputs.seeds }}' | tr -d ' ')]" >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: seeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: ${{ fromJSON(needs.seeds.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh
+      - name: Run
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          ./build/cosmos_x1 ${{ inputs.args }} --seed ${{ matrix.seed }} | tee result_${{ matrix.seed }}.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-seed-${{ matrix.seed }}
+          path: result_${{ matrix.seed }}.txt

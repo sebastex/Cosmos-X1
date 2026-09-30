@@ -22,15 +22,3 @@ Pair load: pairs learned one after another; hear the first word, is the second o
        wrong (cue>recalled): jolly>mouse lemon>mouse robot>mouse table>water zebra>water
      calibration: word inside its pair vs the same word alone: 14 of 16 recognisable (alike 0.304, best other 0.210)
      wrong partner (cue>recalled): lemon>mouse
-  .. untrained, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.632, chance 25%
-     strict (partner shape heard alone): 1 right (25%)
-     TRUE RECALL (partner heard alone by this same matrix): 1 of 4 right (25%), margin -0.006
-     calibration: word inside its pair vs the same word alone: 4 of 4 recognisable (alike 0.320, best other 0.083)
-  .. untrained, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.575, chance 12%
-     strict (partner shape heard alone): 1 right (12%)
-     TRUE RECALL (partner heard alone by this same matrix): 1 of 8 right (12%), margin -0.029
-     calibration: word inside its pair vs the same word alone: 8 of 8 recognisable (alike 0.305, best other 0.159)
-  .. untrained, 16 pairs: 16 right (100%), older half 8, newer half 8, margin +0.536, chance 6%
-     strict (partner shape heard alone): 0 right (0%)
-     TRUE RECALL (partner heard alone by this same matrix): 1 of 16 right (6%), margin -0.137
-     calibration: word inside its pair vs the same word alone: 14 of 16 recognisable (alike 0.303, best other 0.213)

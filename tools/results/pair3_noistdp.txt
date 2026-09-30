@@ -1,0 +1,8 @@
+Pair load: pairs learned one after another; hear the first word, is the second one recalled?
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 4 of 4 (own +0.0948, best other -0.0620); partner->cue 1 of 4 (-0.0224)
+     STORED LINKS cue->partner: strongest link points to the right partner for 3 of 4
+       strength: cue->own partner 0.2546, cue->best other partner 0.1291, partner->cue 0.1164, cue->itself 0.7261
+  .. learned, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.430, chance 25%
+     strict (partner shape heard alone): 4 right (100%)
+     TRUE RECALL (partner heard alone by this same matrix): 4 of 4 right (100%), margin +0.305
+     calibration: word inside its pair vs the same word alone: 4 of 4 recognisable (alike 0.307, best other 0.088)
