@@ -1,0 +1,13 @@
+# Checks that Cosmos X1 builds on Linux whenever the source changes.
+name: build
+on:
+  push:
+    paths: ["src/**", "include/**", "build.sh", ".github/workflows/build.yml"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash build.sh
+      - run: ./build/cosmos_x1 --help || true
