@@ -1,0 +1,123 @@
+=== CP2 recall ===
+Stage 1 recall test: 3 patterns, stored for 120 ticks each, recalled from 40% cues
+
+Reliability (no learning, full input repeated) (cosine similarity: rows = partial cue, columns = stored pattern)
+              a         k         z       
+  a           0.798     0.007     0.017   
+  k           0.007     0.518     0.027   
+  z           0.024     0.006     0.360   
+  per field, own pattern vs others:  Input 0.649/0.011  Memory 0.552/0.014  Reasoning 0.534/0.015  Output 0.517/0.017
+
+With learning (cosine similarity: rows = partial cue, columns = stored pattern)
+              a         k         z       
+  a           0.689     0.019     0.038   
+  k           0.020     0.741     0.048   
+  z           0.015     0.023     0.653   
+  per field, own pattern vs others:  Input 0.632/0.011  Memory 0.715/0.028  Reasoning 0.717/0.033  Output 0.711/0.035
+  surprise modulator at the end of each store phase: 1.00 1.00 1.00
+  learning: 138 updates, 4796.0 of 16384 voxels learning per update; Hebbian change 62346.3, removed by scaling 0.0; plastic strength after storing 34613.0
+
+Without learning (identical matrix, learning off) (cosine similarity: rows = partial cue, columns = stored pattern)
+              a         k         z       
+  a           0.123     0.003     0.002   
+  k           0.006     0.238     0.007   
+  z           0.051     0.004     0.177   
+  per field, own pattern vs others:  Input 0.231/0.013  Memory 0.184/0.012  Reasoning 0.172/0.012  Output 0.152/0.012
+
+Stage 1 check
+  input-driven (same input, same pattern): own 0.559 vs others 0.015 (need own >= 0.5 and >= others + 0.2): yes
+  every cue recalls its own pattern:   yes
+  similarity to own pattern:           learned 0.694 vs untrained 0.179 (+0.515)
+  specificity (own minus best other):  learned +0.658 vs untrained +0.159 (gain +0.499, need >= +0.050): yes
+
+=== CP3 ===
+CP3 capacity: 8 memories stored, each recalled from a 40% cue
+  8 memories:                        learned margin +0.567 (identifies all: yes) vs untrained +0.224 -> gain +0.343 (need >= +0.050): PASS
+
+=== CP4 ===
+CP4 efficiency: memory strength after short and long exposure
+  exposure 15 ticks:                 learned margin +0.668 (identifies all: yes) vs untrained +0.164 -> gain +0.504 (need >= +0.050): PASS
+  exposure 30 ticks:                 learned margin +0.724 (identifies all: yes) vs untrained +0.131 -> gain +0.592 (need >= +0.050): PASS
+  exposure 60 ticks:                 learned margin +0.676 (identifies all: yes) vs untrained +0.161 -> gain +0.515 (need >= +0.050): PASS
+  memory usable after 30 ticks: PASS
+
+=== CP5 ===
+CP5 streamed text: words streamed letter by letter, recalled from 40% cues
+  streamed words:                    learned margin +0.465 (identifies all: yes) vs untrained +0.246 -> gain +0.218 (need >= +0.050): PASS
+  diagnostic, learned: cue vs stored (apple river storm)
+    apple  0.607 0.167 0.111
+    river  0.026 0.601 0.148
+    stone  0.014 0.137 0.637
+  diagnostic, untrained: cue vs stored (apple river storm)
+    apple  0.270 0.017 0.010
+    river  0.016 0.169 0.013
+    stone  0.017 0.030 0.363
+  diagnostic, stored links within each word: 1.1305 1.4282 1.2075; strongest into another word: 0.0408 0.0734 0.0657
+
+=== CP5b ===
+CP5b word completion: learn 3 streamed words, hear the first 3 letters, read what follows
+    learned   "app": activity after the prefix, every 5 ticks: 772.3 874.0 789.7 612.6 444.1 299.4 157.0 56.4
+      own-word margin per 5 ticks: +0.55 +0.56 +0.50 +0.46 +0.46 +0.52 +0.58 +0.53
+    learned   "riv": activity after the prefix, every 5 ticks: 1079.6 1395.8 1440.4 1115.2 764.0 485.5 236.3 92.0
+      own-word margin per 5 ticks: +0.06 +0.12 +0.11 +0.00 -0.08 -0.20 -0.25 -0.28
+    learned   "sto": activity after the prefix, every 5 ticks: 774.0 974.5 1062.5 945.6 803.3 553.5 253.0 49.0
+      own-word margin per 5 ticks: +0.52 +0.56 +0.45 +0.38 +0.29 +0.17 +0.07 +0.03
+    untrained "app": activity after the prefix, every 5 ticks: 75.6 8.6 0.0 0.0 0.0 0.0 0.0 0.0
+      own-word margin per 5 ticks: +0.32 +0.02 +0.00 +0.00 +0.00 +0.00 +0.00 +0.00
+    untrained "riv": activity after the prefix, every 5 ticks: 11.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+      own-word margin per 5 ticks: +0.05 +0.02 +0.00 +0.00 +0.00 +0.00 +0.00 +0.00
+    untrained "sto": activity after the prefix, every 5 ticks: 17.2 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+      own-word margin per 5 ticks: +0.16 +0.00 +0.00 +0.00 +0.00 +0.00 +0.00 +0.00
+  learned: after-prefix activity vs stored words (apple river storm)
+    app    0.728 0.080 0.017
+    riv    0.024 0.460 0.487
+    sto    0.012 0.215 0.633
+  untrained: after-prefix activity vs stored words (apple river storm)
+    app    0.301 0.009 0.012
+    riv    0.011 0.204 0.155
+    sto    0.014 0.010 0.170
+  word completion: learned margin +0.346 (identifies all: NO) vs untrained +0.164 -> gain +0.182 (need >= +0.050): FAIL
+
+=== CP6 ===
+CP6 continual learning: learn 3, recall, learn 3 more, recall all 6
+  old memories, before new learning: learned margin +0.658 (identifies all: yes) vs untrained +0.159 -> gain +0.499 (need >= +0.050): PASS
+  old memories, after new learning:  learned margin +0.665 (identifies all: yes) vs untrained +0.198 -> gain +0.467 (need >= +0.050): PASS
+  new memories:                      learned margin +0.640 (identifies all: yes) vs untrained +0.258 -> gain +0.383 (need >= +0.050): PASS
+  diagnostic, stored links of each old memory (own pattern -> itself), before -> after new learning:  1.3689 -> 1.3696  1.3100 -> 1.3120  1.4517 -> 1.4526
+  diagnostic, strongest link from each old memory into a new one:  0.0295  0.0333  0.0526
+  diagnostic, learned: old cue vs stored  (before: a k z | after: a k z m q e)
+    cue a  before 0.689 0.019 0.038  | after 0.695 0.013 0.036 0.010 0.032 0.029
+    cue k  before 0.020 0.741 0.048  | after 0.009 0.695 0.028 0.017 0.006 0.016
+    cue z  before 0.015 0.023 0.653  | after 0.015 0.032 0.710 0.011 0.039 0.040
+  diagnostic, untrained: old cue vs stored  (before: a k z | after: a k z m q e)
+    cue a  before 0.123 0.003 0.002  | after 0.178 0.004 0.003 0.006 0.003 0.002
+    cue k  before 0.006 0.238 0.007  | after 0.006 0.253 0.008 0.013 0.011 0.008
+    cue z  before 0.051 0.004 0.177  | after 0.039 0.005 0.220 0.007 0.006 0.007
+    diagnostic, old vs old only:     learned margin +0.668 (identifies all: yes) vs untrained +0.200 -> gain +0.467 (need >= +0.050): PASS
+  diagnostic: erasure -0.010 (old vs old only), interference from new memories +0.003
+  forgetting of old memories: -0.007 (need <= +0.050): PASS
+
+=== CP6b ===
+CP6b retention under load: 8 memories, then 16 more, recalled from 40% cues
+  learned:   before accuracy 100% margin +0.567 | after 16 new accuracy 100% margin +0.533
+  untrained: after accuracy 100% margin +0.226
+  all old memories recalled correctly: yes; margin lost +0.034 (need <= +0.050): yes; gain over untrained +0.307 (need >= +0.050): yes
+
+=== CP7 ===
+CP7 early order check: 3 sessions, each learns two pairs (first then second), cue each item
+  cue of first item evokes second: learned 0.440 vs untrained 0.004 (gain +0.436, need >= +0.020)
+  forward minus backward:          learned +0.420 vs untrained -0.004 (gain +0.424, need >= +0.020)
+  own partner minus other pair's second: learned +0.407 vs untrained -0.000 (gain +0.407, need >= +0.020)
+  diagnostic, during the cue: first evokes second 0.460 vs untrained 0.007 (gain +0.454); forward minus backward +0.438 vs -0.004 (gain +0.442)
+  diagnostic, stored links: first->second 0.2073, second->first 0.0103 (ratio 20.17)
+  early order signal: PASS
+
+=== Stage 1 memory suite summary ===
+  CP2 recall (3 memories)      PASS
+  CP3 capacity (8 memories)    PASS
+  CP4 efficiency               PASS
+  CP5 streamed text            PASS
+  CP5b word completion         FAIL
+  CP6 continual learning       PASS
+  CP6b retention (8+16)        PASS
+  CP7 early order              PASS
