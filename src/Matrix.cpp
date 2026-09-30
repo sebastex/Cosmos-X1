@@ -679,8 +679,16 @@ void NeuralCellularMatrix::step3D() {
     const bool learnedInhibition = cfg_.learning.istdp_rate > 0.0f;
 
     const int64_t voxels = int64_t(V_);
+    // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
+    // the later ones within the same step. Otherwise one pass over all fields.
+    const bool sweep = cfg_.field_sweep > 0.5f;
+    const float* drive = drive3_.data();
+    const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
+    for (uint32_t fs = 0; fs < (sweep ? kFields : 1u); ++fs) {
+    const int64_t vBegin = sweep ? int64_t(fs) * int64_t(Vf_) : 0;
+    const int64_t vEnd = sweep ? int64_t(fs + 1) * int64_t(Vf_) : voxels;
 #pragma omp parallel for schedule(dynamic, 256)
-    for (int64_t vi = 0; vi < voxels; ++vi) {
+    for (int64_t vi = vBegin; vi < vEnd; ++vi) {
         const size_t v = size_t(vi);
         const uint32_t x = uint32_t(v % N);
         const uint32_t y = uint32_t((v / N) % N);
@@ -753,7 +761,7 @@ void NeuralCellularMatrix::step3D() {
         for (uint32_t g = 0; g < kFields; ++g) {
             if (g == f) continue;
             const size_t vg = voxelIndex(g, x, y, z);
-            const float* src = s3 + vg * C3;
+            const float* src = (sweep && g < f ? out : s3) + vg * C3; // sweep: earlier fields' new state
             if (isSilent(src, C3)) {
                 ++gi;
                 continue;
@@ -807,7 +815,7 @@ void NeuralCellularMatrix::step3D() {
                 // sources from them use the reference count (keeps density size-invariant).
                 for (uint32_t l = 0; l < (g == 0 ? S4 : std::min<uint32_t>(S4, cfg_.link4d_spread)); ++l) {
                     const size_t vs = size_t(g) * Vf_ + spreadPos_[v * S4 + l];
-                    const float* src = s3 + vs * C3;
+                    const float* src = (sweep ? out : s3) + vs * C3; // g < f here
                     if (isSilent(src, C3)) continue;
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
                 }
@@ -893,10 +901,8 @@ void NeuralCellularMatrix::step3D() {
     }
 
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
-    const float* drive = drive3_.data();
-    const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
 #pragma omp parallel for schedule(dynamic, 256)
-    for (int64_t vi = 0; vi < voxels; ++vi) {
+    for (int64_t vi = vBegin; vi < vEnd; ++vi) {
         const size_t v = size_t(vi);
         const uint32_t x = uint32_t(v % N);
         const uint32_t y = uint32_t((v / N) % N);
@@ -941,6 +947,7 @@ void NeuralCellularMatrix::step3D() {
             averageN3_[v] += (normMean - averageN3_[v]) / avgTau;
         }
     }
+    } // fields (front-to-back sweep)
 
     // Gain control: each field nudges the gain on its incoming signals toward the target
     // share of clearly firing voxels (strongest channel at or above the active level;

@@ -1839,4 +1839,52 @@ int runPairLinksTest(const Config& cfg) {
     return 0;
 }
 
+// Context (diagnostic): does a word keep its identity whatever came before it? Untrained matrix,
+// listening only. "river" is heard after a pause, after "apple", after "storm" and after itself;
+// its shape (3D state summed over its own letters) is compared across those settings, per field,
+// and with a different word ("candy") heard in the same settings.
+int runWordContextTest(const Config& cfg) {
+    const char* names[kFields] = {"Input", "Memory", "Reasoning", "Output"};
+    Session s(cfg, false);
+    auto shapeOf = [&](const std::string& before, const std::string& word) {
+        std::vector<double> shape;
+        for (int r = 0; r < 6; ++r) {
+            if (!before.empty()) s.present(before, before.size(), 1.0f, true, UINT64_MAX);
+            // The matrix shows a chunk only after hearing it (one chunk = 3 ticks), so the word's
+            // shape is read 3 ticks late: from its 4th tick to 3 ticks after its end.
+            for (size_t i = 0; i < word.size(); ++i) {
+                s.present(std::string(1, word[i]), 1, 1.0f, true, UINT64_MAX);
+                if (r >= 2 && i >= 3) s.accumulate(shape);
+            }
+            for (int t = 0; t < 3; ++t) {
+                s.silence(1, false);
+                if (r >= 2) s.accumulate(shape);
+            }
+            s.silence(T(30) - 3, false);
+        }
+        s.silence(kGap, false);
+        return shape;
+    };
+    const std::vector<double> rPause = shapeOf("", "river "), rApple = shapeOf("apple ", "river "),
+                              rStorm = shapeOf("storm ", "river "), rSelf = shapeOf("river ", "river "),
+                              rPause2 = shapeOf("", "river "), cPause = shapeOf("", "candy "),
+                              cApple = shapeOf("apple ", "candy ");
+    const size_t per = rPause.size() / kFields;
+    std::printf("Word context (untrained): how alike is \"river\" to itself in different settings, per field\n");
+    std::printf("                                          Input  Memory Reason Output\n");
+    auto row = [&](const char* label, const std::vector<double>& a, const std::vector<double>& b2) {
+        std::printf("  %-38s", label);
+        for (uint32_t f = 0; f < kFields; ++f) std::printf("  %.3f", lab::cosine(a, b2, f * per, (f + 1) * per));
+        std::printf("\n");
+    };
+    row("river after a pause, heard twice", rPause, rPause2);
+    row("river after a pause vs after apple", rPause, rApple);
+    row("river after apple vs after storm", rApple, rStorm);
+    row("river after a pause vs after river", rPause, rSelf);
+    row("river vs candy, both after a pause", rPause, cPause);
+    row("river vs candy, both after apple", rApple, cApple);
+    (void)names;
+    return 0;
+}
+
 } // namespace ncm

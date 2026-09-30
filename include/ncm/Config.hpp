@@ -269,13 +269,20 @@ struct Config {
     // the slower level miss letters and catch a different slice of a word every time; pooled,
     // nothing is dropped between levels.
     float upward_pool = 0.0f;
-    // 1 = the 2D and 3D clocks restart their cycle after every word gap (space character), so a
-    // word is cut into the same chunks every time it is heard.
+    // 1 = the 2D and 3D clocks restart their cycle after every word gap (space character) and
+    // when input begins after a pause, so a word is cut into the same chunks every time it is
+    // heard, wherever it appears.
     float clock_reset = 0.0f;
     // 1 = the gap between words (space character) is a pause: no input for that tick, instead of a
     // character of its own that every word shares. With clock_reset the slower clocks then restart
     // when input begins again after a pause (an onset), not on a special character.
     float space_silent = 0.0f;
+    // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
+    // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
+    // the whole matrix looks at the same moment. 0 = all fields update from the previous step's
+    // states, which delays every field by one more step (the Output field hears a word when the
+    // next one is already arriving). Feedback from later fields still comes from the previous step.
+    float field_sweep = 0.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

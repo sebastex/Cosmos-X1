@@ -180,6 +180,7 @@ int main(int argc, char** argv) {
     if (opt.test == "hum") return ncm::runHumTest(cfg);
     if (opt.test == "chain") return ncm::runChainTest(cfg);
     if (opt.test == "overlap") return ncm::runOverlapTest(cfg);
+    if (opt.test == "wordcontext") return ncm::runWordContextTest(cfg);
     if (opt.test == "pairlinks") return ncm::runPairLinksTest(cfg);
     if (opt.test == "pairload") return ncm::runPairLoadTest(cfg, opt.storeTicks);
     if (opt.test == "wordload") return ncm::runWordLoadTest(cfg, opt.storeTicks);

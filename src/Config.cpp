@@ -170,6 +170,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"upward_pool", &c.upward_pool},
         {"clock_reset", &c.clock_reset},
         {"space_silent", &c.space_silent},
+        {"field_sweep", &c.field_sweep},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},
         {"fire_gain2", &c.fire_gain2},

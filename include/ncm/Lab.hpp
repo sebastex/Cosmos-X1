@@ -48,8 +48,9 @@ public:
     // One 1D tick. `fingerprint` is what enters the sensory surface (nullptr = silence);
     // `actual` is the full fingerprint of the character being heard, for the surprise check.
     void tick(const std::vector<uint32_t>* fingerprint, const std::vector<uint32_t>* actual, bool allowLearning) {
-        // Onset after a pause: the slower clocks start a fresh cycle (clock_reset with space_silent).
-        if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f && cfg_.space_silent > 0.5f) clock_.resetPhase();
+        // Onset after a pause: the slower clocks start a fresh cycle, so a word is cut into the
+        // same chunks whether it follows a pause or another word.
+        if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f) clock_.resetPhase();
         wasSilent_ = fingerprint == nullptr;
         if (fingerprint) {
             // Surprise (spec Section 5A): read the matrix's guess before the character

@@ -1,0 +1,17 @@
+Pair load: pairs learned one after another; hear the first word, is the second one recalled?
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 1 of 4 (own -0.0017, best other +0.0053); partner->cue 2 of 4 (-0.0066)
+     STORED LINKS cue->partner: strongest link points to the right partner for 1 of 4
+       strength: cue->own partner 0.0738, cue->best other partner 0.0772, partner->cue 0.0718, cue->itself 0.2243
+  .. learned, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.414, chance 25%
+     strict (partner shape heard alone): 3 right (75%)
+     TRUE RECALL (partner heard alone by this same matrix): 1 of 4 right (25%), margin +0.002
+       wrong (cue>recalled): storm>mouse light>think bench>candy
+     calibration: word inside its pair vs the same word alone: 1 of 4 recognisable (alike 0.078, best other 0.093)
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 1 of 8 (own +0.0005, best other +0.0196); partner->cue 2 of 8 (-0.0066)
+     STORED LINKS cue->partner: strongest link points to the right partner for 2 of 8
+       strength: cue->own partner 0.0832, cue->best other partner 0.0997, partner->cue 0.0804, cue->itself 0.2266
+  .. learned, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.349, chance 12%
+     strict (partner shape heard alone): 3 right (38%)
+     TRUE RECALL (partner heard alone by this same matrix): 2 of 8 right (25%), margin -0.031
+       wrong (cue>recalled): apple>dream storm>mouse light>think bench>candy smile>mouse cloud>candy
+     calibration: word inside its pair vs the same word alone: 1 of 8 recognisable (alike 0.078, best other 0.100)

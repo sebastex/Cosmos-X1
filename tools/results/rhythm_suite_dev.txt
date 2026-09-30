@@ -1,0 +1,5 @@
+rhythm                 seed 22: stage0 ok deep 49% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+rhythm                 seed 23: stage0 ok deep 45% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+
+=== summary (passes out of 2 seeds; mean gain) ===
+rhythm                 stage0 2/2 | recall 2/2 (+0.501)  capacity 2/2 (+0.348)  efficiency 2/2 (+0.484)  streamed 2/2 (+0.462)  completion 2/2 (+0.376)  continual 2/2 (+0.011)  retention 2/2  order 2/2 (+0.380) | ALL 2/2
