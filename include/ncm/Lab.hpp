@@ -48,6 +48,9 @@ public:
     // One 1D tick. `fingerprint` is what enters the sensory surface (nullptr = silence);
     // `actual` is the full fingerprint of the character being heard, for the surprise check.
     void tick(const std::vector<uint32_t>* fingerprint, const std::vector<uint32_t>* actual, bool allowLearning) {
+        // Onset after a pause: the slower clocks start a fresh cycle (clock_reset with space_silent).
+        if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f && cfg_.space_silent > 0.5f) clock_.resetPhase();
+        wasSilent_ = fingerprint == nullptr;
         if (fingerprint) {
             // Surprise (spec Section 5A): read the matrix's guess before the character
             // arrives. Only external text produces surprise.
@@ -96,6 +99,11 @@ public:
         std::vector<double> acc;
         for (uint64_t t = 0; t < ticks; ++t) {
             const char c = text[t % text.size()];
+            if (cfg_.space_silent > 0.5f && c == ' ') { // a word gap is a pause
+                tick(nullptr, nullptr, allowLearning);
+                if (t >= recordFrom) accumulate(acc);
+                continue;
+            }
             const auto& full = codebook_.fingerprint(char32_t(uint8_t(c)));
             if (fraction >= 1.0f) {
                 tick(&full, &full, allowLearning);
@@ -150,6 +158,7 @@ private:
     double modSum_ = 0.0;
     uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
+    bool wasSilent_ = true; // the previous tick had no input
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input
     // ends, suppression builds up gradually, so memory circuits stay in recall mode briefly

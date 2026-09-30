@@ -272,6 +272,10 @@ struct Config {
     // 1 = the 2D and 3D clocks restart their cycle after every word gap (space character), so a
     // word is cut into the same chunks every time it is heard.
     float clock_reset = 0.0f;
+    // 1 = the gap between words (space character) is a pause: no input for that tick, instead of a
+    // character of its own that every word shares. With clock_reset the slower clocks then restart
+    // when input begins again after a pause (an onset), not on a special character.
+    float space_silent = 0.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

@@ -1626,19 +1626,93 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         for (size_t p = 0; p < total; ++p) {
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
             const std::string pair = a + bw;
+            // The pair is said, then a pause, then said again (10 times). Without the pause the
+            // stream "apple river apple river" also teaches "river then apple", and an order rule
+            // that strengthens "earlier -> later" and weakens "later -> earlier" cancels itself.
             std::vector<double> shape;
-            const uint64_t ticks = 2 * kStore;
-            for (uint64_t t = 0; t < ticks; ++t) {
-                const size_t pos = t % pair.size();
-                s.present(std::string(1, pair[pos]), 1, 1.0f, true, UINT64_MAX);
-                if (t >= ticks / 2 && pos >= a.size()) s.accumulate(shape);
+            const int repeats = 10;
+            for (int r = 0; r < repeats; ++r) {
+                for (size_t pos = 0; pos < pair.size(); ++pos) {
+                    s.present(std::string(1, pair[pos]), 1, 1.0f, true, UINT64_MAX);
+                    if (r >= repeats / 2 && pos >= a.size()) s.accumulate(shape);
+                }
+                s.silence(T(30), true);
             }
             partner.push_back(shape);
             s.silence(kGap, true);
             if (p + 1 == next || p + 1 == total) {
-                size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0;
-                double margin = 0.0;
-                std::string mistakes;
+                size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0;
+                double margin = 0.0, marginOwn = 0.0;
+                std::string mistakes, mistakesOwn;
+                // Yardstick in the matrix's own present language: every partner word heard alone
+                // by this same matrix now (no learning), a few repeats each.
+                Patterns ownAlone;
+                for (size_t k = 0; k <= p; ++k) {
+                    const std::string bw2 = words[2 * k + 1] + " ";
+                    ownAlone.push_back(s.present(bw2, 4 * bw2.size(), 1.0f, false, bw2.size()));
+                    s.silence(kGap, false);
+                }
+                // Stored links, read directly (no dynamics): the learned flow from each cue word's
+                // own shape into every partner's shape, and back. Tells "not stored" from "stored
+                // but not expressed".
+                if (learning) {
+                    Patterns cueAlone;
+                    for (size_t k = 0; k <= p; ++k) {
+                        const std::string aw = words[2 * k] + " ";
+                        cueAlone.push_back(s.present(aw, 4 * aw.size(), 1.0f, false, aw.size()));
+                        s.silence(kGap, false);
+                    }
+                    size_t linkRight = 0;
+                    double fOwn = 0.0, fOther = 0.0, fBack = 0.0, fSelf = 0.0;
+                    for (size_t k = 0; k <= p; ++k) {
+                        const double own = s.flow(cueAlone[k], ownAlone[k]);
+                        double best = 0.0;
+                        for (size_t j = 0; j <= p; ++j)
+                            if (j != k) best = std::max(best, s.flow(cueAlone[k], ownAlone[j]));
+                        linkRight += own > best;
+                        fOwn += own / double(p + 1);
+                        fOther += best / double(p + 1);
+                        fBack += s.flow(ownAlone[k], cueAlone[k]) / double(p + 1);
+                        fSelf += s.flow(cueAlone[k], cueAlone[k]) / double(p + 1);
+                    }
+                    // The same with what all words share removed (mean shape subtracted): the part of
+                    // each shape that is specific to the word.
+                    {
+                        const size_t dim = cueAlone[0].size();
+                        std::vector<double> mean(dim, 0.0);
+                        for (size_t k = 0; k <= p; ++k)
+                            for (size_t i = 0; i < dim; ++i) mean[i] += (cueAlone[k][i] + ownAlone[k][i]) / double(2 * (p + 1));
+                        Patterns cc = cueAlone, pc = ownAlone;
+                        for (size_t k = 0; k <= p; ++k)
+                            for (size_t i = 0; i < dim; ++i) {
+                                cc[k][i] -= mean[i];
+                                pc[k][i] -= mean[i];
+                            }
+                        size_t right2 = 0, rightBack = 0;
+                        double o2 = 0.0, x2 = 0.0, b2 = 0.0;
+                        for (size_t k = 0; k <= p; ++k) {
+                            const double own = s.flow(cc[k], pc[k]);
+                            double best = -1e9, bestB = -1e9;
+                            for (size_t j = 0; j <= p; ++j)
+                                if (j != k) {
+                                    best = std::max(best, s.flow(cc[k], pc[j]));
+                                    bestB = std::max(bestB, s.flow(pc[k], cc[j]));
+                                }
+                            const double back = s.flow(pc[k], cc[k]);
+                            right2 += own > best;
+                            rightBack += back > bestB;
+                            o2 += own / double(p + 1);
+                            x2 += best / double(p + 1);
+                            b2 += back / double(p + 1);
+                        }
+                        std::printf("     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for %zu of %zu "
+                                    "(own %+.4f, best other %+.4f); partner->cue %zu of %zu (%+.4f)\n",
+                                    right2, p + 1, o2, x2, rightBack, p + 1, b2);
+                    }
+                    std::printf("     STORED LINKS cue->partner: strongest link points to the right partner for %zu of %zu\n"
+                                "       strength: cue->own partner %.4f, cue->best other partner %.4f, partner->cue %.4f, cue->itself %.4f\n",
+                                linkRight, p + 1, fOwn, fOther, fBack, fSelf);
+                }
                 for (size_t k = 0; k <= p; ++k) {
                     const std::string cue = words[2 * k] + " ";
                     s.present(cue, cue.size(), 1.0f, false, UINT64_MAX);
@@ -1665,12 +1739,28 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     for (size_t j = 0; j <= p; ++j)
                         if (j != k) bestA = std::max(bestA, lab::cosine(after, alone[j]));
                     rightAlone += ownA > bestA;
+                    double ownO = lab::cosine(after, ownAlone[k]), bestO = -1.0;
+                    size_t bestOJ = k;
+                    for (size_t j = 0; j <= p; ++j) {
+                        if (j == k) continue;
+                        const double sim = lab::cosine(after, ownAlone[j]);
+                        if (sim > bestO) {
+                            bestO = sim;
+                            bestOJ = j;
+                        }
+                    }
+                    rightOwn += ownO > bestO;
+                    marginOwn += (ownO - bestO) / double(p + 1);
+                    if (ownO <= bestO && learning) mistakesOwn += " " + words[2 * k] + ">" + words[2 * bestOJ + 1];
                 }
                 std::printf("  .. %s, %zu pairs: %zu right (%.0f%%), older half %zu, newer half %zu, margin %+.3f, chance %.0f%%\n",
                             learning ? "learned" : "untrained", p + 1, right, 100.0 * double(right) / double(p + 1), rightOld,
                             rightNew, margin, 100.0 / double(p + 1));
                 std::printf("     strict (partner shape heard alone): %zu right (%.0f%%)\n", rightAlone,
                             100.0 * double(rightAlone) / double(p + 1));
+                std::printf("     TRUE RECALL (partner heard alone by this same matrix): %zu of %zu right (%.0f%%), margin %+.3f\n",
+                            rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
+                if (!mistakesOwn.empty()) std::printf("       wrong (cue>recalled):%s\n", mistakesOwn.c_str());
                 // Calibration: does a partner word heard inside its pair look like itself heard alone?
                 {
                     size_t match = 0;

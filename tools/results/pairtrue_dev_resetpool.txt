@@ -1,0 +1,12 @@
+Pair load: pairs learned one after another; hear the first word, is the second one recalled?
+  .. learned, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.179, chance 25%
+     strict (partner shape heard alone): 2 right (50%)
+     TRUE RECALL (partner heard alone by this same matrix): 2 of 4 right (50%), margin -0.038
+       wrong (cue>recalled): storm>mouse light>think
+     calibration: word inside its pair vs the same word alone: 4 of 4 recognisable (alike 0.252, best other 0.143)
+  .. learned, 8 pairs: 7 right (88%), older half 3, newer half 4, margin +0.106, chance 12%
+     strict (partner shape heard alone): 1 right (12%)
+     TRUE RECALL (partner heard alone by this same matrix): 2 of 8 right (25%), margin -0.072
+       wrong (cue>recalled): apple>water storm>mouse light>house green>river smile>mouse cloud>house
+     calibration: word inside its pair vs the same word alone: 8 of 8 recognisable (alike 0.236, best other 0.188)
+     wrong partner (cue>recalled): storm>mouse
