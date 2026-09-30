@@ -1,0 +1,2 @@
+main                   seed 25: stage0 ok deep 48% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+main                   seed 26: stage0 ok deep 53% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y

@@ -1,0 +1,3 @@
+main           wcap22:+0.029!x  wcap23:+0.030!x  wcont22:old+0.085/new+0.036/lost+0.007x  wcont23:old+0.053/new+0.036/lost+0.034x  comp33:+0.091  capa23:+0.281!x  cont25:forget+0.115x  eff22:+0.376
+pace1.618      wcap22:+0.059!x  wcap23:+0.031!x  wcont22:old+0.106/new+0.085/lost+0.009  wcont23:old+0.064/new+0.036/lost-0.019x  comp33:+0.105  capa23:+0.226!x  cont25:forget+0.196x  eff22:+0.209
+pace2.5        wcap22:+0.006!x  wcap23:+0.010!x  wcont22:old+0.017/new+0.026/lost-0.014x  wcont23:old-0.033/new+0.012/lost-0.040x  comp33:-0.043!x  capa23:+0.108!x  cont25:forget-0.114x  eff22:+0.088

@@ -1,0 +1,4 @@
+nobrakeA       wcap22:+0.051  wcap23:+0.031!x  wcont22:old+0.079/new+0.129/lost+0.075x  wcont23:old+0.081/new+0.105/lost+0.119x  capa23:+0.206!x  cont25:forget+0.063x
+pace+nobrakeA  wcap22:+0.093!x  wcap23:+0.049!x  wcont22:old+0.182/new+0.129/lost+0.098x  wcont23:old+0.127/new+0.109/lost+0.043x  capa23:+0.225!x  cont25:forget+0.028
+pace+nobrakeB  wcap22:+0.072!x  wcap23:+0.069!x  wcont22:old+0.246/new+0.122/lost+0.025  wcont23:old+0.142/new+0.090/lost+0.035  capa23:+0.351  cont25:forget+0.457!x
+pace+nobrakeAB wcap22:+0.000!x  wcap23:+0.000!x  wcont22:old+0.072/new+0.251/lost+0.290x  wcont23:old+0.042/new+0.457/lost+0.370x  capa23:+0.181!x  cont25:forget+0.870!x
