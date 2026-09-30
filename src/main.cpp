@@ -180,6 +180,7 @@ int main(int argc, char** argv) {
     if (opt.test == "hum") return ncm::runHumTest(cfg);
     if (opt.test == "chain") return ncm::runChainTest(cfg);
     if (opt.test == "overlap") return ncm::runOverlapTest(cfg);
+    if (opt.test == "discriminate") return ncm::runDiscriminationTest(cfg);
     if (opt.test == "interfere") return ncm::runInterferenceTest(cfg);
     if (opt.test == "completion") return ncm::runCompletionTest(cfg, opt.storeTicks > 0 ? opt.storeTicks : 3);
     if (opt.test == "settle") return ncm::runSettleTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);

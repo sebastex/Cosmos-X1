@@ -47,6 +47,7 @@ int runHealthTest(const Config& cfg); // diagnostic: which subsystem misbehaves 
 int runHumTest(const Config& cfg);    // diagnostic: where activity lingering after recall comes from
 int runChainTest(const Config& cfg);
 int runOverlapTest(const Config& cfg);
+int runDiscriminationTest(const Config& cfg); // diagnostic: how visible a small input difference is per level
 int runInterferenceTest(const Config& cfg); // diagnostic: how new memories pull old cues
 int runOccupancyTest(const Config& cfg, const std::string& item); // diagnostic: active voxels per depth layer
 // Multiplies every test duration (storing, gaps, cues) by `scale` (default 1).

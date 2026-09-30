@@ -1242,4 +1242,70 @@ int runInterferenceTest(const Config& cfg) {
     return 0;
 }
 
+// Discrimination (diagnostic): how much of a small input difference is still visible at each
+// level. The letter 'a' and copies of it with k sensory lines replaced are each held (untrained,
+// identical wiring); the settled activity is compared with the original's at the line (1D), sheet
+// (2D) and voxel (3D) level of every field. "seen" = 1 - similarity: 0 = looks identical,
+// 1 = looks unrelated. The input difference is the share of sensory lines that changed.
+int runDiscriminationTest(const Config& cfg) {
+    const char* names[kFields] = {"Input", "Memory", "Reasoning", "Output"};
+    struct Levels {
+        std::vector<double> line, sheet, voxel;
+    };
+    auto add = [](std::vector<double>& acc, const AVec<float>& st) {
+        if (acc.size() != st.size()) acc.assign(st.size(), 0.0);
+        for (size_t i = 0; i < st.size(); ++i) acc[i] += st[i];
+    };
+    auto settle = [&](const std::vector<uint32_t>& fp) {
+        Session s(cfg, false);
+        Levels l;
+        for (uint64_t t = 0; t < kStore; ++t) {
+            s.tick(&fp, &fp, false);
+            if (t >= kStore / 2) {
+                add(l.line, s.matrix().lineState());
+                add(l.sheet, s.matrix().sheetState());
+                add(l.voxel, s.matrix().voxelState());
+            }
+        }
+        return l;
+    };
+    Session probe(cfg, false);
+    const std::vector<uint32_t> base = probe.codebook().fingerprint(U'a');
+    const uint32_t surface = cfg.surfaceLines();
+    const Levels ref = settle(base);
+    std::printf("Discrimination: 'a' has %zu sensory lines of %u; difference seen per level (0 = identical, 1 = unrelated)\n",
+                base.size(), surface);
+    std::printf("  changed  input   | level   Input  Memory Reason Output\n");
+    std::vector<size_t> ks = {1, 2, 4, base.size() / 4, base.size() / 2, base.size()};
+    for (size_t k : ks) {
+        if (k == 0 || k > base.size()) continue;
+        // Replace the first k lines by unused surface lines (deterministic).
+        std::vector<uint32_t> fp = base;
+        uint32_t candidate = 0;
+        for (size_t i = 0; i < k; ++i) {
+            while (std::find(base.begin(), base.end(), candidate) != base.end() ||
+                   std::find(fp.begin(), fp.end(), candidate) != fp.end())
+                candidate = (candidate + 7) % surface;
+            fp[i] = candidate;
+        }
+        const Levels v = settle(fp);
+        const struct {
+            const char* name;
+            const std::vector<double>* a;
+            const std::vector<double>* b;
+        } rows[3] = {{"lines ", &ref.line, &v.line}, {"sheets", &ref.sheet, &v.sheet}, {"voxels", &ref.voxel, &v.voxel}};
+        for (int r = 0; r < 3; ++r) {
+            if (r == 0) std::printf("  %4zu     %.3f   | ", k, double(k) / double(base.size()));
+            else std::printf("                   | ");
+            std::printf("%s ", rows[r].name);
+            const size_t per = rows[r].a->size() / kFields;
+            for (uint32_t f = 0; f < kFields; ++f)
+                std::printf(" %.3f ", 1.0 - lab::cosine(*rows[r].a, *rows[r].b, f * per, (f + 1) * per));
+            std::printf("\n");
+        }
+    }
+    (void)names;
+    return 0;
+}
+
 } // namespace ncm
