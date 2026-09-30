@@ -1,0 +1,5 @@
+three                  seed 22: stage0 ok deep 78% recall Y capacity Y efficiency Y streamed Y completion Y continual Y retention Y order Y
+three                  seed 23: stage0 ok deep 72% recall Y capacity Y efficiency Y streamed - completion Y continual Y retention - order Y
+
+=== summary (passes out of 2 seeds; mean gain) ===
+three                  stage0 2/2 | recall 2/2 (+0.411)  capacity 2/2 (+0.302)  efficiency 2/2 (+0.404)  streamed 1/2 (+0.225)  completion 2/2 (+0.256)  continual 2/2 (+0.006)  retention 1/2  order 2/2 (+0.360) | ALL 1/2

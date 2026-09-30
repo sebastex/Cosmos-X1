@@ -6,3 +6,10 @@ Pair load: pairs learned one after another; hear the first word, is the second o
      strict (partner shape heard alone): 4 right (100%)
      TRUE RECALL (partner heard alone by this same matrix): 4 of 4 right (100%), margin +0.327
      calibration: word inside its pair vs the same word alone: 4 of 4 recognisable (alike 0.318, best other 0.083)
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 7 of 8 (own +0.0735, best other -0.0105); partner->cue 1 of 8 (-0.0272)
+     STORED LINKS cue->partner: strongest link points to the right partner for 7 of 8
+       strength: cue->own partner 0.2052, cue->best other partner 0.1394, partner->cue 0.0861, cue->itself 0.6518
+  .. learned, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.365, chance 12%
+     strict (partner shape heard alone): 8 right (100%)
+     TRUE RECALL (partner heard alone by this same matrix): 8 of 8 right (100%), margin +0.166
+     calibration: word inside its pair vs the same word alone: 8 of 8 recognisable (alike 0.306, best other 0.158)
