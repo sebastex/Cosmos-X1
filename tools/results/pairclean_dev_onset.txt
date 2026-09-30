@@ -15,3 +15,23 @@ Pair load: pairs learned one after another; hear the first word, is the second o
      TRUE RECALL (partner heard alone by this same matrix): 2 of 8 right (25%), margin -0.031
        wrong (cue>recalled): apple>dream storm>mouse light>think bench>candy smile>mouse cloud>candy
      calibration: word inside its pair vs the same word alone: 1 of 8 recognisable (alike 0.078, best other 0.100)
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 2 of 16 (own +0.0030, best other +0.0317); partner->cue 0 of 16 (-0.0041)
+     STORED LINKS cue->partner: strongest link points to the right partner for 1 of 16
+       strength: cue->own partner 0.0871, cue->best other partner 0.1154, partner->cue 0.0836, cue->itself 0.2140
+  .. learned, 16 pairs: 16 right (100%), older half 8, newer half 8, margin +0.319, chance 6%
+     strict (partner shape heard alone): 1 right (6%)
+     TRUE RECALL (partner heard alone by this same matrix): 2 of 16 right (12%), margin -0.056
+       wrong (cue>recalled): apple>dream storm>sugar light>night bench>brick green>sugar plant>piano smile>sugar cloud>candy fruit>knife jolly>whale lemon>uncle ocean>dream robot>mouse zebra>water
+     calibration: word inside its pair vs the same word alone: 1 of 16 recognisable (alike 0.079, best other 0.109)
+  .. untrained, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.295, chance 25%
+     strict (partner shape heard alone): 0 right (0%)
+     TRUE RECALL (partner heard alone by this same matrix): 1 of 4 right (25%), margin -0.041
+     calibration: word inside its pair vs the same word alone: 1 of 4 recognisable (alike 0.078, best other 0.093)
+  .. untrained, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.256, chance 12%
+     strict (partner shape heard alone): 1 right (12%)
+     TRUE RECALL (partner heard alone by this same matrix): 0 of 8 right (0%), margin -0.071
+     calibration: word inside its pair vs the same word alone: 1 of 8 recognisable (alike 0.077, best other 0.101)
+  .. untrained, 16 pairs: 16 right (100%), older half 8, newer half 8, margin +0.257, chance 6%
+     strict (partner shape heard alone): 1 right (6%)
+     TRUE RECALL (partner heard alone by this same matrix): 0 of 16 right (0%), margin -0.075
+     calibration: word inside its pair vs the same word alone: 1 of 16 recognisable (alike 0.079, best other 0.110)
