@@ -31,6 +31,13 @@ public:
         return t;
     }
 
+    // Phase reset: the slower clocks start a fresh cycle (as brain rhythms restart at the edges
+    // of a sound), so the cuts they make in the input stream fall at the same places each time.
+    void resetPhase() {
+        acc2_ = 0.0;
+        acc3_ = 0.0;
+    }
+
     uint64_t ticks1D() const { return ticks1_; }
     uint64_t ticks2D() const { return ticks2_; }
     uint64_t ticks3D() const { return ticks3_; }

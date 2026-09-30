@@ -47,7 +47,9 @@ int runHealthTest(const Config& cfg); // diagnostic: which subsystem misbehaves 
 int runHumTest(const Config& cfg);    // diagnostic: where activity lingering after recall comes from
 int runChainTest(const Config& cfg);
 int runOverlapTest(const Config& cfg);
-int runWordShapeTest(const Config& cfg, bool withSpace = true); // diagnostic: why streamed words look alike
+int runPairLoadTest(const Config& cfg, uint64_t maxPairs = 0); // word pairs: hear the first, recall the second
+int runWordLoadTest(const Config& cfg, uint64_t maxWords = 0); // how many streamed words the matrix can hold
+int runWordShapeTest(const Config& cfg, bool withSpace = true, uint64_t hold = 1); // diagnostic: why streamed words look alike
 int runWordCapacityTest(const Config& cfg);  // word version of CP3: 8 streamed words, completion
 int runWordContinualTest(const Config& cfg, bool swapped = false); // word version of CP6: old words kept while new ones are learned
 int runDiscriminationTest(const Config& cfg); // diagnostic: how visible a small input difference is per level

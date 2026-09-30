@@ -1,0 +1,8 @@
+Pair load: pairs learned one after another; hear the first word, is the second one recalled?
+  .. learned, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.110, chance 25%
+  .. learned, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.043, chance 12%
+  .. learned, 16 pairs: 15 right (94%), older half 8, newer half 7, margin +0.034, chance 6%
+     wrong partner (cue>recalled): lemon>mouse
+  .. untrained, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.062, chance 25%
+  .. untrained, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.026, chance 12%
+  .. untrained, 16 pairs: 15 right (94%), older half 8, newer half 7, margin +0.026, chance 6%

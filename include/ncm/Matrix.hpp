@@ -153,6 +153,14 @@ private:
     AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
     AVec<float> resource3_;    // short-term depression: transmitter resource per voxel channel
     AVec<float> membrane3_;    // slowly integrated input per voxel channel (field_pace > 1)
+    // Pooled upward summaries (upward_pool): sums since the receiving level's last update.
+    AVec<float> lineUp_;             // per sheet cell, C2 channels: summed line summaries
+    std::vector<uint8_t> lineUpAny_; // per sheet cell: any line activity since the last 2D step
+    uint32_t lineUpTicks_ = 0;
+    AVec<float> sheetUp_; // per voxel, C3 channels: summed sheet summaries
+    uint32_t sheetUpTicks_ = 0;
+    void poolLines();
+    void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)
     AVec<float> pool3_;        // neighbourhood activity each voxel heard on the last step

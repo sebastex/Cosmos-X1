@@ -1391,7 +1391,8 @@ int runWordContinualTest(const Config& cfg, bool swapped) {
 // for every pair: shared letters and similarity of the 3D shapes. Then the same with the
 // common background removed (the mean shape of all words subtracted), and how much of each
 // word's activity lies in cells that are active for most words.
-int runWordShapeTest(const Config& cfg, bool withSpace) {
+int runWordShapeTest(const Config& cfg, bool withSpace, uint64_t hold) {
+    hold = std::max<uint64_t>(1, hold); // ticks each letter is held in the steadiness part (1 = normal stream)
     std::vector<std::string> items = {"apple ", "river ", "storm ", "candy ", "light ", "mouse ", "bench ", "think "};
     if (!withSpace)
         for (auto& w : items) w.pop_back();
@@ -1465,9 +1466,24 @@ int runWordShapeTest(const Config& cfg, bool withSpace) {
     {
         Session u(cfg, false);
         const std::string word = items[0];
-        u.present(word, kStore / 2, 1.0f, false, UINT64_MAX);
+        const uint64_t period = word.size() * hold;
+        for (uint64_t t = 0; t < 10 * period; ++t) u.present(std::string(1, word[(t / hold) % word.size()]), 1, 1.0f, false, UINT64_MAX);
         std::vector<std::vector<double>> moments;
-        for (uint64_t t = 0; t < kStore / 2; ++t) moments.push_back(u.present(std::string(1, word[t % word.size()]), 1, 1.0f, false, 0));
+        for (uint64_t t = 0; t < 10 * period; ++t)
+            moments.push_back(u.present(std::string(1, word[(t / hold) % word.size()]), 1, 1.0f, false, 0));
+        // Whole-cycle shapes: the summed state over each repeat of the word; how alike are repeats?
+        {
+            std::vector<std::vector<double>> cycles(10);
+            for (uint64_t t = 0; t < 10 * period; ++t) {
+                auto& c = cycles[t / period];
+                if (c.size() != moments[t].size()) c.assign(moments[t].size(), 0.0);
+                for (size_t i = 0; i < c.size(); ++i) c[i] += moments[t][i];
+            }
+            double rep = 0.0;
+            for (size_t c = 0; c + 1 < cycles.size(); ++c) rep += lab::cosine(cycles[c], cycles[c + 1]) / double(cycles.size() - 1);
+            std::printf("  each letter held %llu tick(s): one repeat of the word vs the next repeat: %.3f alike\n",
+                        (unsigned long long)hold, rep);
+        }
         const size_t per = dim / kFields;
         std::printf("  per field (Input Memory Reasoning Output), word %s:\n", word.c_str());
         const char* label[4] = {"cells in one moment %", "cells over the word % ", "alike 3 ticks apart   ", "alike 12 ticks apart  "};
@@ -1490,7 +1506,7 @@ int runWordShapeTest(const Config& cfg, bool withSpace) {
                     }
                     v = 100.0 * double(on) / double(per);
                 } else {
-                    const size_t lag = row == 2 ? 3 : 12;
+                    const size_t lag = row == 2 ? 3 : size_t(2 * period); // 2 * period = same letter two repeats later
                     int c = 0;
                     for (size_t t = 0; t + lag < moments.size(); ++t, ++c) v += lab::cosine(moments[t], moments[t + lag], f * per, (f + 1) * per);
                     v /= std::max(1, c);
@@ -1505,6 +1521,178 @@ int runWordShapeTest(const Config& cfg, bool withSpace) {
     double simSpace = 0.0;
     for (const auto& p : P) simSpace += lab::cosine(p, sp[0]) / double(n);
     std::printf("  similarity of a word's shape to the shape of the space character alone: %.3f\n", simSpace);
+    return 0;
+}
+
+// Word load: how many words can the matrix hold? Words are learned one after another (streamed);
+// after 8, 16, 32 and 64 words every word learned so far is completed from its first 3 letters
+// (heard once) and counted as right when what follows resembles its own stored shape more than
+// any other learned word's. Reported for the learning matrix and an untrained twin (whose only
+// help is the echo of the 3 letters). Chance = 1 / number of words.
+int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
+    const std::vector<std::string> words = {
+        "apple", "river", "storm", "candy", "light", "mouse", "bench", "think", "green", "house", "plant", "water", "smile",
+        "dream", "cloud", "tiger", "fruit", "queen", "jolly", "knife", "lemon", "night", "ocean", "piano", "robot", "sugar",
+        "table", "uncle", "voice", "whale", "zebra", "brick", "chair", "dance", "eagle", "flame", "ghost", "honey", "ivory",
+        "jewel", "koala", "maple", "nurse", "olive", "pearl", "quilt", "raven", "snake", "torch", "urban", "vivid", "wheat",
+        "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape", "hinge", "index", "joker", "karma"};
+    const size_t total = std::min<size_t>(maxWords ? maxWords : words.size(), words.size());
+    std::printf("Word load: words learned one after another, each completed from its first 3 letters\n");
+    std::printf("  words   learned: right  (first half / second half learned)  own-vs-best-other | untrained: right | chance\n");
+    struct Row {
+        size_t n, right, rightOld, rightNew;
+        double margin;
+    };
+    std::vector<Row> rows[2];
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        Patterns stored;
+        size_t next = 8;
+        for (size_t w = 0; w < total; ++w) {
+            const std::string item = words[w] + " ";
+            stored.push_back(s.present(item, kStore, 1.0f, true, kStore / 2));
+            s.silence(kGap, true);
+            if (w + 1 == next || w + 1 == total) {
+                Row r{w + 1, 0, 0, 0, 0.0};
+                std::string mistakes;
+                for (size_t k = 0; k <= w; ++k) {
+                    s.present(words[k].substr(0, 3), 3, 1.0f, false, UINT64_MAX);
+                    const std::vector<double> after = s.silence(T(40), false, 0);
+                    s.silence(kGap, false);
+                    double own = lab::cosine(after, stored[k]), best = -1.0;
+                    size_t bestJ = k;
+                    for (size_t j = 0; j <= w; ++j) {
+                        if (j == k) continue;
+                        const double sim = lab::cosine(after, stored[j]);
+                        if (sim > best) {
+                            best = sim;
+                            bestJ = j;
+                        }
+                    }
+                    const bool ok = own > best;
+                    if (!ok && learning) mistakes += " " + words[k] + ">" + words[bestJ];
+                    r.right += ok;
+                    (k < (w + 1) / 2 ? r.rightOld : r.rightNew) += ok;
+                    r.margin += (own - best) / double(w + 1);
+                }
+                rows[learning].push_back(r);
+                std::printf("  .. %s, %zu words: %zu right (%.0f%%), first half %zu, second half %zu\n",
+                            learning ? "learned" : "untrained", r.n, r.right, 100.0 * double(r.right) / double(r.n),
+                            r.rightOld, r.rightNew);
+                if (!mistakes.empty()) std::printf("     mixed up (word>taken for):%s\n", mistakes.c_str());
+                std::fflush(stdout);
+                next *= 2;
+            }
+        }
+    }
+    for (size_t i = 0; i < rows[1].size(); ++i) {
+        const Row& l = rows[1][i];
+        const Row& u = rows[0][i];
+        std::printf("  %4zu    %3zu (%3.0f%%)   %3zu / %3zu                          %+.3f           | %3zu (%3.0f%%)      | %.0f%%\n",
+                    l.n, l.right, 100.0 * double(l.right) / double(l.n), l.rightOld, l.rightNew, l.margin, u.right,
+                    100.0 * double(u.right) / double(u.n), 100.0 / double(l.n));
+    }
+    return 0;
+}
+
+// Pair load: memory that an echo cannot fake. Word pairs ("apple river ") are learned one pair
+// after another; then only the first word is heard once and the silence that follows is compared
+// with the shape every pair's SECOND word had while it was being learned. Right = the own
+// partner is the best match. The cue contains nothing of the partner, so an untrained twin is
+// at chance (1 / number of pairs). Tested after 4, 8, 16 and 32 pairs.
+int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
+    const std::vector<std::string> words = {
+        "apple", "river", "storm", "candy", "light", "mouse", "bench", "think", "green", "house", "plant", "water", "smile",
+        "dream", "cloud", "tiger", "fruit", "queen", "jolly", "knife", "lemon", "night", "ocean", "piano", "robot", "sugar",
+        "table", "uncle", "voice", "whale", "zebra", "brick", "chair", "dance", "eagle", "flame", "ghost", "honey", "ivory",
+        "jewel", "koala", "maple", "nurse", "olive", "pearl", "quilt", "raven", "snake", "torch", "urban", "vivid", "wheat",
+        "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape", "hinge", "index", "joker", "karma"};
+    const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
+    std::printf("Pair load: pairs learned one after another; hear the first word, is the second one recalled?\n");
+    // Reference shapes free of the cue: every partner word heard alone by a fresh untrained matrix
+    // with the same wiring. An echo of the cue word has nothing in common with them.
+    Patterns alone;
+    {
+        Session ref(cfg, false);
+        for (size_t p = 0; p < total; ++p) {
+            alone.push_back(ref.present(words[2 * p + 1] + " ", kStore, 1.0f, false, kStore / 2));
+            ref.silence(kGap, false);
+        }
+    }
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        Patterns partner; // shape of each pair's second word while the pair was learned
+        size_t next = 4;
+        for (size_t p = 0; p < total; ++p) {
+            const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
+            const std::string pair = a + bw;
+            std::vector<double> shape;
+            const uint64_t ticks = 2 * kStore;
+            for (uint64_t t = 0; t < ticks; ++t) {
+                const size_t pos = t % pair.size();
+                s.present(std::string(1, pair[pos]), 1, 1.0f, true, UINT64_MAX);
+                if (t >= ticks / 2 && pos >= a.size()) s.accumulate(shape);
+            }
+            partner.push_back(shape);
+            s.silence(kGap, true);
+            if (p + 1 == next || p + 1 == total) {
+                size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0;
+                double margin = 0.0;
+                std::string mistakes;
+                for (size_t k = 0; k <= p; ++k) {
+                    const std::string cue = words[2 * k] + " ";
+                    s.present(cue, cue.size(), 1.0f, false, UINT64_MAX);
+                    const std::vector<double> after = s.silence(T(40), false, 0);
+                    s.silence(kGap, false);
+                    const double own = lab::cosine(after, partner[k]);
+                    double best = -1.0;
+                    size_t bestJ = k;
+                    for (size_t j = 0; j <= p; ++j) {
+                        if (j == k) continue;
+                        const double sim = lab::cosine(after, partner[j]);
+                        if (sim > best) {
+                            best = sim;
+                            bestJ = j;
+                        }
+                    }
+                    const bool ok = own > best;
+                    right += ok;
+                    (k < (p + 1) / 2 ? rightOld : rightNew) += ok;
+                    margin += (own - best) / double(p + 1);
+                    if (!ok && learning) mistakes += " " + words[2 * k] + ">" + words[2 * bestJ + 1];
+                    // Strict count: against the partner words' shapes heard alone.
+                    double ownA = lab::cosine(after, alone[k]), bestA = -1.0;
+                    for (size_t j = 0; j <= p; ++j)
+                        if (j != k) bestA = std::max(bestA, lab::cosine(after, alone[j]));
+                    rightAlone += ownA > bestA;
+                }
+                std::printf("  .. %s, %zu pairs: %zu right (%.0f%%), older half %zu, newer half %zu, margin %+.3f, chance %.0f%%\n",
+                            learning ? "learned" : "untrained", p + 1, right, 100.0 * double(right) / double(p + 1), rightOld,
+                            rightNew, margin, 100.0 / double(p + 1));
+                std::printf("     strict (partner shape heard alone): %zu right (%.0f%%)\n", rightAlone,
+                            100.0 * double(rightAlone) / double(p + 1));
+                // Calibration: does a partner word heard inside its pair look like itself heard alone?
+                {
+                    size_t match = 0;
+                    double ownSim = 0.0, otherSim = 0.0;
+                    for (size_t k = 0; k <= p; ++k) {
+                        const double own = lab::cosine(partner[k], alone[k]);
+                        double best = -1.0;
+                        for (size_t j = 0; j <= p; ++j)
+                            if (j != k) best = std::max(best, lab::cosine(partner[k], alone[j]));
+                        match += own > best;
+                        ownSim += own / double(p + 1);
+                        otherSim += best / double(p + 1);
+                    }
+                    std::printf("     calibration: word inside its pair vs the same word alone: %zu of %zu recognisable (alike %.3f, best other %.3f)\n",
+                                match, p + 1, ownSim, otherSim);
+                }
+                if (!mistakes.empty()) std::printf("     wrong partner (cue>recalled):%s\n", mistakes.c_str());
+                std::fflush(stdout);
+                next *= 2;
+            }
+        }
+    }
     return 0;
 }
 

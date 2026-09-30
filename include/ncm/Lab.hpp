@@ -103,6 +103,7 @@ public:
                 const auto cue = thin(full, fraction, cfg_.itemSeed(), c);
                 tick(&cue, &full, allowLearning);
             }
+            if (cfg_.clock_reset > 0.5f && c == ' ') clock_.resetPhase();
             if (t >= recordFrom) accumulate(acc);
         }
         return acc;

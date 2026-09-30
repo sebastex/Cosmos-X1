@@ -243,6 +243,11 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     orderTrace3_.assign(V_ * C3, 0.0f);
     resource3_.assign(V_ * C3, 1.0f);
     membrane3_.assign(V_ * C3, 0.0f);
+    if (cfg_.upward_pool > 0.5f) {
+        lineUp_.assign(Q_ * C2, 0.0f);
+        lineUpAny_.assign(Q_, 0);
+        sheetUp_.assign(V_ * C3, 0.0f);
+    }
     diagSource3_.assign(V_ * kSources, 0.0f);
     inhibW3_.assign(V_, 0.0f);
     pool3_.assign(V_, 0.0f);
@@ -471,6 +476,7 @@ void NeuralCellularMatrix::step1D() {
     applySurfaceClamps();
     s1_.swap();
     lineQuietCur_.swap(lineQuietNext_);
+    if (cfg_.upward_pool > 0.5f) poolLines();
 }
 
 // 2D level: lateral interaction within each sheet, a summary from each cell's own
@@ -513,7 +519,8 @@ void NeuralCellularMatrix::step2D() {
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         bool quiet = sheetQuietCur_[v] && isSilent(s3 + v * C3, C3);
-        for (size_t c = 0; quiet && c < SS; ++c) quiet = lineQuietCur_[v * SS + c] != 0;
+        for (size_t c = 0; quiet && c < SS; ++c)
+            quiet = lineQuietCur_[v * SS + c] != 0 && (lineUpAny_.empty() || !lineUpAny_[v * SS + c]);
         sheetSkip_[v] = quiet ? 1 : 0;
     }
 
@@ -555,7 +562,12 @@ void NeuralCellularMatrix::step2D() {
         // Upward summary with divisive normalization: scaled by 1/sqrt(active line cells), so
         // a streamed character (one active cell per line) and a held one (a full line) drive
         // the sheet cell in the same useful range.
-        {
+        if (cfg_.upward_pool > 0.5f) {
+            if (lineUpAny_[q] && lineUpTicks_ > 0) {
+                const float inv = 1.0f / float(lineUpTicks_);
+                for (uint32_t c = 0; c < C2; ++c) in[c] += inv * lineUp_[q * C2 + c];
+            }
+        } else {
             float up[C2] = {};
             uint32_t activeCells = 0;
             // A quiet line contributes nothing: its flag spares reading it.
@@ -617,6 +629,12 @@ void NeuralCellularMatrix::step2D() {
     }
     s2_.swap();
     sheetQuietCur_.swap(sheetQuietNext_);
+    if (cfg_.upward_pool > 0.5f) {
+        std::fill(lineUp_.begin(), lineUp_.end(), 0.0f);
+        std::fill(lineUpAny_.begin(), lineUpAny_.end(), uint8_t(0));
+        lineUpTicks_ = 0;
+        poolSheets();
+    }
 }
 
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
@@ -799,7 +817,12 @@ void NeuralCellularMatrix::step3D() {
         // Upward summary from the voxel's sheet, divisively normalized like the line summary:
         // scaled by 1/sqrt(active sheet cells), so sparse (streamed) and dense (held) input
         // drive the voxel in the same useful range.
-        {
+        if (cfg_.upward_pool > 0.5f) {
+            if (sheetUpTicks_ > 0) {
+                const float inv = 1.0f / float(sheetUpTicks_);
+                for (uint32_t c = 0; c < C3; ++c) in[c] += inv * sheetUp_[v * C3 + c];
+            }
+        } else {
             float up[C3] = {};
             uint32_t activeCells = 0;
             for (size_t cell = 0; cell < SS; ++cell) {
@@ -1027,6 +1050,10 @@ void NeuralCellularMatrix::step3D() {
         }
     }
     s3_.swap();
+    if (cfg_.upward_pool > 0.5f) {
+        std::fill(sheetUp_.begin(), sheetUp_.end(), 0.0f);
+        sheetUpTicks_ = 0;
+    }
 }
 
 template <class Fn>
@@ -1352,6 +1379,11 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
     std::fill(resource3_.begin(), resource3_.end(), 1.0f);
     std::fill(membrane3_.begin(), membrane3_.end(), 0.0f);
+    std::fill(lineUp_.begin(), lineUp_.end(), 0.0f);
+    std::fill(lineUpAny_.begin(), lineUpAny_.end(), uint8_t(0));
+    std::fill(sheetUp_.begin(), sheetUp_.end(), 0.0f);
+    lineUpTicks_ = 0;
+    sheetUpTicks_ = 0;
     std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
     std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
     std::fill(sheetQuietCur_.begin(), sheetQuietCur_.end(), uint8_t(1));
@@ -1493,6 +1525,63 @@ std::array<double, kFields> NeuralCellularMatrix::meanInhibitionWeight() const {
     std::array<double, kFields> out{};
     for (size_t v = 0; v < V_; ++v) out[v / Vf_] += inhibW3_[v] / double(Vf_);
     return out;
+}
+
+// Pooled upward summaries: after every 1D tick each line's summary (as step2D would read it) is
+// added to its sheet cell's pool; after every 2D step each sheet's summary (as step3D would read
+// it) is added to its voxel's pool. The receiving level uses the mean and clears the pool.
+void NeuralCellularMatrix::poolLines() {
+    const float* s1 = s1_.cur.data();
+    const uint32_t L = L_;
+    const int64_t cells = int64_t(Q_);
+#pragma omp parallel for schedule(dynamic, 1024)
+    for (int64_t qi = 0; qi < cells; ++qi) {
+        const size_t q = size_t(qi);
+        if (lineQuietCur_[q]) continue;
+        float up[C2] = {};
+        uint32_t activeCells = 0;
+        for (uint32_t k = 0; k < L; ++k) {
+            const float* cell = s1 + (q * L + k) * C1;
+            bool active = false;
+            for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
+            if (!active) continue;
+            ++activeCells;
+            matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, 1.0f);
+        }
+        if (activeCells == 0) continue;
+        const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(float(activeCells)) : 1.0f;
+        const float scale = cfg_.line_upward_gain / norm;
+        for (uint32_t c = 0; c < C2; ++c) lineUp_[q * C2 + c] += scale * up[c];
+        lineUpAny_[q] = 1;
+    }
+    ++lineUpTicks_;
+}
+
+void NeuralCellularMatrix::poolSheets() {
+    const float* s2 = s2_.cur.data();
+    const size_t SS = SS_;
+    const float gu = cfg_.upward_gain;
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 256)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        if (sheetQuietCur_[v]) continue;
+        float up[C3] = {};
+        uint32_t activeCells = 0;
+        for (size_t cell = 0; cell < SS; ++cell) {
+            const float* sc = s2 + (v * SS + cell) * C2;
+            bool active = false;
+            for (uint32_t c = 0; c < C2; ++c) active = active || sc[c] != 0.0f;
+            if (!active) continue;
+            ++activeCells;
+            matvecAdd(U2_.data() + cell * C3 * C2, sc, up, C3, C2, 1.0f);
+        }
+        if (activeCells == 0) continue;
+        const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(float(activeCells)) : 1.0f;
+        const float scale = gu / norm;
+        for (uint32_t c = 0; c < C3; ++c) sheetUp_[v * C3 + c] += scale * up[c];
+    }
+    ++sheetUpTicks_;
 }
 
 } // namespace ncm

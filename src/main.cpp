@@ -180,7 +180,9 @@ int main(int argc, char** argv) {
     if (opt.test == "hum") return ncm::runHumTest(cfg);
     if (opt.test == "chain") return ncm::runChainTest(cfg);
     if (opt.test == "overlap") return ncm::runOverlapTest(cfg);
-    if (opt.test == "wordshape") return ncm::runWordShapeTest(cfg);
+    if (opt.test == "pairload") return ncm::runPairLoadTest(cfg, opt.storeTicks);
+    if (opt.test == "wordload") return ncm::runWordLoadTest(cfg, opt.storeTicks);
+    if (opt.test == "wordshape") return ncm::runWordShapeTest(cfg, true, opt.storeTicks);
     if (opt.test == "wordshapenospace") return ncm::runWordShapeTest(cfg, false);
     if (opt.test == "wordcapacity") return ncm::runWordCapacityTest(cfg);
     if (opt.test == "wordcontinual") return ncm::runWordContinualTest(cfg);

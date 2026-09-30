@@ -1,0 +1,6 @@
+Pair load: pairs learned one after another; hear the first word, is the second one recalled?
+  .. learned, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.104, chance 25%
+     strict (partner shape heard alone): 1 right (25%)
+  .. learned, 8 pairs: 7 right (88%), older half 4, newer half 3, margin +0.032, chance 12%
+     strict (partner shape heard alone): 1 right (12%)
+     wrong partner (cue>recalled): plant>river

@@ -263,6 +263,15 @@ struct Config {
     // fields change more slowly and can hold one shape for a whole word. The golden ratio (1.618)
     // continues the ratio between the 1D, 2D and 3D clocks.
     float field_pace = 1.0f;
+    // Pooled upward summaries: 1 = each level hands up everything that happened since the level
+    // above last updated (the mean of its summaries over those ticks), not a snapshot taken at the
+    // moment of the update. The levels run on different clocks (ratio 1.618), so a snapshot lets
+    // the slower level miss letters and catch a different slice of a word every time; pooled,
+    // nothing is dropped between levels.
+    float upward_pool = 0.0f;
+    // 1 = the 2D and 3D clocks restart their cycle after every word gap (space character), so a
+    // word is cut into the same chunks every time it is heard.
+    float clock_reset = 0.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in

@@ -167,6 +167,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"agc_plastic", &c.agc_plastic},
         {"agc_input_only", &c.agc_input_only},
         {"field_pace", &c.field_pace},
+        {"upward_pool", &c.upward_pool},
+        {"clock_reset", &c.clock_reset},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},
         {"fire_gain2", &c.fire_gain2},

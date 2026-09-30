@@ -1,0 +1,11 @@
+Word load: words learned one after another, each completed from its first 3 letters
+  words   learned: right  (first half / second half learned)  own-vs-best-other | untrained: right | chance
+  .. learned, 8 words: 7 right (88%), first half 4, second half 3
+  .. learned, 16 words: 13 right (81%), first half 8, second half 5
+  .. learned, 32 words: 17 right (53%), first half 8, second half 9
+  .. untrained, 8 words: 8 right (100%), first half 4, second half 4
+  .. untrained, 16 words: 15 right (94%), first half 7, second half 8
+  .. untrained, 32 words: 30 right (94%), first half 15, second half 15
+     8      7 ( 88%)     4 /   3                          +0.255           |   8 (100%)      | 12%
+    16     13 ( 81%)     8 /   5                          +0.098           |  15 ( 94%)      | 6%
+    32     17 ( 53%)     8 /   9                          +0.009           |  30 ( 94%)      | 3%
