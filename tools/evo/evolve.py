@@ -79,6 +79,13 @@ def propose(hours, restart):
     now = time.time()
     if state is None or restart:
         state = {"generation": 0, "deadline": now + hours * 3600, "started": now, "candidates": {}, "next_id": 1}
+    # evolution/settings.json {"hours": H} changes the length of a running evolution
+    # (counted from its start) without touching the state.
+    settings = EVO / "settings.json"
+    if settings.exists():
+        h = json.loads(settings.read_text()).get("hours")
+        if h:
+            state["deadline"] = state["started"] + float(h) * 3600
     gen = state["generation"]
     rng = random.Random(1000 + gen)
     current = {}
