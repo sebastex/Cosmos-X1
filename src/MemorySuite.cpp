@@ -326,10 +326,11 @@ int runMemorySuite(const Config& cfg, bool earlyExit) {
     results.push_back({"CP3 capacity (8 memories)", runCapacityTest(cfg)});
     std::printf("\n=== CP4 ===\n");
     results.push_back({"CP4 efficiency", runEfficiencyTest(cfg)});
-    std::printf("\n=== CP5 ===\n");
-    results.push_back({"CP5 streamed text", runStreamedTest(cfg)});
-    std::printf("\n=== CP5b ===\n");
-    results.push_back({"CP5b word completion", runCompletionTest(cfg, 3)});
+    // Word memory (2026-10-01): the honest pair test (8 word pairs, true recall of the partner).
+    // The earlier streamed-word (CP5) and completion (CP5b) checks could be passed by the echo of
+    // the cue alone (an untrained matrix scored as well), so they are diagnostics now.
+    std::printf("\n=== CP5w ===\n");
+    results.push_back({"CP5w word pairs (8)", runPairLoadTest(cfg, 8)});
     std::printf("\n=== CP6 ===\n");
     results.push_back({"CP6 continual learning", runContinualTest(cfg)});
     std::printf("\n=== CP6b ===\n");
@@ -1609,6 +1610,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape", "hinge", "index", "joker", "karma"};
     const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
     std::printf("Pair load: pairs learned one after another; hear the first word, is the second one recalled?\n");
+    double finalRecall[2] = {0.0, 0.0}; // [untrained, learned] true-recall share at the last stage
     // Reference shapes free of the cue: every partner word heard alone by a fresh untrained matrix
     // with the same wiring. An echo of the cue word has nothing in common with them.
     Patterns alone;
@@ -1766,6 +1768,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                             100.0 * double(rightAlone) / double(p + 1));
                 std::printf("     TRUE RECALL (partner heard alone by this same matrix): %zu of %zu right (%.0f%%), margin %+.3f\n",
                             rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
+                finalRecall[learning] = double(rightOwn) / double(p + 1);
                 if (!mistakesOwn.empty()) std::printf("       wrong (cue>recalled):%s\n", mistakesOwn.c_str());
                 // Calibration: does a partner word heard inside its pair look like itself heard alone?
                 {
@@ -1789,7 +1792,12 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             }
         }
     }
-    return 0;
+    // Pass: the learning matrix truly recalls at least 75% of the partners at the last stage, and
+    // the untrained twin (which can only guess or echo) at most 25%.
+    const bool pass = finalRecall[1] >= 0.75 && finalRecall[0] <= 0.25;
+    std::printf("  word pairs: true recall %.0f%% (need >= 75%%) vs untrained %.0f%% (need <= 25%%): %s\n",
+                100.0 * finalRecall[1], 100.0 * finalRecall[0], pass ? "PASS" : "FAIL");
+    return pass ? 0 : 3;
 }
 
 // Pair links (diagnostic): is order stored? One pair ("apple river ", said 10 times with pauses)

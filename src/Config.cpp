@@ -63,6 +63,10 @@ const std::vector<std::string>& evolvedRule() {
         "long_range_links=64", "presynaptic_bound=1",
         "agc_input_only=1", "agc_plastic=1", "encoding_suppression_4d=1",
         "istdp_rate=50",
+        // Rhythm restart (adopted 2026-10-01): the 2D and 3D clocks restart their cycle after a word
+        // gap and when input begins after a pause, so a word is cut into the same chunks every
+        // time it is heard (a streamed word was only 25% alike to itself without it; 67-97% with).
+        "clock_reset=1",
         "channel_winners3=4",
         "covariance=1",
         "downward_gain=0.0224",

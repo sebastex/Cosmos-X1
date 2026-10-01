@@ -46,12 +46,11 @@ def run(name, params, preset, seed, threads):
         "reliable": bool(re.search(r"input-driven .*: yes", s1)),
         "checks": {k: bool(re.search(r"^\s+" + re.escape(label) + r"\s+PASS", s1, re.M)) for k, label in (
             ("recall", "CP2 recall (3 memories)"), ("capacity", "CP3 capacity (8 memories)"),
-            ("efficiency", "CP4 efficiency"), ("streamed", "CP5 streamed text"),
-            ("completion", "CP5b word completion"),
+            ("efficiency", "CP4 efficiency"), ("wordpairs", "CP5w word pairs (8)"),
             ("continual", "CP6 continual learning"), ("retention", "CP6b retention (8+16)"),
             ("order", "CP7 early order"))},
         "gains": {"recall": gain("specificity (own minus best other):", s1), "capacity": gain("8 memories:", s1),
-                  "efficiency": gain("exposure 30 ticks:", s1), "streamed": gain("streamed words:", s1), "completion": gain("word completion:", s1),
+                  "efficiency": gain("exposure 30 ticks:", s1), "wordpairs": float("nan"),
                   "forgetting": float(m.group(1)) if m else float("nan"),
                   "order": gain("forward minus backward:", s1)},
     }
@@ -81,7 +80,7 @@ def main():
         rs = [r for r in results if r["variant"] == n]
         s0 = sum(r["stage0"] for r in rs)
         parts = []
-        for k in ("recall", "capacity", "efficiency", "streamed", "completion", "continual", "retention", "order"):
+        for k in ("recall", "capacity", "efficiency", "wordpairs", "continual", "retention", "order"):
             g = "forgetting" if k == "continual" else k
             if g not in rs[0]["gains"]:
                 parts.append(f"{k} {sum(r['checks'][k] for r in rs)}/{len(rs)}")
