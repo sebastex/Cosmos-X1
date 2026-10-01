@@ -1,0 +1,66 @@
+Memory health: 8 memories stored, each cued at 40%
+  LEARNED
+    STORE    field      overlap  density
+             Input      0.020   0.024
+             Memory     0.018   0.032
+             Reasoning  0.019   0.030
+             Output     0.020   0.030
+    WEIGHTS  field      fill   full   used   top1%-sources
+             Input      0.058  0.000  0.207  0.101
+             Memory     0.071  0.000  0.273  0.085
+             Reasoning  0.075  0.000  0.275  0.095
+             Output     0.078  0.000  0.281  0.099
+    RECALL   tick  field      learned-share  activity/stored  own-margin  gain
+                5  Input      0.113          0.38             +0.246      1.05
+                5  Memory     0.571          0.21             +0.294      1.09
+                5  Reasoning  0.653          0.30             +0.261      1.05
+                5  Output     0.676          0.41             +0.225      1.03
+               15  Input      0.496          2.53             +0.476      0.86
+               15  Memory     0.757          2.33             +0.456      0.92
+               15  Reasoning  0.772          2.45             +0.420      0.85
+               15  Output     0.765          2.55             +0.403      0.81
+               30  Input      0.466          3.13             +0.498      0.67
+               30  Memory     0.766          2.88             +0.435      0.72
+               30  Reasoning  0.793          2.71             +0.395      0.64
+               30  Output     0.790          2.68             +0.386      0.60
+               59  Input      0.361          2.34             +0.445      0.41
+               59  Memory     0.794          2.02             +0.417      0.52
+               59  Reasoning  0.822          1.91             +0.395      0.42
+               59  Output     0.816          1.88             +0.398      0.38
+    INHIB    learned inhibition weight per field: Input 0.368 Memory 0.336 Reasoning 0.464 Output 0.550 | mean channel output of firing voxels now 0.000
+    ENDS IN  a->a k->k z->z m->m q->q e->w(!) t->t w->w 
+    AFTER    activity per field every 5 ticks of silence after the cue:
+             Input        237.9   192.2   155.9   113.6    83.2    41.3    14.2     2.8
+             Memory       195.2   169.6   147.8   118.1    84.8    43.2    14.1     3.2
+             Reasoning    226.7   213.5   198.0   166.7   129.9    74.1    26.1     5.9
+             Output       246.0   247.3   240.3   211.2   169.3   107.7    44.9    10.9
+  UNTRAINED
+    STORE    field      overlap  density
+             Input      0.020   0.024
+             Memory     0.018   0.032
+             Reasoning  0.019   0.030
+             Output     0.020   0.030
+    RECALL   tick  field      learned-share  activity/stored  own-margin  gain
+                5  Input      0.000          0.36             +0.210      1.12
+                5  Memory     0.000          0.07             +0.189      1.23
+                5  Reasoning  0.000          0.08             +0.183      1.18
+                5  Output     0.000          0.09             +0.178      1.15
+               15  Input      0.000          1.06             +0.214      1.25
+               15  Memory     0.000          0.30             +0.197      1.55
+               15  Reasoning  0.000          0.34             +0.189      1.44
+               15  Output     0.000          0.44             +0.180      1.34
+               30  Input      0.000          0.89             +0.228      1.45
+               30  Memory     0.000          0.43             +0.202      1.94
+               30  Reasoning  0.000          0.53             +0.190      1.69
+               30  Output     0.000          0.66             +0.181      1.48
+               59  Input      0.000          0.77             +0.241      2.03
+               59  Memory     0.000          0.62             +0.222      2.69
+               59  Reasoning  0.000          0.77             +0.206      2.00
+               59  Output     0.000          0.86             +0.197      1.54
+    INHIB    learned inhibition weight per field: Input 0.054 Memory 0.037 Reasoning 0.079 Output 0.112 | mean channel output of firing voxels now 0.000
+    ENDS IN  a->a k->k z->z m->m q->q e->e t->t w->w 
+    AFTER    activity per field every 5 ticks of silence after the cue:
+             Input         93.0     2.1     0.0     0.0     0.0     0.0     0.0     0.0
+             Memory        82.6     2.5     0.0     0.0     0.0     0.0     0.0     0.0
+             Reasoning    118.2     3.2     0.0     0.0     0.0     0.0     0.0     0.0
+             Output       142.8     4.3     0.0     0.0     0.0     0.0     0.0     0.0

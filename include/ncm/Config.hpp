@@ -290,8 +290,9 @@ struct Config {
     float encoding_full = 0.0f;
     // Recency weighting of a line's summary: the cell at line position k (the letter heard k ticks
     // ago) counts line_recency^k when the line reports to its sheet. The line itself keeps all its
-    // activity (a held letter stays at full strength); in a stream the newest letters dominate, so
-    // a word is not drowned by the words before it. 1 = all positions count the same.
+    // activity; the weights are scaled to sum to the line length, so the total signal (and a held
+    // letter's strength) is unchanged. In a stream the newest letters dominate, so a word is not
+    // drowned by the words before it. 1 = all positions count the same.
     float line_recency = 1.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;

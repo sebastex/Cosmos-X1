@@ -215,8 +215,13 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     N_ = cfg.field_dim;
     S_ = cfg.sheet_dim;
     L_ = cfg.line_len;
+    // Recency weights, scaled so they sum to the line length: older letters count less, but the
+    // total signal a line hands up stays what it was without weighting (a held letter keeps
+    // its full strength).
     lineWeight_.resize(L_);
-    for (uint32_t k = 0; k < L_; ++k) lineWeight_[k] = std::pow(std::clamp(cfg.line_recency, 0.0f, 1.0f), float(k));
+    float weightSum = 0.0f;
+    for (uint32_t k = 0; k < L_; ++k) weightSum += (lineWeight_[k] = std::pow(std::clamp(cfg.line_recency, 0.0f, 1.0f), float(k)));
+    for (uint32_t k = 0; k < L_; ++k) lineWeight_[k] *= float(L_) / std::max(weightSum, 1e-6f);
     Vf_ = cfg.voxelsPerField();
     V_ = cfg.voxels();
     SS_ = cfg.sheetCellsPerVoxel();
