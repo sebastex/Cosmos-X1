@@ -1,0 +1,68 @@
+Pair load: pairs learned one after another; hear the first word, is the second one recalled?
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 4 of 4 (own +0.0065, best other -0.0294); partner->cue 1 of 4 (-0.0432)
+     STORED LINKS cue->partner: strongest link points to the right partner for 3 of 4
+       strength: cue->own partner 0.1526, cue->best other partner 0.1273, partner->cue 0.0879, cue->itself 0.5200
+  .. learned, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.401, chance 25%
+     strict (partner shape heard alone): 4 right (100%)
+     TRUE RECALL (partner heard alone by this same matrix): 4 of 4 right (100%), margin +0.157
+     per pair: link to own partner / strongest other (stored?) | recalled?
+        1 apple  0.731 / 0.154 yes  | yes
+        2 storm  0.600 / 0.140 yes  | yes
+        3 light  0.554 / 0.318 yes  | yes
+        4 bench  0.586 / 0.163 yes  | yes
+     calibration: word inside its pair vs the same word alone: 4 of 4 recognisable (alike 0.209, best other 0.103)
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 1 of 8 (own +0.0116, best other +0.0252); partner->cue 1 of 8 (-0.0269)
+     STORED LINKS cue->partner: strongest link points to the right partner for 1 of 8
+       strength: cue->own partner 0.1445, cue->best other partner 0.1552, partner->cue 0.0972, cue->itself 0.5126
+  .. learned, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.359, chance 12%
+     strict (partner shape heard alone): 7 right (88%)
+     TRUE RECALL (partner heard alone by this same matrix): 7 of 8 right (88%), margin +0.084
+       wrong (cue>recalled): smile>candy
+     per pair: link to own partner / strongest other (stored?) | recalled?
+        1 apple  0.689 / 0.261 yes  | yes
+        2 storm  0.579 / 0.196 yes  | yes
+        3 light  0.534 / 0.317 yes  | yes
+        4 bench  0.570 / 0.160 yes  | yes
+        5 green  0.465 / 0.146 yes  | yes
+        6 plant  0.516 / 0.156 yes  | yes
+        7 smile  0.425 / 0.275 yes  | NO
+        8 cloud  0.450 / 0.238 yes  | yes
+     calibration: word inside its pair vs the same word alone: 7 of 8 recognisable (alike 0.212, best other 0.135)
+     WORD-SPECIFIC LINKS (shared part removed): cue->own partner strongest for 1 of 16 (own +0.0159, best other +0.0731); partner->cue 0 of 16 (-0.0130)
+     STORED LINKS cue->partner: strongest link points to the right partner for 1 of 16
+       strength: cue->own partner 0.1419, cue->best other partner 0.1987, partner->cue 0.1093, cue->itself 0.5448
+  .. learned, 16 pairs: 16 right (100%), older half 8, newer half 8, margin +0.303, chance 6%
+     strict (partner shape heard alone): 10 right (62%)
+     TRUE RECALL (partner heard alone by this same matrix): 8 of 16 right (50%), margin +0.015
+       wrong (cue>recalled): plant>piano smile>candy lemon>mouse ocean>river robot>candy table>think voice>brick zebra>river
+     per pair: link to own partner / strongest other (stored?) | recalled?
+        1 apple  0.653 / 0.254 yes  | yes
+        2 storm  0.546 / 0.240 yes  | yes
+        3 light  0.508 / 0.308 yes  | yes
+        4 bench  0.539 / 0.274 yes  | yes
+        5 green  0.453 / 0.143 yes  | yes
+        6 plant  0.503 / 0.206 yes  | NO
+        7 smile  0.411 / 0.256 yes  | NO
+        8 cloud  0.431 / 0.239 yes  | yes
+        9 fruit  0.388 / 0.127 yes  | yes
+       10 jolly  0.430 / 0.141 yes  | yes
+       11 lemon  0.366 / 0.328 yes  | NO
+       12 ocean  0.404 / 0.210 yes  | NO
+       13 robot  0.411 / 0.247 yes  | NO
+       14 table  0.387 / 0.280 yes  | NO
+       15 voice  0.419 / 0.134 yes  | NO
+       16 zebra  0.401 / 0.177 yes  | NO
+     calibration: word inside its pair vs the same word alone: 15 of 16 recognisable (alike 0.207, best other 0.155)
+  .. untrained, 4 pairs: 4 right (100%), older half 2, newer half 2, margin +0.477, chance 25%
+     strict (partner shape heard alone): 1 right (25%)
+     TRUE RECALL (partner heard alone by this same matrix): 0 of 4 right (0%), margin -0.020
+     calibration: word inside its pair vs the same word alone: 4 of 4 recognisable (alike 0.209, best other 0.103)
+  .. untrained, 8 pairs: 8 right (100%), older half 4, newer half 4, margin +0.461, chance 12%
+     strict (partner shape heard alone): 1 right (12%)
+     TRUE RECALL (partner heard alone by this same matrix): 0 of 8 right (0%), margin -0.045
+     calibration: word inside its pair vs the same word alone: 7 of 8 recognisable (alike 0.215, best other 0.138)
+  .. untrained, 16 pairs: 16 right (100%), older half 8, newer half 8, margin +0.446, chance 6%
+     strict (partner shape heard alone): 1 right (6%)
+     TRUE RECALL (partner heard alone by this same matrix): 1 of 16 right (6%), margin -0.079
+     calibration: word inside its pair vs the same word alone: 15 of 16 recognisable (alike 0.210, best other 0.157)
+  word pairs: true recall 50% (need >= 75%) vs untrained 6% (need <= 25%): FAIL
