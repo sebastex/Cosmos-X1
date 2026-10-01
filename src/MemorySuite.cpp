@@ -7,6 +7,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -1603,29 +1604,43 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // at chance (1 / number of pairs). Tested after 4, 8, 16 and 32 pairs.
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     const std::vector<std::string> words = {
-        "apple", "river", "storm", "candy", "light", "mouse", "bench", "think", "green", "house", "plant", "water", "smile",
-        "dream", "cloud", "tiger", "fruit", "queen", "jolly", "knife", "lemon", "night", "ocean", "piano", "robot", "sugar",
-        "table", "uncle", "voice", "whale", "zebra", "brick", "chair", "dance", "eagle", "flame", "ghost", "honey", "ivory",
-        "jewel", "koala", "maple", "nurse", "olive", "pearl", "quilt", "raven", "snake", "torch", "urban", "vivid", "wheat",
-        "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape", "hinge", "index", "joker", "karma"};
+        "apple", "river", "storm", "candy", "light", "mouse", "bench", "think", "green", "house", "plant", "water",
+        "smile", "dream", "cloud", "tiger", "fruit", "queen", "jolly", "knife", "lemon", "night", "ocean", "piano",
+        "robot", "sugar", "table", "uncle", "voice", "whale", "zebra", "brick", "chair", "dance", "eagle", "flame",
+        "ghost", "honey", "ivory", "jewel", "koala", "maple", "nurse", "olive", "pearl", "quilt", "raven", "snake",
+        "torch", "urban", "vivid", "wheat", "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape",
+        "hinge", "index", "joker", "karma", "badge", "cabin", "daisy", "fence", "glove", "horse", "lunar", "medal",
+        "novel", "orbit", "paint", "radio", "salad", "tower", "unity", "vapor", "waltz", "youth", "acorn", "beach",
+        "comet", "dodge", "ember", "fable", "giant", "hedge", "igloo", "jelly", "kneel", "ladle", "mango", "noble",
+        "oasis", "pilot", "quest", "rider", "shelf", "tulip", "usher", "valve", "wagon", "bacon", "cider", "denim",
+        "easel", "fudge", "gecko", "hound", "irony", "juice", "kayak", "llama", "mocha", "nacho", "otter", "panda",
+        "quota", "rhino", "sauce", "thumb", "ultra", "viola", "wrist", "yeast", "zesty", "blend", "crisp", "dwarf",
+        "flint", "grain", "haste", "latch", "mirth", "notch", "plume", "quirk", "roost", "slate", "trout", "whisk",
+        "bloom", "chalk", "dough", "flock", "gravy", "hymns", "knack", "lilac", "mossy", "nudge", "oxide", "prism",
+        "quack", "reef", "scarf", "twine", "vault", "woven", "alarm", "berry", "coral", "diner", "eject", "fairy",
+        "gland", "hatch", "inlet", "jumbo", "kiosk", "lodge", "mural", "nylon", "onion", "perch", "rally", "sheep",
+        "spine", "tango", "udder", "venom", "witty", "brave", "clerk", "dusty", "ferry", "glory", "honor", "inbox",
+        "jazzy", "kitty", "mercy", "noisy", "opera", "pouch", "rusty", "sunny"};
     const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
     std::printf("Pair load: pairs learned one after another; hear the first word, is the second one recalled?\n");
     double finalRecall[2] = {0.0, 0.0}; // [untrained, learned] true-recall share at the last stage
+    // Big runs (NCM_PAIR_FAST set): learning matrix only, no link readouts, tested from 16 pairs on.
+    const bool fast = std::getenv("NCM_PAIR_FAST") != nullptr;
     // Reference shapes free of the cue: every partner word heard alone by a fresh untrained matrix
     // with the same wiring. An echo of the cue word has nothing in common with them.
     Patterns alone;
-    {
+    if (!fast) {
         Session ref(cfg, false);
         for (size_t p = 0; p < total; ++p) {
             alone.push_back(ref.present(words[2 * p + 1] + " ", kStore, 1.0f, false, kStore / 2));
             ref.silence(kGap, false);
         }
     }
-    for (int learning = 1; learning >= 0; --learning) {
+    for (int learning = 1; learning >= (fast ? 1 : 0); --learning) {
         Session s(cfg, learning == 1);
         Patterns partner; // shape of each pair's second word while the pair was learned
         Patterns cueInPair; // shape of each pair's first word while the pair was learned
-        size_t next = 4;
+        size_t next = fast ? 16 : 4;
         for (size_t p = 0; p < total; ++p) {
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
             const std::string pair = a + bw;
@@ -1664,7 +1679,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 // Stored links, read directly (no dynamics): the learned flow from each cue word's
                 // own shape into every partner's shape, and back. Tells "not stored" from "stored
                 // but not expressed".
-                if (learning) {
+                if (learning && !fast) {
                     Patterns cueAlone;
                     s.setLearning(false);
                     for (size_t k = 0; k <= p; ++k) {
@@ -1745,11 +1760,13 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     (k < (p + 1) / 2 ? rightOld : rightNew) += ok;
                     margin += (own - best) / double(p + 1);
                     if (!ok && learning) mistakes += " " + words[2 * k] + ">" + words[2 * bestJ + 1];
-                    // Strict count: against the partner words' shapes heard alone.
-                    double ownA = lab::cosine(after, alone[k]), bestA = -1.0;
-                    for (size_t j = 0; j <= p; ++j)
-                        if (j != k) bestA = std::max(bestA, lab::cosine(after, alone[j]));
-                    rightAlone += ownA > bestA;
+                    // Strict count: against the partner words' shapes heard alone (fresh matrix).
+                    if (!fast) {
+                        double ownA = lab::cosine(after, alone[k]), bestA = -1.0;
+                        for (size_t j = 0; j <= p; ++j)
+                            if (j != k) bestA = std::max(bestA, lab::cosine(after, alone[j]));
+                        rightAlone += ownA > bestA;
+                    }
                     double ownO = lab::cosine(after, ownAlone[k]), bestO = -1.0;
                     size_t bestOJ = k;
                     for (size_t j = 0; j <= p; ++j) {
@@ -1777,7 +1794,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 // Per pair (learning matrix): the stored link measured on the words as they were
                 // heard together (cue -> own partner vs the strongest cue -> other partner), and
                 // whether the partner was truly recalled. Tells "not stored" from "not expressed".
-                if (learning) {
+                if (learning && !fast) {
                     std::printf("     per pair: link to own partner / strongest other (stored?) | recalled?\n");
                     for (size_t k = 0; k <= p; ++k) {
                         const double own = s.flow(cueInPair[k], partner[k]);
@@ -1790,7 +1807,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     }
                 }
                 // Calibration: does a partner word heard inside its pair look like itself heard alone?
-                {
+                if (!fast) {
                     size_t match = 0;
                     double ownSim = 0.0, otherSim = 0.0;
                     for (size_t k = 0; k <= p; ++k) {

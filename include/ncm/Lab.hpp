@@ -6,6 +6,8 @@
 #include <climits>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <vector>
@@ -141,6 +143,11 @@ public:
     const CharacterCodebook& codebook() const { return codebook_; }
     float lastModulator() const { return lastModulator_; }
     float lastMode() const { return mode_; } // encoding/recall mode applied (1 = learned links suppressed)
+    ~Session() {
+        if (std::getenv("NCM_PROFILE") && m_)
+            std::fprintf(stderr, "profile: lines %.1fs, sheets %.1fs, voxels %.1fs, learning %.1fs\n", m_->time1D, m_->time2D,
+                         m_->time3D, m_->timeLearn);
+    }
     // Mean learning signal over the learning steps since the last reset (diagnostic).
     double meanModulator() const { return modCount_ ? modSum_ / double(modCount_) : 0.0; }
     void resetModulatorMean() { modSum_ = 0.0; modCount_ = 0; }

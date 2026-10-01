@@ -160,6 +160,10 @@ private:
     AVec<float> sheetUp_; // per voxel, C3 channels: summed sheet summaries
     uint32_t sheetUpTicks_ = 0;
     void poolLines();
+public:
+    // Time spent per level (seconds), for finding what to speed up (NCM_PROFILE prints it).
+    double time1D = 0.0, time2D = 0.0, time3D = 0.0, timeLearn = 0.0;
+private:
     std::vector<float> lineWeight_; // recency weight of each line position in the upward summary
     void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)

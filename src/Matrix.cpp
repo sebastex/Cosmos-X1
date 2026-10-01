@@ -6,6 +6,18 @@
 
 #include "ncm/Random.hpp"
 
+#include <chrono>
+
+namespace {
+// Adds the time spent in a scope to a counter (profiling).
+struct ScopeTimer {
+    double& total;
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    explicit ScopeTimer(double& t) : total(t) {}
+    ~ScopeTimer() { total += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count(); }
+};
+} // namespace
+
 namespace ncm {
 namespace {
 
@@ -437,6 +449,7 @@ void NeuralCellularMatrix::applySurfaceClamps() {
 // 1D level: every line carries its sequence one cell per tick toward the exit,
 // driven from above by its parent sheet cell (spec Sections 2B, 6B).
 void NeuralCellularMatrix::step1D() {
+    ScopeTimer timer_(time1D);
     const float* s1 = s1_.cur.data();
     const float* s2 = s2_.cur.data();
     float* out = s1_.next.data();
@@ -489,6 +502,7 @@ void NeuralCellularMatrix::step1D() {
 // 2D level: lateral interaction within each sheet, a summary from each cell's own
 // 1D line, drive from the parent voxel, and the voxel's learned modulation.
 void NeuralCellularMatrix::step2D() {
+    ScopeTimer timer_(time2D);
     // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
     // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
     // can settle instead of wearing itself out.
@@ -649,6 +663,7 @@ void NeuralCellularMatrix::step2D() {
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
 // three fields, and a summary from each voxel's own 2D sheet.
 void NeuralCellularMatrix::step3D() {
+    ScopeTimer timer_(time3D);
     // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
     // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
     // can settle instead of wearing itself out.
@@ -1106,6 +1121,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn) {
 }
 
 void NeuralCellularMatrix::learn(float modulator) {
+    ScopeTimer timer_(timeLearn);
     const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f);
     if (rate <= 0.0f) return;
     const float lambda = cfg_.learning.order_gain;
