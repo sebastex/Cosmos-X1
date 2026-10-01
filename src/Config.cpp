@@ -75,6 +75,12 @@ const std::vector<std::string>& evolvedRule() {
         // memory (true recall of the partner word, dev seeds 22-31): 32 words 68% (was at chance),
         // 16 words 91%; held-letter capacity holds.
         "field_sweep=1", "line_recency=0.6",
+        // Two-route memory (adopted 2026-10-01): pattern separation at storage (channels already
+        // loaded with memories are harder to recruit while encoding, separation 3) and a learned
+        // cue route (the feedforward spread sources learn which input leads to the stored cells,
+        // transmitted at half strength). Keeping old memories while learning new: 7/10 -> 9/10,
+        // all checks 65/70 -> 67/70 on fresh dev brains 2002-2011.
+        "separation=3", "spread_plastic=0.5",
         "channel_winners3=4",
         "covariance=1",
         "downward_gain=0.0224",

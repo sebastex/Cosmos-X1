@@ -1,7 +1,8 @@
 # Resume point (2026-10-01 evening, user break)
 
 ## Main version: Cosmos Prime (git tag cosmos-prime, branch master)
-Default rule = version B memory + clock_reset + field_sweep + line_recency 0.6. Unchanged since.
+Default rule = version B memory + clock_reset + field_sweep + line_recency 0.6
++ two-route memory: separation 3 + spread_plastic 0.5 (adopted 2026-10-01; 67/70 vs 65/70 on dev 2002-2011).
 
 ## What we know (evidence in tools/results/)
 - evolution_2026-10-01/FINDINGS.md: 120 brain tests, 44 versions. Main failures: retention 50/120,
@@ -15,7 +16,8 @@ Default rule = version B memory + clock_reset + field_sweep + line_recency 0.6. 
   14 / 15, not stored 2 / 3 -> at load the bottleneck is RETRIEVAL, not storage.
 
 ## Priorities when we resume
-1. Retrieval under load + interference: two-route separation (hippocampus-like): separate similar
+0. DONE: two-route memory adopted (keeping old memories fixed on most brains).
+1. Retrieval under load (64-word ceiling ~50% unchanged by two-route) + remaining interference: two-route separation (hippocampus-like): separate similar
    memories at storage AND learn a strong cue -> stored-memory shortcut (learned 4D links / a
    dedicated path), so recall finds the separated memory. Test with tools/quick_suite.py and
    GitHub (tests.yml --ref <branch>, evolve.yml with monitoring).
