@@ -172,6 +172,12 @@ def collect(results_dir):
                                                 "evals": len(best[1]["evals"]), "params": best[1]["params"]}, indent=1))
     state["generation"] = gen + 1
     save(state)
+    settings = EVO / "settings.json"
+    if settings.exists():
+        h = json.loads(settings.read_text()).get("hours")
+        if h is not None:
+            state["deadline"] = state["started"] + float(h) * 3600
+            save(state)
     remaining = state["deadline"] - time.time()
     print("continue" if remaining > 45 * 60 else "stop")
 
