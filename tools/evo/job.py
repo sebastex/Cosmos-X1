@@ -28,7 +28,9 @@ CHECKS = {
     "retention": ["--test", "retention"],
     "order": ["--test", "order"],
     "monitor": ["--test", "recalldetail"],  # diagnostics only, not scored
+    "load64": ["--test", "pairload", "--store-ticks", "32"],  # big-load probe (32 pairs = 64 words), not scored
 }
+UNSCORED = {"monitor", "load64"}
 
 
 def num(pattern, text, default=None, group=1):
@@ -55,6 +57,9 @@ def parse(check, out):
     elif check == "continual":
         d["forgetting"] = num(r"forgetting of old memories: ([+-][0-9.]+)", out)
         d["new_all_right"] = bool(re.search(r"new memories:.*identifies all: yes", out))
+        # Why old memories got worse: wiped out (erasure) or pushed aside by the new ones (interference).
+        d["erasure"] = num(r"diagnostic: erasure ([+-][0-9.]+)", out)
+        d["interference"] = num(r"interference from new memories ([+-][0-9.]+)", out)
     elif check == "retention":
         d["margin_lost"] = num(r"margin lost ([+-][0-9.]+)", out)
         d["all_right"] = bool(re.search(r"all old memories recalled correctly: yes", out))
@@ -65,6 +70,16 @@ def parse(check, out):
         d["untrained"] = num(r"vs untrained ([0-9.]+)%", out)
         wrong = re.findall(r"wrong \(cue>recalled\):(.*)", out)
         d["mistakes"] = wrong[-1].strip().split() if wrong else []
+        # Per pair at the last stage: was the link stored, and was the partner recalled?
+        blocks = out.split("per pair:")
+        if len(blocks) > 1:
+            rows = re.findall(r"^\s+\d+ \w+\s+[0-9.]+ / [0-9.]+ (yes|NO)\s+\| (yes|NO)", blocks[-1], re.M)
+            d["stored_recalled"] = sum(1 for a, b in rows if a == "yes" and b == "yes")
+            d["stored_not_recalled"] = sum(1 for a, b in rows if a == "yes" and b == "NO")
+            d["not_stored"] = sum(1 for a, b in rows if a == "NO")
+    elif check == "load64":
+        stages = re.findall(r"TRUE RECALL \(partner heard alone by this same matrix\): ([0-9]+) of ([0-9]+) right", out)
+        d["stages"] = {int(n) * 2: round(100.0 * int(r) / int(n), 1) for r, n in stages}  # words -> % recalled
     elif check == "monitor":
         learned = out.split("UNTRAINED")[0]
         d["cue_reaches"] = num(r"40% cue reaches ([0-9.]+)% of what the full letter brings", learned)
@@ -86,13 +101,15 @@ def main():
     a = ap.parse_args()
     cmd = [str(EXE), "--preset", a.preset, "--seed", str(a.seed)] + CHECKS[a.check] + a.args.split()
     t0 = time.time()
-    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                          env=dict(os.environ, OMP_NUM_THREADS=str(os.cpu_count() or 2)))
+    env = dict(os.environ, OMP_NUM_THREADS=str(os.cpu_count() or 2))
+    if a.check == "load64":
+        env["NCM_PAIR_FAST"] = "1"  # learning matrix only, tested at 16 and 32 pairs
+    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, env=env)
     result = {"cand": a.cand, "seed": a.seed, "check": a.check, "args": a.args,
-              "pass": proc.returncode == 0 if a.check != "monitor" else None,
+              "pass": proc.returncode == 0 if a.check not in UNSCORED else None,
               "minutes": round((time.time() - t0) / 60, 1), "exit": proc.returncode,
               "data": parse(a.check, proc.stdout)}
-    if proc.returncode not in (0, 3) and a.check != "monitor":
+    if proc.returncode not in (0, 3):
         result["error"] = (proc.stderr or proc.stdout)[-500:]
     pathlib.Path(a.out).write_text(json.dumps(result))
     pathlib.Path(a.out).with_suffix(".txt").write_text(proc.stdout)

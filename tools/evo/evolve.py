@@ -115,6 +115,9 @@ def propose(hours, restart):
     save(state)
     matrix = [{"cand": cid, "seed": s, "check": ch, "args": args_of(p)}
               for cid, p in current.items() for s in seeds for ch in CHECKS]
+    # Big-load probe (64 words) for Prime and the re-tested leaders: where does memory break?
+    matrix += [{"cand": cid, "seed": s, "check": "load64", "args": args_of(current[cid])}
+               for cid in ["prime"] + leaders for s in seeds]
     print(json.dumps(matrix))
 
 
@@ -153,8 +156,13 @@ def collect(results_dir):
                   "checks": {c: res[c].get("pass") for c in SCORED if c in res},
                   "true_recall": res.get("wordpairs", {}).get("data", {}).get("true_recall"),
                   "monitor": res.get("monitor", {}).get("data", {}),
+                  "continual": res.get("continual", {}).get("data", {}),
+                  "retention": res.get("retention", {}).get("data", {}),
+                  "pairs": {k: v for k, v in res.get("wordpairs", {}).get("data", {}).items() if k != "mistakes"},
+                  "load64": res.get("load64", {}).get("data", {}).get("stages"),
                   "minutes": round(sum(r.get("minutes", 0) for r in res.values()), 1),
-                  "missing": [c for c in CHECKS if c not in res]}
+                  "missing": [c for c in CHECKS if c not in res],
+                  "params": cand["params"]}
             cand["evals"].append(ev)
             cand["fitness"] = sum(e["fitness"] for e in cand["evals"]) / len(cand["evals"])
             fh.write(json.dumps({"cand": cid, **ev}) + "\n")
@@ -217,7 +225,81 @@ def report(state, by, errors):
         lines.append("- Errors / crashes:")
         lines += [f"  - {e}" for e in errors[:10]]
     lines.append("")
+    lines += cumulative(state)
     (EVO / "monitor.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def mean(xs):
+    xs = [x for x in xs if x is not None]
+    return sum(xs) / len(xs) if xs else float("nan")
+
+
+def corr(xs, ys):
+    pts = [(x, y) for x, y in zip(xs, ys) if x is not None and y is not None]
+    if len(pts) < 8:
+        return float("nan")
+    mx, my = mean([p[0] for p in pts]), mean([p[1] for p in pts])
+    sxy = sum((x - mx) * (y - my) for x, y in pts)
+    sx = math.sqrt(sum((x - mx) ** 2 for x, _ in pts))
+    sy = math.sqrt(sum((y - my) ** 2 for _, y in pts))
+    return sxy / (sx * sy) if sx > 0 and sy > 0 else float("nan")
+
+
+def cumulative(state):
+    """Everything learned so far, over all generations: what fails, why, and which settings matter."""
+    evals = [(cid, e) for cid, v in state["candidates"].items() for e in v["evals"]]
+    L = ["## Picture so far (all generations together)", ""]
+    L.append(f"- Brain tests so far: {len(evals)} ({len(state['candidates'])} versions, generation {state['generation'] + 1}).")
+    L.append("")
+    L.append("| check | failed | of | Prime failed | Prime of |")
+    L.append("|---|---|---|---|---|")
+    for c in SCORED:
+        f = sum(1 for _, e in evals if e["checks"].get(c) is False)
+        n = sum(1 for _, e in evals if c in e["checks"])
+        pf = sum(1 for cid, e in evals if cid == "prime" and e["checks"].get(c) is False)
+        pn = sum(1 for cid, e in evals if cid == "prime" and c in e["checks"])
+        L.append(f"| {c} | {f} | {n} | {pf} | {pn} |")
+    L.append("")
+    # Why old memories get worse (continual check): wiped out (erasure) or pushed aside (interference).
+    er = [e.get("continual", {}).get("erasure") for _, e in evals]
+    it = [e.get("continual", {}).get("interference") for _, e in evals]
+    fails = [(e.get("continual", {}).get("erasure"), e.get("continual", {}).get("interference"))
+             for _, e in evals if e["checks"].get("continual") is False]
+    if any(x is not None for x in er):
+        dom_i = sum(1 for a, b in fails if a is not None and b is not None and b > a)
+        L.append(f"- Old memories getting worse (all tests): wiped out {mean(er):+.3f}, pushed aside by new memories {mean(it):+.3f} on average; "
+                 f"of {len(fails)} failed 'keep old memories' tests, {dom_i} were mainly pushed aside (interference), "
+                 f"{len(fails) - dom_i} mainly wiped out (erasure).")
+    sr = sum(e.get("pairs", {}).get("stored_recalled") or 0 for _, e in evals)
+    snr = sum(e.get("pairs", {}).get("stored_not_recalled") or 0 for _, e in evals)
+    ns = sum(e.get("pairs", {}).get("not_stored") or 0 for _, e in evals)
+    if sr + snr + ns:
+        L.append(f"- Word pairs (8 pairs per test, all tests): stored and recalled {sr}, stored but NOT recalled {snr}, not stored {ns}.")
+    loads = {}
+    for cid, e in evals:
+        for words, pct in (e.get("load64") or {}).items():
+            loads.setdefault((cid, int(words)), []).append(pct)
+    if loads:
+        L.append("- Big-load probe (true word recall %, mean over brains): " + "; ".join(
+            f"{cid} {w} words {mean(v):.0f}% (n={len(v)})" for (cid, w), v in sorted(loads.items())))
+    L.append("")
+    # Which settings matter: correlation of each setting with score, keeping old memories, holding 8.
+    L.append("### Which settings matter (correlation over all tests; |r| > 0.3 is worth a look)")
+    L.append("| setting | with score | with keeping old memories (continual+retention) | with holding 8 memories |")
+    L.append("|---|---|---|---|")
+    fit = [e["fitness"] for _, e in evals]
+    keep = [(1 if e["checks"].get("continual") else 0) + (1 if e["checks"].get("retention") else 0) for _, e in evals]
+    cap = [1 if e["checks"].get("capacity") else 0 for _, e in evals]
+    rows = []
+    for k in SPACE:
+        xs = [e.get("params", state["candidates"][cid]["params"]).get(k) for cid, e in evals]
+        rows.append((k, corr(xs, fit), corr(xs, keep), corr(xs, cap)))
+    rows.sort(key=lambda r: -abs(r[1]) if r[1] == r[1] else 0)
+    for k, a, b, c in rows:
+        L.append(f"| {k} | {a:+.2f} | {b:+.2f} | {c:+.2f} |")
+    L.append("")
+    L.append("Reading: a failure that no setting moves (all correlations near 0) points to a missing part, not a missing tuning.")
+    return L
 
 
 def main():
