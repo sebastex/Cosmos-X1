@@ -1,0 +1,23 @@
+Recall detail: 8 memories, each cued at 40%; cells active at the end of the cue vs stored cells
+  LEARNED
+    memory  complete  clean   other(best)  size   | recalled as
+    a       0.39      0.83    0.04 (w)     0.47   | a
+    k       0.32      0.67    0.09 (z)     0.47   | k
+    z       0.42      0.71    0.04 (w)     0.58   | z
+    m       0.42      0.73    0.05 (e)     0.57   | m
+    q       0.25      0.56    0.15 (w)     0.44   | q
+    e       0.14      0.30    0.59 (w)     0.47   | w  <-- WRONG
+    t       0.38      0.70    0.09 (e)     0.54   | t
+    w       0.36      0.67    0.10 (e)     0.54   | w
+    mean    0.33      0.65    0.14          0.51
+  UNTRAINED
+    memory  complete  clean   other(best)  size   | recalled as
+    a       0.19      0.38    0.04 (e)     0.51   | a
+    k       0.13      0.30    0.05 (z)     0.45   | k
+    z       0.18      0.32    0.05 (a)     0.56   | z
+    m       0.10      0.18    0.04 (k)     0.57   | m
+    q       0.14      0.33    0.05 (z)     0.43   | q
+    e       0.13      0.23    0.06 (t)     0.59   | e
+    t       0.12      0.27    0.06 (a)     0.45   | t
+    w       0.09      0.15    0.07 (q)     0.58   | w
+    mean    0.14      0.27    0.05          0.52

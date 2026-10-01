@@ -1956,8 +1956,8 @@ int runRecallDetailTest(const Config& cfg) {
             sets.push_back(set);
         }
         const size_t per = stored[0].size() / kFields;
-        std::printf("  %s\n    memory  complete  clean   other(best)  size   | recalled as\n", learning ? "LEARNED" : "UNTRAINED");
-        double sumC = 0, sumP = 0, sumO = 0, sumS = 0;
+        std::printf("  %s\n    memory  complete  clean   other(best)  size   | recalled as | full cue: complete clean | 40%% cue reaches (complete 40/full)\n", learning ? "LEARNED" : "UNTRAINED");
+        double sumC = 0, sumP = 0, sumO = 0, sumS = 0, sumRatio = 0;
         for (size_t k = 0; k < items.size(); ++k) {
             std::vector<double> window;
             for (uint64_t t = 0; t < kCue; ++t) {
@@ -1998,7 +1998,22 @@ int runRecallDetailTest(const Config& cfg) {
                     endsIn = j;
                 }
             }
+            // Reference: the full letter, same window length, same counting.
+            std::vector<double> full;
+            for (uint64_t t = 0; t < kCue; ++t) {
+                s.present(items[k], 1, 1.0f, false, UINT64_MAX);
+                if (t + 10 >= kCue) s.accumulate(full);
+            }
+            s.silence(kGap, false);
+            size_t fullBoth = 0, fullAct = 0;
+            for (size_t i = 0; i < full.size(); ++i) {
+                const bool a = full[i] / 10.0 > 0.02;
+                fullAct += a;
+                fullBoth += a && sets[k][i];
+            }
             const double complete = ownSize ? double(ownBoth) / double(ownSize) : 0.0;
+            const double completeFull = ownSize ? double(fullBoth) / double(ownSize) : 0.0;
+            const double cleanFull = fullAct ? double(fullBoth) / double(fullAct) : 0.0;
             const double clean = nAct ? double(ownBoth) / double(nAct) : 0.0;
             const double other = nAct ? double(bestOther) / double(nAct) : 0.0;
             const double size = ownSize ? double(nAct) / double(ownSize) : 0.0;
@@ -2006,10 +2021,12 @@ int runRecallDetailTest(const Config& cfg) {
             sumP += clean / items.size();
             sumO += other / items.size();
             sumS += size / items.size();
-            std::printf("    %-6s  %.2f      %.2f    %.2f (%s)     %.2f   | %s%s\n", items[k].c_str(), complete, clean, other,
-                        items[bestJ].c_str(), size, items[endsIn].c_str(), endsIn == k ? "" : "  <-- WRONG");
+            std::printf("    %-6s  %.2f      %.2f    %.2f (%s)     %.2f   | %-4s%-9s | %.2f     %.2f  | %.0f%%\n", items[k].c_str(), complete, clean,
+                        other, items[bestJ].c_str(), size, items[endsIn].c_str(), endsIn == k ? "" : " <-WRONG", completeFull,
+                        cleanFull, completeFull > 0 ? 100.0 * complete / completeFull : 0.0);
+            sumRatio += completeFull > 0 ? complete / completeFull / items.size() : 0.0;
         }
-        std::printf("    mean    %.2f      %.2f    %.2f          %.2f\n", sumC, sumP, sumO, sumS);
+        std::printf("    mean    %.2f      %.2f    %.2f          %.2f   | 40%% cue reaches %.0f%% of what the full letter brings\n", sumC, sumP, sumO, sumS, 100.0 * sumRatio);
         (void)per;
     }
     return 0;

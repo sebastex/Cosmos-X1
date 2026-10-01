@@ -1,0 +1,8 @@
+  recall      PASS   (7 min)
+  capacity    FAIL   (13 min)   8 memories:                        learned margin +0.443 (identifies all: NO) vs untrained +0.200 -> gain +0.244 (need >= +0.050): FAIL
+  efficiency  PASS   (7 min)
+  wordpairs   PASS   (25 min)
+  continual   FAIL   (11 min)   new memories:                      learned margin +0.340 (identifies all: NO) vs untrained +0.181 -> gain +0.159 (need >= +0.050): FAIL
+  retention   FAIL   (40 min)   all old memories recalled correctly: NO; margin lost +0.055 (need <= +0.050): NO; gain over untrained +0.188 (need >= +0.050): yes
+  order       PASS   (16 min)
+brain 32: 4/7 checks pass, 40 min total; outputs in C:\dev\cosmos-x1\out\quick_32
