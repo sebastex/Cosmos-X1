@@ -165,6 +165,7 @@ public:
     double time1D = 0.0, time2D = 0.0, time3D = 0.0, timeLearn = 0.0;
 private:
     std::vector<float> lineWeight_; // recency weight of each line position in the upward summary
+    AVec<float> asmInh_;            // learned inhibitory weight per long-range link (assembly inhibition)
     void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)

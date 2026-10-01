@@ -153,6 +153,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"istdp_rate", &c.learning.istdp_rate},
         {"istdp_target", &c.learning.istdp_target},
         {"istdp_max", &c.learning.istdp_max},
+        {"assembly_inhibition", &c.learning.assembly_inhibition},
+        {"assembly_max", &c.learning.assembly_max},
         {"istdp_tau", &c.learning.istdp_tau},
         {"depression_tau", &c.learning.depression_tau},
         {"normalized_plasticity", &c.learning.normalized},

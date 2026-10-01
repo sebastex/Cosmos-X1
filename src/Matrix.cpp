@@ -262,6 +262,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     orderTrace3_.assign(V_ * C3, 0.0f);
     resource3_.assign(V_ * C3, 1.0f);
     membrane3_.assign(V_ * C3, 0.0f);
+    if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
     if (cfg_.upward_pool > 0.5f) {
         lineUp_.assign(Q_ * C2, 0.0f);
         lineUpAny_.assign(Q_, 0);
@@ -768,6 +769,13 @@ void NeuralCellularMatrix::step3D() {
             const size_t t = lrTarget_[v * K + l];
             const float* src = s3 + t * C3;
             if (isSilent(src, C3)) continue;
+            // Learned competition between memories: an active partner of a different memory inhibits.
+            if (!asmInh_.empty() && asmInh_[v * K + l] > 0.0f) {
+                float strongest = 0.0f;
+                for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, src[c]);
+                const float inhibit = asmInh_[v * K + l] * strongest * rec;
+                for (uint32_t c = 0; c < C3; ++c) in[c] -= inhibit;
+            }
             if (inhib3_[t]) {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
@@ -1272,6 +1280,31 @@ void NeuralCellularMatrix::learn(float modulator) {
                 slowScale = slowScale || slowFactor[a] < 1.0f;
             }
             if (slowScale) forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(slowOf(block), slowFactor); });
+        }
+    }
+    // Assembly inhibition: for every voxel (silent ones too) and long-range partner: a partner
+    // firing while the voxel is silent strengthens the inhibitory weight, firing together weakens it.
+    if (!asmInh_.empty()) {
+        const float eta = cfg_.learning.assembly_inhibition * std::clamp(modulator, 0.0f, 1.0f);
+        const float wMax = std::max(0.0f, cfg_.learning.assembly_max);
+        const uint32_t KL = cfg_.long_range_links;
+        auto strongestOf = [&](size_t u) {
+            float m = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) m = std::max(m, post[u * C3 + c]);
+            return m;
+        };
+#pragma omp parallel for schedule(static)
+        for (int64_t vi = 0; vi < voxels; ++vi) {
+            const size_t v = size_t(vi);
+            const float self = strongestOf(v);
+            for (uint32_t l = 0; l < KL; ++l) {
+                const size_t t = lrTarget_[v * KL + l];
+                if (inhib3_[t]) continue;
+                const float pre = strongestOf(t);
+                if (pre <= 0.0f) continue;
+                float& w = asmInh_[v * KL + l];
+                w = std::clamp(self > 0.0f ? w - eta * pre * self : w + eta * pre, 0.0f, wMax);
+            }
         }
     }
     learnStats_.calls += 1;

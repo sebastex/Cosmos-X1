@@ -106,6 +106,14 @@ struct LearningParams {
     float istdp_rate = 0.0f;
     float istdp_target = 0.02f;
     float istdp_max = 50.0f;
+    // Learned competition between memories (assembly inhibition): each long-range link also has a
+    // learned inhibitory weight. While memories are written, a partner that fires while this voxel
+    // stays silent strengthens its inhibition onto the voxel (they belong to different memories),
+    // and a partner that fires together with it weakens it (same memory). Recalled memories then
+    // push competing ones down, so recall settles on one memory. Transmitted like other learned
+    // links (muted while encoding). rate 0 = off; assembly_max caps each link's weight.
+    float assembly_inhibition = 0.0f;
+    float assembly_max = 0.02f;
     // Averaging window of the inhibitory learning signal (3D steps). 0 = instantaneous. A long
     // window makes the balance slow (homeostatic): cells that overshoot again and again gain
     // inhibition, but one recall does not wear its own memory down within the recall.
