@@ -865,7 +865,7 @@ void NeuralCellularMatrix::step3D() {
                     // Learned cue route: this source's learned block (excitatory sources only).
                     if (!WS_.empty() && !inhib3_[vs])
                         matvecAdd(WS_.data() + spreadBlock(v, g, l) * C3 * C3, learnedSource(vs, src), pl4, C3, C3,
-                                  afferentGain * rec4);
+                                  afferentGain * rec4 * cfg_.spread_plastic);
                 }
         }
 

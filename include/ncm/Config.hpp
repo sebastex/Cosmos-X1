@@ -302,7 +302,8 @@ struct Config {
     // (link4d_spread) get a learned C3 x C3 block each, like the other learned links. While a
     // memory is written they learn which input pattern leads to the cells that store it; at
     // recall the cue follows that route to its memory. Transmitted like the learned 4D link
-    // (muted while encoding with encoding_suppression_4d). 0 = off (fixed sources only).
+    // (muted while encoding with encoding_suppression_4d). The value scales how strongly the
+    // learned route transmits (1 = like the other learned links). 0 = off (fixed sources only).
     float spread_plastic = 0.0f;
     // 1 = while learning, the matrix is always in full encoding mode (stored memories muted),
     // however familiar the input feels. 0 = encoding mode follows surprise, so familiar input
