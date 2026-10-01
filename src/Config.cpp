@@ -67,6 +67,14 @@ const std::vector<std::string>& evolvedRule() {
         // gap and when input begins after a pause, so a word is cut into the same chunks every
         // time it is heard (a streamed word was only 25% alike to itself without it; 67-97% with).
         "clock_reset=1",
+        // Front-to-back sweep and recency-weighted lines (adopted 2026-10-01). Each 3D step updates
+        // the four fields in order, each reading the new state of the fields before it, so the
+        // whole matrix looks at the same moment (no extra step of lag per field). A line's summary
+        // weights the newest letters most (weights sum to the line length, so a held letter keeps
+        // its full strength); a word then keeps its identity whatever came before it. Honest word
+        // memory (true recall of the partner word, dev seeds 22-31): 32 words 68% (was at chance),
+        // 16 words 91%; held-letter capacity holds.
+        "field_sweep=1", "line_recency=0.6",
         "channel_winners3=4",
         "covariance=1",
         "downward_gain=0.0224",
