@@ -47,6 +47,7 @@ int runHealthTest(const Config& cfg); // diagnostic: which subsystem misbehaves 
 int runHumTest(const Config& cfg);    // diagnostic: where activity lingering after recall comes from
 int runChainTest(const Config& cfg);
 int runOverlapTest(const Config& cfg);
+int runRecallDetailTest(const Config& cfg); // diagnostic: incomplete, contaminated or wrong recall?
 int runWordContextTest(const Config& cfg); // diagnostic: does a word keep its identity across settings?
 int runPairLinksTest(const Config& cfg); // diagnostic: is the order of a word pair stored?
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs = 0); // word pairs: hear the first, recall the second

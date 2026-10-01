@@ -1931,4 +1931,88 @@ int runWordContextTest(const Config& cfg) {
     return 0;
 }
 
+// Recall detail (diagnostic): what exactly comes back. 8 memories are stored as in CP3, then each
+// is cued (40%). The cells active at the end of the cue (last 10 ticks) are compared with each
+// stored memory's cells (binary sets, per field and overall):
+//   complete = share of the own memory's cells that came back,
+//   clean    = share of the active cells that belong to the own memory,
+//   other    = share of the active cells that belong to the best-matching other memory,
+//   size     = active cells / own memory's cells (1 = same size as stored).
+// Shows whether a failure is an incomplete memory, the right memory plus extra cells, or the
+// wrong memory. Learning matrix and untrained twin.
+int runRecallDetailTest(const Config& cfg) {
+    const std::vector<std::string> items = {"a", "k", "z", "m", "q", "e", "t", "w"};
+    std::printf("Recall detail: %zu memories, each cued at %.0f%%; cells active at the end of the cue vs stored cells\n",
+                items.size(), 100.0 * kCueFraction);
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        const Patterns stored = storeAll(s, items, kStore);
+        // A stored memory's cells: voxel channels active in at least a quarter of its storage ticks.
+        const double storedTicks = double(kStore - kStore / 2);
+        std::vector<std::vector<uint8_t>> sets;
+        for (const auto& p : stored) {
+            std::vector<uint8_t> set(p.size());
+            for (size_t i = 0; i < p.size(); ++i) set[i] = p[i] > 0.0 && p[i] / storedTicks > 0.02;
+            sets.push_back(set);
+        }
+        const size_t per = stored[0].size() / kFields;
+        std::printf("  %s\n    memory  complete  clean   other(best)  size   | recalled as\n", learning ? "LEARNED" : "UNTRAINED");
+        double sumC = 0, sumP = 0, sumO = 0, sumS = 0;
+        for (size_t k = 0; k < items.size(); ++k) {
+            std::vector<double> window;
+            for (uint64_t t = 0; t < kCue; ++t) {
+                s.present(items[k], 1, kCueFraction, false, UINT64_MAX);
+                if (t + 10 >= kCue) s.accumulate(window);
+            }
+            s.silence(kGap, false);
+            std::vector<uint8_t> act(window.size());
+            size_t nAct = 0;
+            for (size_t i = 0; i < window.size(); ++i) nAct += (act[i] = window[i] / 10.0 > 0.02);
+            auto overlap = [&](const std::vector<uint8_t>& set, size_t& setSize) {
+                size_t both = 0;
+                setSize = 0;
+                for (size_t i = 0; i < set.size(); ++i) {
+                    setSize += set[i];
+                    both += set[i] && act[i];
+                }
+                return both;
+            };
+            size_t ownSize = 0;
+            const size_t ownBoth = overlap(sets[k], ownSize);
+            size_t bestOther = 0, bestJ = k;
+            for (size_t j = 0; j < sets.size(); ++j) {
+                if (j == k) continue;
+                size_t sz = 0;
+                const size_t o = overlap(sets[j], sz);
+                if (o > bestOther) {
+                    bestOther = o;
+                    bestJ = j;
+                }
+            }
+            double best = -1.0;
+            size_t endsIn = k;
+            for (size_t j = 0; j < stored.size(); ++j) {
+                const double sim = lab::cosine(window, stored[j]);
+                if (sim > best) {
+                    best = sim;
+                    endsIn = j;
+                }
+            }
+            const double complete = ownSize ? double(ownBoth) / double(ownSize) : 0.0;
+            const double clean = nAct ? double(ownBoth) / double(nAct) : 0.0;
+            const double other = nAct ? double(bestOther) / double(nAct) : 0.0;
+            const double size = ownSize ? double(nAct) / double(ownSize) : 0.0;
+            sumC += complete / items.size();
+            sumP += clean / items.size();
+            sumO += other / items.size();
+            sumS += size / items.size();
+            std::printf("    %-6s  %.2f      %.2f    %.2f (%s)     %.2f   | %s%s\n", items[k].c_str(), complete, clean, other,
+                        items[bestJ].c_str(), size, items[endsIn].c_str(), endsIn == k ? "" : "  <-- WRONG");
+        }
+        std::printf("    mean    %.2f      %.2f    %.2f          %.2f\n", sumC, sumP, sumO, sumS);
+        (void)per;
+    }
+    return 0;
+}
+
 } // namespace ncm
