@@ -1,5 +1,23 @@
 # Cosmos X1: Neural Cellular Matrix (NCM)
 
+## Cosmos Prime (main version, 2026-10-01)
+
+**Cosmos Prime** is the main version: the default rule in `src/Config.cpp`, git tag `cosmos-prime`.
+It is the best version measured so far on the big brain (dev preset):
+
+- Memory foundation ("version B"): 64 learnable long-range partners per voxel, anti-hub learning,
+  strong learned links kept in check by learned inhibition, gain control that adapts only with input.
+- Rhythm restart (`clock_reset`): the 2D/3D clocks restart at word gaps and onsets, so a word is
+  cut into the same chunks every time.
+- Front-to-back sweep (`field_sweep`): the four fields update in order within each step.
+- Recency-weighted lines (`line_recency` 0.6): the newest letters count most; full strength kept.
+
+Measured (true recall of the partner word, `--test pairload`, seeds 22-31): 16 words 91%,
+32 words 68% (the previous main version was at chance); an untrained twin stays at chance.
+Official check: `--test suite` (CP2 recall, CP3 capacity, CP4 efficiency, CP5w word pairs, CP6,
+CP6b, CP7). Build: `build.ps1` (Windows) or `build.sh` (Linux) -> `build/cosmos_x1(.exe)`.
+
+
 Test environment for Cosmos X1, an AI built on cellular-automaton principles: four 3D fields (Input, Memory, Reasoning, Output), every voxel holding a 2D sheet, every sheet cell holding a 1D line. Cells behave like neurons; knowledge is meant to emerge from local rules and local learning.
 
 The specification lives in OneDrive: `Dokumenter\Cosmos X1\Neural cellular automata.md`. Section numbers in code comments refer to it.
