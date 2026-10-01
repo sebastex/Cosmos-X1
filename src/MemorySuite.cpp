@@ -1624,6 +1624,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     for (int learning = 1; learning >= 0; --learning) {
         Session s(cfg, learning == 1);
         Patterns partner; // shape of each pair's second word while the pair was learned
+        Patterns cueInPair; // shape of each pair's first word while the pair was learned
         size_t next = 4;
         for (size_t p = 0; p < total; ++p) {
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
@@ -1631,19 +1632,21 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             // The pair is said, then a pause, then said again (10 times). Without the pause the
             // stream "apple river apple river" also teaches "river then apple", and an order rule
             // that strengthens "earlier -> later" and weakens "later -> earlier" cancels itself.
-            std::vector<double> shape;
+            std::vector<double> shape, cueShape;
             const int repeats = 10;
             for (int r = 0; r < repeats; ++r) {
                 for (size_t pos = 0; pos < pair.size(); ++pos) {
                     s.present(std::string(1, pair[pos]), 1, 1.0f, true, UINT64_MAX);
-                    if (r >= repeats / 2 && pos >= a.size()) s.accumulate(shape);
+                    if (r >= repeats / 2) s.accumulate(pos >= a.size() ? shape : cueShape);
                 }
                 s.silence(T(30), true);
             }
             partner.push_back(shape);
+            cueInPair.push_back(cueShape);
             s.silence(kGap, true);
             if (p + 1 == next || p + 1 == total) {
                 size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0;
+                std::vector<bool> recalledOwn(p + 1, false);
                 double margin = 0.0, marginOwn = 0.0;
                 std::string mistakes, mistakesOwn;
                 // Yardstick in the matrix's own present language: every partner word heard alone
@@ -1758,6 +1761,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         }
                     }
                     rightOwn += ownO > bestO;
+                    recalledOwn[k] = ownO > bestO;
                     marginOwn += (ownO - bestO) / double(p + 1);
                     if (ownO <= bestO && learning) mistakesOwn += " " + words[2 * k] + ">" + words[2 * bestOJ + 1];
                 }
@@ -1770,6 +1774,21 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                             rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
                 finalRecall[learning] = double(rightOwn) / double(p + 1);
                 if (!mistakesOwn.empty()) std::printf("       wrong (cue>recalled):%s\n", mistakesOwn.c_str());
+                // Per pair (learning matrix): the stored link measured on the words as they were
+                // heard together (cue -> own partner vs the strongest cue -> other partner), and
+                // whether the partner was truly recalled. Tells "not stored" from "not expressed".
+                if (learning) {
+                    std::printf("     per pair: link to own partner / strongest other (stored?) | recalled?\n");
+                    for (size_t k = 0; k <= p; ++k) {
+                        const double own = s.flow(cueInPair[k], partner[k]);
+                        double best = 0.0;
+                        for (size_t j = 0; j <= p; ++j)
+                            if (j != k) best = std::max(best, s.flow(cueInPair[k], partner[j]));
+                        const bool recalled = recalledOwn[k];
+                        std::printf("       %2zu %-6s %.3f / %.3f %-4s | %s\n", k + 1, words[2 * k].c_str(), own, best,
+                                    own > best ? "yes" : "NO", recalled ? "yes" : "NO");
+                    }
+                }
                 // Calibration: does a partner word heard inside its pair look like itself heard alone?
                 {
                     size_t match = 0;
