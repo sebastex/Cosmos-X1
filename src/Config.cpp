@@ -186,6 +186,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"space_silent", &c.space_silent},
         {"field_sweep", &c.field_sweep},
         {"separation", &c.separation},
+        {"spread_plastic", &c.spread_plastic},
         {"encoding_full", &c.encoding_full},
         {"line_recency", &c.line_recency},
         {"fire_threshold2", &c.fire_threshold2},

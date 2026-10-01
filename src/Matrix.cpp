@@ -370,6 +370,17 @@ void NeuralCellularMatrix::initVoxelWeights() {
         inputDepthPos_[v] = uint32_t(std::min(size_t(u * double(size_t(N_) * N_)), size_t(N_) * N_ - 1));
     }
     const uint32_t S4 = spreadK_;
+    if (cfg_.spread_plastic > 0.0f && S4 > 0) {
+        size_t blocks = 0;
+        for (uint32_t f = 0; f < kFields; ++f) {
+            size_t links = 0;
+            for (uint32_t g = 0; g < f; ++g) links += spreadCount(g);
+            spreadLinks_[f] = links;
+            spreadBase_[f] = blocks;
+            blocks += Vf_ * links;
+        }
+        WS_.assign(blocks * C3 * C3, 0.0f);
+    }
     spreadPos_.assign(V_ * S4, 0);
     for (size_t v = 0; v < V_; ++v)
         for (uint32_t l = 0; l < S4; ++l) {
@@ -851,6 +862,10 @@ void NeuralCellularMatrix::step3D() {
                     const float* src = (sweep ? out : s3) + vs * C3; // g < f here
                     if (isSilent(src, C3)) continue;
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
+                    // Learned cue route: this source's learned block (excitatory sources only).
+                    if (!WS_.empty() && !inhib3_[vs])
+                        matvecAdd(WS_.data() + spreadBlock(v, g, l) * C3 * C3, learnedSource(vs, src), pl4, C3, C3,
+                                  afferentGain * rec4);
                 }
         }
 
@@ -1133,6 +1148,14 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn) {
         if (!inhib3_[vg]) fn(H_.data() + (v * 3 + gi) * C3 * C3, vg);
         ++gi;
     }
+    if (!WS_.empty() && f > 0) {
+        const uint32_t S4 = spreadK_;
+        for (uint32_t g = 0; g < f; ++g)
+            for (uint32_t l = 0; l < spreadCount(g); ++l) {
+                const size_t vs = size_t(g) * Vf_ + spreadPos_[v * S4 + l];
+                if (!inhib3_[vs]) fn(WS_.data() + spreadBlock(v, g, l) * C3 * C3, vs);
+            }
+    }
 }
 
 void NeuralCellularMatrix::learn(float modulator) {
@@ -1276,6 +1299,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             float slowTotal[C3] = {};
             forEachLearnedBlock(v, [&](float* block, size_t) {
                 float* slow = slowOf(block);
+                if (!slow) return; // blocks without a slow part (learned cue route)
                 for (size_t i = 0; i < size_t(C3) * C3; ++i) {
                     if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
                     slowTotal[i / C3] += slow[i];
@@ -1287,7 +1311,10 @@ void NeuralCellularMatrix::learn(float modulator) {
                 slowFactor[a] = slowTotal[a] > slowBudget ? slowBudget / slowTotal[a] : 1.0f;
                 slowScale = slowScale || slowFactor[a] < 1.0f;
             }
-            if (slowScale) forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(slowOf(block), slowFactor); });
+            if (slowScale)
+                forEachLearnedBlock(v, [&](float* block, size_t) {
+                    if (float* sb = slowOf(block)) scaleRows(sb, slowFactor);
+                });
         }
     }
     // Assembly inhibition: for every voxel (silent ones too) and long-range partner: a partner
@@ -1515,7 +1542,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
            bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
-           bytes(H_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
+           bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }
 
 } // namespace ncm

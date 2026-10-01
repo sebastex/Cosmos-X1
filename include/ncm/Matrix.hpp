@@ -167,6 +167,17 @@ private:
     std::vector<float> lineWeight_; // recency weight of each line position in the upward summary
     AVec<float> asmInh_;            // learned inhibitory weight per long-range link (assembly inhibition)
     AVec<float> usage3_;            // per voxel channel: share of its learned-input budget in use (pattern separation)
+    // Learned cue route (spread_plastic): one C3 x C3 block per feedforward spread source.
+    AVec<float> WS_;
+    std::array<size_t, kFields> spreadLinks_{};   // spread sources per voxel of each field (all earlier fields)
+    std::array<size_t, kFields> spreadBase_{};    // first block of each field in WS_
+    uint32_t spreadCount(uint32_t g) const { return g == 0 ? spreadK_ : std::min<uint32_t>(spreadK_, cfg_.link4d_spread); }
+    size_t spreadBlock(size_t v, uint32_t g, uint32_t l) const {
+        const uint32_t f = uint32_t(v / Vf_);
+        size_t off = 0;
+        for (uint32_t h = 0; h < g; ++h) off += spreadCount(h);
+        return spreadBase_[f] + (v - size_t(f) * Vf_) * spreadLinks_[f] + off + l;
+    }
     void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)

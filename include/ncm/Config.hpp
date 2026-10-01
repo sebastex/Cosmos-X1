@@ -298,6 +298,12 @@ struct Config {
     // fresher cells wherever it differs from older, similar ones. Recall is unaffected (M = 0),
     // and the learned links from the cue lead back to the separated memory. 0 = off.
     float separation = 0.0f;
+    // Learned cue route: the random feedforward sources a voxel hears from earlier fields
+    // (link4d_spread) get a learned C3 x C3 block each, like the other learned links. While a
+    // memory is written they learn which input pattern leads to the cells that store it; at
+    // recall the cue follows that route to its memory. Transmitted like the learned 4D link
+    // (muted while encoding with encoding_suppression_4d). 0 = off (fixed sources only).
+    float spread_plastic = 0.0f;
     // 1 = while learning, the matrix is always in full encoding mode (stored memories muted),
     // however familiar the input feels. 0 = encoding mode follows surprise, so familiar input
     // lets stored memories fire while new links are written (they then get tied to everything
