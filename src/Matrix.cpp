@@ -263,6 +263,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     resource3_.assign(V_ * C3, 1.0f);
     membrane3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
+    if (cfg_.separation > 0.0f) usage3_.assign(V_ * C3, 0.0f);
     if (cfg_.upward_pool > 0.5f) {
         lineUp_.assign(Q_ * C2, 0.0f);
         lineUpAny_.assign(Q_, 0);
@@ -927,6 +928,12 @@ void NeuralCellularMatrix::step3D() {
                 in[c] = u[c];
             }
         }
+        // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
+        if (!usage3_.empty() && f > 0 && modulator_ > 0.0f) {
+            const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
+            const float* u = usage3_.data() + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
+        }
         drive3_[v] = activateCell<C3>(in, out + v * C3,
                                       theta[v] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue3_[v])),
                                       cfg_.channel_winners3);
@@ -1200,7 +1207,7 @@ void NeuralCellularMatrix::learn(float modulator) {
 
         // Soft bounds: each output channel strengthens in proportion to its unused budget.
         float room[C3];
-        if (soft > 0.0f) {
+        if (soft > 0.0f || !usage3_.empty()) {
             float used[C3] = {};
             forEachLearnedBlock(v, [&](float* block, size_t) {
                 for (uint32_t a = 0; a < C3; ++a)
@@ -1209,6 +1216,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             for (uint32_t a = 0; a < C3; ++a) {
                 const float freeShare = budget > 0.0f ? std::clamp(1.0f - used[a] / budget, 0.0f, 1.0f) : 0.0f;
                 room[a] = 1.0f - soft + soft * freeShare;
+                if (!usage3_.empty()) usage3_[v * C3 + a] = 1.0f - freeShare; // load, for pattern separation
             }
         }
 

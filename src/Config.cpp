@@ -185,6 +185,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"clock_reset", &c.clock_reset},
         {"space_silent", &c.space_silent},
         {"field_sweep", &c.field_sweep},
+        {"separation", &c.separation},
         {"encoding_full", &c.encoding_full},
         {"line_recency", &c.line_recency},
         {"fire_threshold2", &c.fire_threshold2},

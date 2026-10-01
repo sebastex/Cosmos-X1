@@ -291,6 +291,13 @@ struct Config {
     // states, which delays every field by one more step (the Output field hears a word when the
     // next one is already arriving). Feedback from later fields still comes from the previous step.
     float field_sweep = 0.0f;
+    // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
+    // each voxel channel in the Memory, Reasoning and Output fields is scaled by
+    // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input
+    // budget already in use (it already belongs to stored memories). A new memory then settles on
+    // fresher cells wherever it differs from older, similar ones. Recall is unaffected (M = 0),
+    // and the learned links from the cue lead back to the separated memory. 0 = off.
+    float separation = 0.0f;
     // 1 = while learning, the matrix is always in full encoding mode (stored memories muted),
     // however familiar the input feels. 0 = encoding mode follows surprise, so familiar input
     // lets stored memories fire while new links are written (they then get tied to everything

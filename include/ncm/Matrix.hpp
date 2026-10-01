@@ -166,6 +166,7 @@ public:
 private:
     std::vector<float> lineWeight_; // recency weight of each line position in the upward summary
     AVec<float> asmInh_;            // learned inhibitory weight per long-range link (assembly inhibition)
+    AVec<float> usage3_;            // per voxel channel: share of its learned-input budget in use (pattern separation)
     void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)
