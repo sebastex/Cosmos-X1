@@ -160,6 +160,7 @@ private:
     AVec<float> sheetUp_; // per voxel, C3 channels: summed sheet summaries
     uint32_t sheetUpTicks_ = 0;
     void poolLines();
+    std::vector<float> lineWeight_; // recency weight of each line position in the upward summary
     void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
     AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)

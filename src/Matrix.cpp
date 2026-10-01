@@ -215,6 +215,8 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     N_ = cfg.field_dim;
     S_ = cfg.sheet_dim;
     L_ = cfg.line_len;
+    lineWeight_.resize(L_);
+    for (uint32_t k = 0; k < L_; ++k) lineWeight_[k] = std::pow(std::clamp(cfg.line_recency, 0.0f, 1.0f), float(k));
     Vf_ = cfg.voxelsPerField();
     V_ = cfg.voxels();
     SS_ = cfg.sheetCellsPerVoxel();
@@ -570,6 +572,7 @@ void NeuralCellularMatrix::step2D() {
         } else {
             float up[C2] = {};
             uint32_t activeCells = 0;
+            float weightSq = 0.0f;
             // A quiet line contributes nothing: its flag spares reading it.
             for (uint32_t k = 0; k < (lineQuietCur_[q] ? 0u : L); ++k) {
                 const float* cell = s1 + (q * L + k) * C1;
@@ -577,10 +580,11 @@ void NeuralCellularMatrix::step2D() {
                 for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
                 if (!active) continue;
                 ++activeCells;
-                matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, 1.0f);
+                matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, lineWeight_[k]);
+                weightSq += lineWeight_[k] * lineWeight_[k];
             }
             if (activeCells > 0) {
-                const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(float(activeCells)) : 1.0f;
+                const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(weightSq) : 1.0f;
                 const float scale = cfg_.line_upward_gain / norm;
                 for (uint32_t c = 0; c < C2; ++c) in[c] += scale * up[c];
             }
@@ -1547,16 +1551,18 @@ void NeuralCellularMatrix::poolLines() {
         if (lineQuietCur_[q]) continue;
         float up[C2] = {};
         uint32_t activeCells = 0;
+        float weightSq = 0.0f;
         for (uint32_t k = 0; k < L; ++k) {
             const float* cell = s1 + (q * L + k) * C1;
             bool active = false;
             for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
             if (!active) continue;
             ++activeCells;
-            matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, 1.0f);
+            matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, lineWeight_[k]);
+            weightSq += lineWeight_[k] * lineWeight_[k];
         }
         if (activeCells == 0) continue;
-        const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(float(activeCells)) : 1.0f;
+        const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(weightSq) : 1.0f;
         const float scale = cfg_.line_upward_gain / norm;
         for (uint32_t c = 0; c < C2; ++c) lineUp_[q * C2 + c] += scale * up[c];
         lineUpAny_[q] = 1;

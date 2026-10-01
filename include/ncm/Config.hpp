@@ -288,6 +288,11 @@ struct Config {
     // lets stored memories fire while new links are written (they then get tied to everything
     // learned later and turn into hubs).
     float encoding_full = 0.0f;
+    // Recency weighting of a line's summary: the cell at line position k (the letter heard k ticks
+    // ago) counts line_recency^k when the line reports to its sheet. The line itself keeps all its
+    // activity (a held letter stays at full strength); in a stream the newest letters dominate, so
+    // a word is not drowned by the words before it. 1 = all positions count the same.
+    float line_recency = 1.0f;
     uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
     // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in
