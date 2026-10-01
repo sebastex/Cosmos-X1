@@ -1,0 +1,92 @@
+# Evolution around Cosmos Prime with condition monitoring. Each run is one generation:
+# propose (candidates x fresh brains x checks) -> run (up to 20 machines at once) -> collect
+# (score, monitor report, commit to evolution/) -> start the next generation until the deadline.
+# Start:  gh workflow run evolve.yml -f hours=12 -f restart=true
+name: evolve
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: Hours to keep evolving (counted from the first generation)
+        default: "12"
+      restart:
+        description: Start a new evolution (true) or continue the saved one (false)
+        default: "false"
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: evolve
+  cancel-in-progress: false
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          if [ "${{ inputs.restart }}" = "true" ]; then R=--restart; else R=; fi
+          M=$(python3 tools/evo/evolve.py propose --hours ${{ inputs.hours }} $R)
+          echo "matrix=$M" >> "$GITHUB_OUTPUT"
+      - name: Save the proposed generation
+        run: |
+          git config user.name "cosmos-evolution"
+          git config user.email "cosmos-evolution@users.noreply.github.com"
+          git add evolution
+          git commit -m "evolution: propose generation" || true
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+  run:
+    needs: propose
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        include: ${{ fromJSON(needs.propose.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh
+      - name: Run one check
+        env:
+          ARGS: ${{ matrix.args }}
+        run: python3 tools/evo/job.py --check ${{ matrix.check }} --seed ${{ matrix.seed }} --cand ${{ matrix.cand }} --args "$ARGS" --out m-${{ matrix.cand }}-${{ matrix.seed }}-${{ matrix.check }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m-${{ matrix.cand }}-${{ matrix.seed }}-${{ matrix.check }}
+          path: m-${{ matrix.cand }}-${{ matrix.seed }}-${{ matrix.check }}.*
+  collect:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - run: git pull
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m-*
+          path: results
+          merge-multiple: true
+      - id: c
+        run: |
+          D=$(python3 tools/evo/evolve.py collect --results results | tail -1)
+          echo "decision=$D" >> "$GITHUB_OUTPUT"
+          cat evolution/monitor.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Save results
+        run: |
+          git config user.name "cosmos-evolution"
+          git config user.email "cosmos-evolution@users.noreply.github.com"
+          git add evolution
+          git commit -m "evolution: generation results" || true
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+      - name: Next generation
+        if: steps.c.outputs.decision == 'continue'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run evolve.yml -R ${{ github.repository }} -f hours=${{ inputs.hours }} -f restart=false
