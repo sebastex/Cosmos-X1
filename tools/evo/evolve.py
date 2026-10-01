@@ -265,6 +265,7 @@ def cumulative(state):
     it = [e.get("continual", {}).get("interference") for _, e in evals]
     fails = [(e.get("continual", {}).get("erasure"), e.get("continual", {}).get("interference"))
              for _, e in evals if e["checks"].get("continual") is False]
+    fails = [(a, b) for a, b in fails if a is not None and b is not None]  # only tests that measured it
     if any(x is not None for x in er):
         dom_i = sum(1 for a, b in fails if a is not None and b is not None and b > a)
         L.append(f"- Old memories getting worse (all tests): wiped out {mean(er):+.3f}, pushed aside by new memories {mean(it):+.3f} on average; "
