@@ -1,7 +1,7 @@
 {
- "cand": "c142",
- "fitness": 9.317499999999999,
- "evals": 2,
+ "cand": "c134",
+ "fitness": 9.349166666666667,
+ "evals": 6,
  "params": {
   "learning_rate": 0.04627,
   "plastic_budget": 4.0,
@@ -17,9 +17,9 @@
   "assembly_inhibition": 0.0,
   "order_gain": 5.52885,
   "order_tau": 5.0,
-  "mode_tau": 26.523,
+  "mode_tau": 29.52901,
   "fatigue_gain3": 0.0638,
-  "fire_threshold3": 0.02786,
+  "fire_threshold3": 0.0256,
   "line_recency": 0.54086,
   "winners3": 4,
   "channel_winners3": 3,
