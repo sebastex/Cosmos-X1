@@ -1,5 +1,5 @@
 {
- "generation": 34,
+ "generation": 35,
  "deadline": 1791064214.5249443,
  "started": 1790882414.5249443,
  "candidates": {
@@ -4935,9 +4935,153 @@
       "separation": 3.0,
       "spread_plastic": 0.5
      }
+    },
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 7.82,
+     "passes": 6,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": false,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 75.0,
+     "monitor": {
+      "cue_reaches": 64.0,
+      "complete": 0.18,
+      "clean": 0.48,
+      "other": 0.05,
+      "size": 0.38,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.031,
+      "new_all_right": true,
+      "erasure": -0.036,
+      "interference": 0.005
+     },
+     "retention": {
+      "margin_lost": 0.031,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 75.0,
+      "untrained": 12.0,
+      "stored_recalled": 6,
+      "stored_not_recalled": 2,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 68.8,
+      "64": 31.2
+     },
+     "minutes": 45.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.04,
+      "plastic_budget": 4.0,
+      "soft_bound": 1.0,
+      "presynaptic_bound": 1.0,
+      "hetero_ltd": 1.0,
+      "covariance": 1.0,
+      "istdp_rate": 50.0,
+      "istdp_target": 0.02,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.0,
+      "order_gain": 4.0,
+      "order_tau": 5.0,
+      "mode_tau": 30.0,
+      "fatigue_gain3": 0.0638,
+      "fire_threshold3": 0.0256,
+      "line_recency": 0.6,
+      "winners3": 3,
+      "channel_winners3": 4,
+      "inhibition_radius3": 2,
+      "separation": 3.0,
+      "spread_plastic": 0.5
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 8.355,
+     "passes": 6,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": false,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 71.0,
+      "complete": 0.2,
+      "clean": 0.54,
+      "other": 0.04,
+      "size": 0.36,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.007,
+      "new_all_right": true,
+      "erasure": -0.0,
+      "interference": 0.007
+     },
+     "retention": {
+      "margin_lost": 0.087,
+      "all_right": false
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 75.0,
+      "64": 31.2
+     },
+     "minutes": 44.4,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.04,
+      "plastic_budget": 4.0,
+      "soft_bound": 1.0,
+      "presynaptic_bound": 1.0,
+      "hetero_ltd": 1.0,
+      "covariance": 1.0,
+      "istdp_rate": 50.0,
+      "istdp_target": 0.02,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.0,
+      "order_gain": 4.0,
+      "order_tau": 5.0,
+      "mode_tau": 30.0,
+      "fatigue_gain3": 0.0638,
+      "fire_threshold3": 0.0256,
+      "line_recency": 0.6,
+      "winners3": 3,
+      "channel_winners3": 4,
+      "inhibition_radius3": 2,
+      "separation": 3.0,
+      "spread_plastic": 0.5
+     }
     }
    ],
-   "fitness": 8.775294117647059
+   "fitness": 8.755642857142856
   },
   "c1": {
    "params": {
@@ -59217,9 +59361,153 @@
       "separation": 4.94742,
       "spread_plastic": 0.5
      }
+    },
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.43,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 86.0,
+      "complete": 0.55,
+      "clean": 0.74,
+      "other": 0.04,
+      "size": 0.76,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.007,
+      "new_all_right": true,
+      "erasure": -0.014,
+      "interference": 0.007
+     },
+     "retention": {
+      "margin_lost": 0.004,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 81.2,
+      "64": 43.8
+     },
+     "minutes": 24.1,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 5.67831,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00211,
+      "order_gain": 4.19902,
+      "order_tau": 3.59916,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.5
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.45,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 90.0,
+      "complete": 0.57,
+      "clean": 0.78,
+      "other": 0.03,
+      "size": 0.74,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.001,
+      "new_all_right": true,
+      "erasure": -0.002,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.0,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 100.0,
+      "64": 68.8
+     },
+     "minutes": 28.2,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 5.67831,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00211,
+      "order_gain": 4.19902,
+      "order_tau": 3.59916,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.5
+     }
     }
    ],
-   "fitness": 9.4375
+   "fitness": 9.437999999999999
   },
   "c242": {
    "params": {
@@ -60329,9 +60617,153 @@
       "separation": 4.94742,
       "spread_plastic": 0.77625
      }
+    },
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.425,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 85.0,
+      "complete": 0.16,
+      "clean": 0.63,
+      "other": 0.07,
+      "size": 0.25,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.0,
+      "new_all_right": true,
+      "erasure": 0.0,
+      "interference": 0.0
+     },
+     "retention": {
+      "margin_lost": 0.021,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 75.0,
+      "64": 46.9
+     },
+     "minutes": 74.1,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02711,
+      "plastic_budget": 5.67831,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.00328,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 4.19902,
+      "order_tau": 2.52921,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.77625
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.435,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 87.0,
+      "complete": 0.15,
+      "clean": 0.64,
+      "other": 0.04,
+      "size": 0.23,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.005,
+      "new_all_right": true,
+      "erasure": -0.006,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.003,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 93.8,
+      "64": 68.8
+     },
+     "minutes": 58.9,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02711,
+      "plastic_budget": 5.67831,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.00328,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 4.19902,
+      "order_tau": 2.52921,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.77625
+     }
     }
    ],
-   "fitness": 9.43875
+   "fitness": 9.435833333333333
   },
   "c246": {
    "params": {
@@ -62187,9 +62619,153 @@
       "separation": 4.94742,
       "spread_plastic": 0.5
      }
+    },
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 8.42,
+     "passes": 6,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": false,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 84.0,
+      "complete": 0.17,
+      "clean": 0.67,
+      "other": 0.05,
+      "size": 0.25,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.022,
+      "new_all_right": true,
+      "erasure": -0.024,
+      "interference": 0.002
+     },
+     "retention": {
+      "margin_lost": 0.089,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 75.0,
+      "64": 53.1
+     },
+     "minutes": 31.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 3.59916,
+      "mode_tau": 10.0,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.5
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.44,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 88.0,
+      "complete": 0.56,
+      "clean": 0.78,
+      "other": 0.03,
+      "size": 0.72,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.0,
+      "new_all_right": true,
+      "erasure": -0.003,
+      "interference": 0.004
+     },
+     "retention": {
+      "margin_lost": 0.001,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": {
+      "32": 93.8,
+      "64": 56.2
+     },
+     "minutes": 41.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 3.59916,
+      "mode_tau": 10.0,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.5
+     }
     }
    ],
-   "fitness": 9.44375
+   "fitness": 9.272499999999999
   },
   "c256": {
    "params": {
@@ -66200,8 +66776,147 @@
    },
    "parent": "c258",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.385,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 77.0,
+      "complete": 0.14,
+      "clean": 0.46,
+      "other": 0.05,
+      "size": 0.3,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.017,
+      "new_all_right": true,
+      "erasure": 0.015,
+      "interference": 0.002
+     },
+     "retention": {
+      "margin_lost": 0.014,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 35.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 3.6764,
+      "soft_bound": 0.65219,
+      "presynaptic_bound": 0.66178,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.91793,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01855,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.03758,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00599,
+      "order_gain": 7.22041,
+      "order_tau": 3.58901,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.98908,
+      "spread_plastic": 0.68315
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.435,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 87.0,
+      "complete": 0.14,
+      "clean": 0.5,
+      "other": 0.03,
+      "size": 0.29,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.01,
+      "new_all_right": true,
+      "erasure": 0.009,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.004,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 31.5,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 3.6764,
+      "soft_bound": 0.65219,
+      "presynaptic_bound": 0.66178,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.91793,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01855,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.03758,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00599,
+      "order_gain": 7.22041,
+      "order_tau": 3.58901,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.98908,
+      "spread_plastic": 0.68315
+     }
+    }
+   ],
+   "fitness": 9.41
   },
   "c277": {
    "params": {
@@ -66231,8 +66946,147 @@
    },
    "parent": "c258",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.4,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 80.0,
+      "complete": 0.52,
+      "clean": 0.64,
+      "other": 0.04,
+      "size": 0.84,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.008,
+      "new_all_right": true,
+      "erasure": 0.006,
+      "interference": 0.002
+     },
+     "retention": {
+      "margin_lost": 0.024,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 20.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 3.6764,
+      "soft_bound": 0.67337,
+      "presynaptic_bound": 0.44023,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.95594,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01176,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.03758,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00599,
+      "order_gain": 7.77954,
+      "order_tau": 3.58901,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.52939,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.98908,
+      "spread_plastic": 0.68315
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.405,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 81.0,
+      "complete": 0.15,
+      "clean": 0.48,
+      "other": 0.03,
+      "size": 0.3,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.005,
+      "new_all_right": true,
+      "erasure": 0.001,
+      "interference": 0.004
+     },
+     "retention": {
+      "margin_lost": 0.002,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 24.6,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 3.6764,
+      "soft_bound": 0.67337,
+      "presynaptic_bound": 0.44023,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.95594,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01176,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.03758,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00599,
+      "order_gain": 7.77954,
+      "order_tau": 3.58901,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.52939,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.98908,
+      "spread_plastic": 0.68315
+     }
+    }
+   ],
+   "fitness": 9.4025
   },
   "c278": {
    "params": {
@@ -66262,8 +67116,147 @@
    },
    "parent": "c245",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.44,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 88.0,
+      "complete": 0.55,
+      "clean": 0.74,
+      "other": 0.05,
+      "size": 0.75,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.0,
+      "new_all_right": true,
+      "erasure": -0.001,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.002,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 18.3,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02205,
+      "plastic_budget": 5.67831,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 78.71785,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.00328,
+      "consolidated_budget": 0.50842,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 4.19902,
+      "order_tau": 2.53994,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.58896
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.435,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 87.0,
+      "complete": 0.15,
+      "clean": 0.65,
+      "other": 0.04,
+      "size": 0.23,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.011,
+      "new_all_right": true,
+      "erasure": -0.013,
+      "interference": 0.002
+     },
+     "retention": {
+      "margin_lost": 0.013,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 44.8,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02205,
+      "plastic_budget": 5.67831,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 78.71785,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.00328,
+      "consolidated_budget": 0.50842,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 4.19902,
+      "order_tau": 2.53994,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.58896
+     }
+    }
+   ],
+   "fitness": 9.4375
   },
   "c279": {
    "params": {
@@ -66293,8 +67286,147 @@
    },
    "parent": "c255",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.43,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 86.0,
+      "complete": 0.17,
+      "clean": 0.67,
+      "other": 0.06,
+      "size": 0.25,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.004,
+      "new_all_right": true,
+      "erasure": -0.014,
+      "interference": 0.011
+     },
+     "retention": {
+      "margin_lost": 0.01,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 40.6,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 0.99622,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 2.97098,
+      "mode_tau": 11.59859,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.863,
+      "spread_plastic": 0.5
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.45,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 90.0,
+      "complete": 0.15,
+      "clean": 0.64,
+      "other": 0.04,
+      "size": 0.24,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.007,
+      "new_all_right": true,
+      "erasure": -0.011,
+      "interference": 0.003
+     },
+     "retention": {
+      "margin_lost": 0.012,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 40.1,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 0.99622,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 2.97098,
+      "mode_tau": 11.59859,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.863,
+      "spread_plastic": 0.5
+     }
+    }
+   ],
+   "fitness": 9.44
   },
   "c280": {
    "params": {
@@ -66324,8 +67456,147 @@
    },
    "parent": "c258",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.4,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 80.0,
+      "complete": 0.14,
+      "clean": 0.46,
+      "other": 0.05,
+      "size": 0.3,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.002,
+      "new_all_right": true,
+      "erasure": -0.003,
+      "interference": 0.005
+     },
+     "retention": {
+      "margin_lost": 0.046,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 45.0,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 3.6764,
+      "soft_bound": 0.67337,
+      "presynaptic_bound": 0.63697,
+      "hetero_ltd": 0.77135,
+      "covariance": 0.95594,
+      "istdp_rate": 105.44255,
+      "istdp_target": 0.01655,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.03758,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00599,
+      "order_gain": 5.85173,
+      "order_tau": 3.58901,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.51254,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.98908,
+      "spread_plastic": 0.43452
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.425,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 85.0,
+      "complete": 0.56,
+      "clean": 0.71,
+      "other": 0.03,
+      "size": 0.78,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.029,
+      "new_all_right": true,
+      "erasure": 0.028,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.018,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 47.9,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 3.6764,
+      "soft_bound": 0.67337,
+      "presynaptic_bound": 0.63697,
+      "hetero_ltd": 0.77135,
+      "covariance": 0.95594,
+      "istdp_rate": 105.44255,
+      "istdp_target": 0.01655,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.03758,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00599,
+      "order_gain": 5.85173,
+      "order_tau": 3.58901,
+      "mode_tau": 11.77991,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.51254,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.98908,
+      "spread_plastic": 0.43452
+     }
+    }
+   ],
+   "fitness": 9.412500000000001
   },
   "c281": {
    "params": {
@@ -66355,8 +67626,147 @@
    },
    "parent": "c255",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 8.425,
+     "passes": 6,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": false,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 85.0,
+      "complete": 0.17,
+      "clean": 0.67,
+      "other": 0.06,
+      "size": 0.26,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.02,
+      "new_all_right": true,
+      "erasure": -0.002,
+      "interference": 0.022
+     },
+     "retention": {
+      "margin_lost": 0.01,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 38.2,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02705,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.70023,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 93.77661,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 3.59916,
+      "mode_tau": 11.36753,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.5
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.445,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 89.0,
+      "complete": 0.16,
+      "clean": 0.68,
+      "other": 0.04,
+      "size": 0.24,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.007,
+      "new_all_right": true,
+      "erasure": -0.01,
+      "interference": 0.003
+     },
+     "retention": {
+      "margin_lost": 0.009,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 35.9,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02705,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.70023,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.58435,
+      "istdp_rate": 93.77661,
+      "istdp_target": 0.01243,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 3.59916,
+      "mode_tau": 11.36753,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.5
+     }
+    }
+   ],
+   "fitness": 8.935
   },
   "c282": {
    "params": {
@@ -66386,8 +67796,147 @@
    },
    "parent": "c255",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.425,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 85.0,
+      "complete": 0.19,
+      "clean": 0.69,
+      "other": 0.05,
+      "size": 0.27,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.012,
+      "new_all_right": true,
+      "erasure": -0.014,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.026,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 47.3,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.9726,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01675,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.01577,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 3.96376,
+      "mode_tau": 10.0,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.38099
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.47,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 94.0,
+      "complete": 0.17,
+      "clean": 0.69,
+      "other": 0.04,
+      "size": 0.25,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": 0.015,
+      "new_all_right": true,
+      "erasure": 0.009,
+      "interference": 0.005
+     },
+     "retention": {
+      "margin_lost": 0.01,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 42.0,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02777,
+      "plastic_budget": 6.91169,
+      "soft_bound": 0.88032,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.90595,
+      "covariance": 0.9726,
+      "istdp_rate": 99.59066,
+      "istdp_target": 0.01675,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.01577,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00382,
+      "order_gain": 4.19902,
+      "order_tau": 3.96376,
+      "mode_tau": 10.0,
+      "fatigue_gain3": 0.04573,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 4,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.38099
+     }
+    }
+   ],
+   "fitness": 9.447500000000002
   },
   "c283": {
    "params": {
@@ -66417,8 +67966,147 @@
    },
    "parent": "c240",
    "born": 34,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 34,
+     "seed": 2068,
+     "fitness": 9.12,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 88.0,
+     "monitor": {
+      "cue_reaches": 72.0,
+      "complete": 0.48,
+      "clean": 0.52,
+      "other": 0.04,
+      "size": 0.96,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.011,
+      "new_all_right": true,
+      "erasure": -0.011,
+      "interference": 0.0
+     },
+     "retention": {
+      "margin_lost": 0.024,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 88.0,
+      "untrained": 12.0,
+      "stored_recalled": 7,
+      "stored_not_recalled": 1,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 40.3,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.04,
+      "plastic_budget": 5.36827,
+      "soft_bound": 1.0,
+      "presynaptic_bound": 0.86876,
+      "hetero_ltd": 1.0,
+      "covariance": 1.0,
+      "istdp_rate": 52.05826,
+      "istdp_target": 0.02087,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.0,
+      "order_gain": 4.7958,
+      "order_tau": 3.59916,
+      "mode_tau": 14.36021,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02519,
+      "line_recency": 0.46494,
+      "winners3": 5,
+      "channel_winners3": 3,
+      "inhibition_radius3": 2,
+      "separation": 6.11012,
+      "spread_plastic": 0.5
+     }
+    },
+    {
+     "gen": 34,
+     "seed": 2069,
+     "fitness": 9.395,
+     "passes": 7,
+     "checks": {
+      "recall": true,
+      "capacity": true,
+      "efficiency": true,
+      "wordpairs": true,
+      "continual": true,
+      "retention": true,
+      "order": true
+     },
+     "true_recall": 100.0,
+     "monitor": {
+      "cue_reaches": 79.0,
+      "complete": 0.52,
+      "clean": 0.58,
+      "other": 0.04,
+      "size": 0.93,
+      "wrong": []
+     },
+     "continual": {
+      "forgetting": -0.007,
+      "new_all_right": true,
+      "erasure": -0.009,
+      "interference": 0.001
+     },
+     "retention": {
+      "margin_lost": 0.017,
+      "all_right": true
+     },
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 39.8,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.04,
+      "plastic_budget": 5.36827,
+      "soft_bound": 1.0,
+      "presynaptic_bound": 0.86876,
+      "hetero_ltd": 1.0,
+      "covariance": 1.0,
+      "istdp_rate": 52.05826,
+      "istdp_target": 0.02087,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.0,
+      "order_gain": 4.7958,
+      "order_tau": 3.59916,
+      "mode_tau": 14.36021,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02519,
+      "line_recency": 0.46494,
+      "winners3": 5,
+      "channel_winners3": 3,
+      "inhibition_radius3": 2,
+      "separation": 6.11012,
+      "spread_plastic": 0.5
+     }
+    }
+   ],
+   "fitness": 9.2575
   }
  },
  "next_id": 284,
