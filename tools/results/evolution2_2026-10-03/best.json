@@ -1,0 +1,30 @@
+{
+ "cand": "c362",
+ "fitness": 9.5,
+ "evals": 2,
+ "params": {
+  "learning_rate": 0.02592,
+  "plastic_budget": 8.0,
+  "soft_bound": 1.0,
+  "presynaptic_bound": 0.91685,
+  "hetero_ltd": 1.0,
+  "covariance": 0.41673,
+  "istdp_rate": 91.16289,
+  "istdp_target": 0.02702,
+  "encoding_suppression": 1.0,
+  "consolidation_rate": 0.0,
+  "consolidated_budget": 0.59376,
+  "assembly_inhibition": 0.0019,
+  "order_gain": 5.40479,
+  "order_tau": 2.37335,
+  "mode_tau": 10.0,
+  "fatigue_gain3": 2e-05,
+  "fire_threshold3": 0.0193,
+  "line_recency": 0.41818,
+  "winners3": 5,
+  "channel_winners3": 2,
+  "inhibition_radius3": 2,
+  "separation": 3.16465,
+  "spread_plastic": 0.39396
+ }
+}
