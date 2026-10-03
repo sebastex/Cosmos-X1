@@ -1,7 +1,7 @@
 {
  "cand": "c332",
- "fitness": 9.48,
- "evals": 4,
+ "fitness": 9.483333333333333,
+ "evals": 6,
  "params": {
   "learning_rate": 0.02222,
   "plastic_budget": 5.67831,
