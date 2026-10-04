@@ -256,7 +256,14 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
     voxelGain_.assign(V_, 1.0f);
-    if (cfg.learning.sheet_rate > 0.0f) P2_.assign(Q_ * C2 * C2, 0.0f);
+    if (cfg.learning.sheet_rate > 0.0f) {
+        if (cfg.learning.sheet_links > 0.5f) {
+            P2N_.assign(Q_ * 8 * C2 * C2, 0.0f);
+            orderTrace2_.assign(Q_ * C2, 0.0f);
+        } else {
+            P2_.assign(Q_ * C2 * C2, 0.0f);
+        }
+    }
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
@@ -589,6 +596,9 @@ void NeuralCellularMatrix::step2D() {
                 if (o != 4 && !inhib2_[qn]) {
                     addScaled(s2 + qn * C2, neighbours, C2, 1.0f);
                     anyNeighbour = true;
+                    // Sheet links: this neighbour's own learned block (recall-mode strength).
+                    if (!P2N_.empty())
+                        matvecAdd(P2N_.data() + (q * 8 + (o < 4 ? o : o - 1)) * C2 * C2, s2 + qn * C2, in, C2, C2, rec2);
                 }
             }
         // Sheet learning: a learned block from the cell's summed neighbourhood (same Hebbian rule
@@ -664,6 +674,16 @@ void NeuralCellularMatrix::step2D() {
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         sheetQuietNext_[v] = sheetSkip_[v] ? 1 : (isSilent(out + v * SS * C2, SS * C2) ? 1 : 0);
+    }
+    if (!orderTrace2_.empty()) {
+        // Sheet order window: the 3D window (order_tau 3D steps) in 2D steps (phi per 3D step).
+        const float tau2 = std::max(1.0f, cfg_.learning.order_tau * float(kPhi));
+#pragma omp parallel for schedule(static)
+        for (int64_t qi = 0; qi < cells; ++qi) {
+            float* tr = orderTrace2_.data() + size_t(qi) * C2;
+            const float* o2 = out + size_t(qi) * C2;
+            for (uint32_t c = 0; c < C2; ++c) tr[c] += (o2[c] - tr[c]) / tau2;
+        }
     }
     s2_.swap();
     sheetQuietCur_.swap(sheetQuietNext_);
@@ -1438,6 +1458,70 @@ void NeuralCellularMatrix::learn(float modulator) {
         }
     }
 
+    // Sheet links: each active sheet cell learns from each neighbour separately (association +
+    // order with the sheet order window), under its own budget (trimmed like the 3D links).
+    if (!P2N_.empty()) {
+        const float sheetRate = rate * cfg_.learning.sheet_rate;
+        const float sheetBudget = std::max(0.0f, cfg_.learning.sheet_budget);
+        const float* s2c = s2_.cur.data();
+        const float* tr2 = orderTrace2_.data();
+        const uint32_t S = S_;
+        const size_t SS = SS_;
+        const int64_t cells = int64_t(Q_);
+        auto blockOf = [&](size_t q, int dy, int dx) {
+            const uint32_t o = uint32_t((dy + 1) * 3 + (dx + 1));
+            return P2N_.data() + (q * 8 + (o < 4 ? o : o - 1)) * C2 * C2;
+        };
+#pragma omp parallel for schedule(dynamic, 256)
+        for (int64_t qi = 0; qi < cells; ++qi) {
+            const size_t q = size_t(qi);
+            const float* post2 = s2c + q * C2;
+            const float* pre2 = tr2 + q * C2;
+            if (!anyActive(post2, pre2, C2)) continue;
+            const size_t v = q / SS, cell = q % SS;
+            const int sy = int(cell / S), sx = int(cell % S);
+            float total[C2] = {}, live[C2] = {};
+            for (int dy = -1; dy <= 1; ++dy)
+                for (int dx = -1; dx <= 1; ++dx) {
+                    if (dx == 0 && dy == 0) continue;
+                    const int ny = sy + dy, nx = sx + dx;
+                    if (ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
+                    const size_t qn = v * SS + size_t(ny) * S + size_t(nx);
+                    if (inhib2_[qn]) continue;
+                    float* block = blockOf(q, dy, dx);
+                    hebbianBlock<C2>(block, post2, pre2, s2c + qn * C2, tr2 + qn * C2, 0.0f, 0.0f, sheetRate, lambda,
+                                     0.0f, nullptr, nullptr, post2, s2c + qn * C2, 0.0f, nullptr, linkMax, replay);
+                    for (uint32_t a = 0; a < C2; ++a)
+                        for (uint32_t b = 0; b < C2; ++b) {
+                            const float w = block[size_t(a) * C2 + b];
+                            total[a] += w;
+                            live[a] += w > 0.0f ? 1.0f : 0.0f;
+                        }
+                }
+            bool over = false;
+            for (uint32_t a = 0; a < C2; ++a) over = over || total[a] > sheetBudget;
+            if (!over) continue;
+            for (int dy = -1; dy <= 1; ++dy)
+                for (int dx = -1; dx <= 1; ++dx) {
+                    if (dx == 0 && dy == 0) continue;
+                    const int ny = sy + dy, nx = sx + dx;
+                    if (ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
+                    if (inhib2_[v * SS + size_t(ny) * S + size_t(nx)]) continue;
+                    float* block = blockOf(q, dy, dx);
+                    for (uint32_t a = 0; a < C2; ++a) {
+                        if (total[a] <= sheetBudget) continue;
+                        float* row = block + size_t(a) * C2;
+                        if (trim) {
+                            const float cutA = (total[a] - sheetBudget) / std::max(1.0f, live[a]);
+                            for (uint32_t b = 0; b < C2; ++b) row[b] = std::max(0.0f, row[b] - cutA);
+                        } else {
+                            for (uint32_t b = 0; b < C2; ++b) row[b] *= sheetBudget / total[a];
+                        }
+                    }
+                }
+        }
+    }
+
     const float modRate = std::max(0.0f, cfg_.learning.modulation_rate);
     if (modRate > 0.0f) {
         const float* s2 = s2_.cur.data();
@@ -1586,7 +1670,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
            bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
-           bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
+           bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(P2_) + bytes(P2N_) + bytes(orderTrace2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }
 
 } // namespace ncm

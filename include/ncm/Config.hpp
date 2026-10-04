@@ -170,6 +170,11 @@ struct LearningParams {
     // (e.g. streamed letters) can be stored. Learning-rate multiplier; 0 = off.
     float sheet_rate = 0.0f;
     float sheet_budget = 0.5f; // per output channel of each sheet cell
+    // Sheet links (with sheet_rate > 0): each sheet cell learns a separate block from each of its
+    // 8 neighbours (instead of one block from their sum) with an order window like the 3D level,
+    // so the 512 cells x channels inside every voxel can store which detailed pattern follows
+    // which (e.g. word -> partner word) and give it back when the voxel recalls. 0 = off.
+    float sheet_links = 0.0f;
     float consolidation_rate = 0.0f;
     // Weakest-first trimming: when a channel's learned input exceeds its budget, the excess is
     // taken off every link by the same amount (links that reach zero are let go) instead of
