@@ -8,7 +8,12 @@ Default rule = version B memory + clock_reset + field_sweep + line_recency 0.6
   Archive: tools/results/evolution2_2026-10-03. Learned inhibition (istdp) is now off.
 + per-link bounds link_bound 0.3, soft_bound 0 (adopted 2026-10-04): 70/70 checks, 32w 100%, 64w 87%.
   Built, off by default: budget_trim (worse), replay (stuck on first memory), sheet_links (no gain),
-  sheet_far (testing). Next: magnet fix, whole-word code, recall settling.
+  sheet_far (no gain). Tested, not adopted: hub_norm, recall_settle, word_context (ended-letter
+  version passes 70/70 but no gain), rewire (growing wiring, no gain), offset_adapt (worse).
++ quiet ears silence_gate 0.6 (adopted 2026-10-05): 70/70, 128w 72% vs 61% (dev 3004-3007).
+  Diagnosis (NCM_ECHO): after a cue its own echo is ~2x the recalled partner; failing pairs are
+  cues that look like another stored word (light~night). Echo removed -> ~80% at 128 words.
+  Same pairs fail on every brain: the limit comes from word similarity, not wiring.
 
 ## What we know (evidence in tools/results/)
 - evolution_2026-10-01/FINDINGS.md: 120 brain tests, 44 versions. Main failures: retention 50/120,

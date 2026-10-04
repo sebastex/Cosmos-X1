@@ -26,6 +26,9 @@ It is the best version measured so far on the big brain (dev preset):
 - Per-link bounds (`link_bound` 0.3, `soft_bound` 0, adopted 2026-10-04): each link has its own
   room, so new memories are written at full strength. Fresh dev brains 3000-3009: checks 70/70;
   32 words 100%, 64 words 87% truly recalled (was 71%).
+- Quiet ears (`silence_gate` 0.6, adopted 2026-10-05): without input the fixed paths (the echo
+  of what was heard) turn down while learned links stay full, so the recalled partner wins over
+  the cue's echo. Checks 70/70; 128 words truly recalled 72% (was 61%) on fresh dev brains.
 
 Measured earlier (true recall of the partner word, `--test pairload`, seeds 22-31): 16 words 91%,
 32 words 68% (the previous main version was at chance); an untrained twin stays at chance.
