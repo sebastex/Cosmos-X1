@@ -189,6 +189,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"link_bound", &c.learning.link_bound},
         {"replay", &c.learning.replay},
         {"offset_adapt", &c.learning.offset_adapt},
+        {"silence_gate", &c.learning.silence_gate},
         {"rewire", &c.learning.rewire},
         {"rewire_prune", &c.learning.rewire_prune},
         {"rewire_age", &c.learning.rewire_age},

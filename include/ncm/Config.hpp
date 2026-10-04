@@ -229,6 +229,11 @@ struct LearningParams {
     // what the word recalls (its associate) can come forward instead of the word's own echo.
     // 0 = off.
     float offset_adapt = 0.0f;
+    // Quiet ears (silence_gate): while no input arrives, each voxel turns its fixed input paths
+    // (the fading trace of what was heard) down by silence_gate and keeps its learned links at
+    // full strength, so after a word ends the cells follow what memory brings back (the
+    // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
+    float silence_gate = 0.0f;
     float replay = 0.0f;
     float replay_share = 0.01f;
     float replay_after = 30.0f;

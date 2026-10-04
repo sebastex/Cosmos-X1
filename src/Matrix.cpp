@@ -1099,7 +1099,10 @@ void NeuralCellularMatrix::step3D() {
             const float ctxGain = cfg_.learning.word_context * afferentGain;
             const float settle = cfg_.learning.recall_settle * (1.0f - std::clamp(modulator_, 0.0f, 1.0f));
             const float* own = s3 + v * C3;
+            // Quiet ears: without input, the fixed paths (the echo of what was heard) turn down.
+            const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
             for (uint32_t c = 0; c < C3; ++c) {
+                in[c] *= quiet;
                 float learned = plScale * pl[c] + pl4[c];
                 if (load) learned /= 1.0f + hub * load[c];
                 if (ctx) in[c] += ctxGain * ctx[c];
