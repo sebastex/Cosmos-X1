@@ -528,7 +528,9 @@ void NeuralCellularMatrix::step2D() {
     // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
     // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
     // can settle instead of wearing itself out.
-    const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
+    // Replay keeps fatigue at full strength: a replayed memory tires and ends, so the next kick
+    // can start another one (in recall mode the first memory kept replaying itself).
+    const float fatigueMode = replaying() ? 1.0f : std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
                               (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
     // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
     // input is never switched off (subtractive fatigue silenced whole fields under held input).
@@ -703,7 +705,9 @@ void NeuralCellularMatrix::step3D() {
     // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
     // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
     // can settle instead of wearing itself out.
-    const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
+    // Replay keeps fatigue at full strength: a replayed memory tires and ends, so the next kick
+    // can start another one (in recall mode the first memory kept replaying itself).
+    const float fatigueMode = replaying() ? 1.0f : std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
                               (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
     // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
     // input is never switched off (subtractive fatigue silenced whole fields under held input).
