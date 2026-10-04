@@ -90,6 +90,8 @@ public:
     }
     // Whole-word code: the letter being heard has ended; its pattern joins the word context.
     void endLetter();
+    // Tiring after hearing: input has just ended; recently active voxels tire by k x activity.
+    void adaptToHeard(float k);
     // Growing wiring: links rewired so far (diagnostic).
     uint64_t rewiredLinks() const { return rewired_; }
 

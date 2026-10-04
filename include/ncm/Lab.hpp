@@ -53,6 +53,7 @@ public:
         // Onset after a pause: the slower clocks start a fresh cycle, so a word is cut into the
         // same chunks whether it follows a pause or another word.
         if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f) clock_.resetPhase();
+        if (!fingerprint && !wasSilent_ && cfg_.learning.offset_adapt > 0.0f) m_->adaptToHeard(cfg_.learning.offset_adapt);
         if (fingerprint && wasSilent_ && cfg_.learning.word_context != 0.0f) m_->resetWordContext();
         if (!fingerprint) lastChar_ = 0;
         wasSilent_ = fingerprint == nullptr;

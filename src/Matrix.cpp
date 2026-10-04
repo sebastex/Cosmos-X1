@@ -812,6 +812,18 @@ void NeuralCellularMatrix::rewireLinks(const float* post) {
     rewired_ += made;
 }
 
+void NeuralCellularMatrix::adaptToHeard(float k) {
+    if (k <= 0.0f || orderTrace3_.empty()) return;
+    const float perChannel = float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
+#pragma omp parallel for schedule(static)
+    for (int64_t vi = 0; vi < int64_t(V_); ++vi) {
+        const float* tr = orderTrace3_.data() + size_t(vi) * C3;
+        float a = 0.0f;
+        for (uint32_t c = 0; c < C3; ++c) a += tr[c];
+        fatigue3_[size_t(vi)] += k * a * perChannel / float(C3); // in firing units, like fatigue itself
+    }
+}
+
 void NeuralCellularMatrix::endLetter() {
     if (letter3_.empty()) return;
     // A letter heard for less than a 3D step still counts (its sheets reach the voxels next step).

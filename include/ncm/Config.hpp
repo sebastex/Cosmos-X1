@@ -224,6 +224,11 @@ struct LearningParams {
     float rewire_prune = 0.05f;
     float rewire_age = 200.0f;
     float rewire_samples = 32.0f;
+    // Tiring after hearing (offset_adapt): when input ends, every voxel's fatigue rises by
+    // offset_adapt times its recent activity, so the cells the heard word used step aside and
+    // what the word recalls (its associate) can come forward instead of the word's own echo.
+    // 0 = off.
+    float offset_adapt = 0.0f;
     float replay = 0.0f;
     float replay_share = 0.01f;
     float replay_after = 30.0f;
