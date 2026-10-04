@@ -110,7 +110,11 @@ const std::vector<std::string>& evolvedRule() {
         "plastic_budget=5.67831",
         "sheet_neighbour=0.0104",
         "sheet_self=0.1184",
-        "soft_bound=0.82446",
+        // Per-link bounds (adopted 2026-10-04): each link strengthens by its own room (link_bound
+        // 0.3) instead of the channel-wide room (soft_bound off), so new memories are written at
+        // full strength however full a cell already is. Fresh dev brains 3000-3009: checks 70/70
+        // (was 68/70); 32 words truly recalled 100% (was 94%), 64 words 87% (was 71%).
+        "soft_bound=0", "link_bound=0.3",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};

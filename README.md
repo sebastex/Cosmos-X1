@@ -23,6 +23,9 @@ It is the best version measured so far on the big brain (dev preset):
   partial covariance (0.58), shorter mode/order memory. Fair check on fresh dev brains 3000-3009:
   64 words truly recalled 73% (previous Prime 37%, runner-up c241 53%); checks 68/70 (same as before;
   one capacity and one continual miss, old memories kept).
+- Per-link bounds (`link_bound` 0.3, `soft_bound` 0, adopted 2026-10-04): each link has its own
+  room, so new memories are written at full strength. Fresh dev brains 3000-3009: checks 70/70;
+  32 words 100%, 64 words 87% truly recalled (was 71%).
 
 Measured earlier (true recall of the partner word, `--test pairload`, seeds 22-31): 16 words 91%,
 32 words 68% (the previous main version was at chance); an untrained twin stays at chance.
