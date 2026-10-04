@@ -90,6 +90,8 @@ public:
     }
     // Whole-word code: the letter being heard has ended; its pattern joins the word context.
     void endLetter();
+    // Growing wiring: links rewired so far (diagnostic).
+    uint64_t rewiredLinks() const { return rewired_; }
 
     // Share of a fingerprint's motor-surface lines whose exit cells are active:
     // how strongly the matrix is "about to say" that character (spec Section 5A).
@@ -219,6 +221,9 @@ private:
     AVec<float> context3_; // per voxel channel: ended letters of the current word (whole-word code)
     AVec<float> letter3_;  // per voxel channel: activity summed over the letter being heard
     uint32_t letterSteps_ = 0;
+    std::vector<uint32_t> linkBirth_; // growing wiring: learning step each long-range link was made
+    uint64_t rewired_ = 0;
+    void rewireLinks(const float* post);
     uint64_t step3Count_ = 0; // 3D steps so far (seeds the spontaneous kicks)
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.

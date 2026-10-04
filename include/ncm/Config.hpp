@@ -214,6 +214,16 @@ struct LearningParams {
     // the learned links can bring in the rest of it. Scaled by (1 - mode): no effect while
     // encoding. 0 = off.
     float recall_settle = 0.0f;
+    // Growing wiring (rewire = every how many learning steps; 0 = off): an active voxel drops
+    // a long-range link that has stayed weak (its strength below rewire_prune times the voxel's
+    // strongest link, and older than rewire_age learning steps) and grows a new one to a voxel
+    // of its field that is firing at the same moment (the most active of rewire_samples random
+    // voxels; none firing = keep the link). The new link starts empty; learning strengthens it
+    // only if the two keep firing together. The number of links stays the same.
+    float rewire = 0.0f;
+    float rewire_prune = 0.05f;
+    float rewire_age = 200.0f;
+    float rewire_samples = 32.0f;
     float replay = 0.0f;
     float replay_share = 0.01f;
     float replay_after = 30.0f;

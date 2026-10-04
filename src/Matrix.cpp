@@ -741,6 +741,77 @@ void NeuralCellularMatrix::step2D() {
 
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
 // three fields, and a summary from each voxel's own 2D sheet.
+// Growing wiring: each active voxel decides for itself. A long-range link that stayed weak is
+// let go and regrown toward a voxel of the same field that is firing now (found by sampling a
+// few random voxels, like a growing fibre finding active partners). Blocks start empty.
+void NeuralCellularMatrix::rewireLinks(const float* post) {
+    const uint32_t K = cfg_.long_range_links;
+    if (K == 0) return;
+    if (linkBirth_.size() != V_ * K) linkBirth_.assign(V_ * K, 0);
+    const uint32_t now = uint32_t(learnStats_.calls);
+    const float prune = std::max(0.0f, cfg_.learning.rewire_prune);
+    const uint32_t age = uint32_t(std::max(0.0f, cfg_.learning.rewire_age));
+    const uint32_t samples = std::max<uint32_t>(1, uint32_t(cfg_.learning.rewire_samples));
+    const float* recent = orderTrace3_.empty() ? post : orderTrace3_.data();
+    auto activity = [&](size_t u) {
+        float a = 0.0f;
+        for (uint32_t c = 0; c < C3; ++c) a += recent[u * C3 + c];
+        return a;
+    };
+    uint64_t made = 0;
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64) reduction(+ : made)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        if (inhib3_[v] || isSilent(post + v * C3, C3)) continue; // only cells firing now grow
+        // Strength of every link (fast + slow part).
+        float strength[256];
+        float strongest = 0.0f;
+        const uint32_t KK = std::min<uint32_t>(K, 256);
+        for (uint32_t l = 0; l < KK; ++l) {
+            const float* b = WL_.data() + (v * K + l) * C3 * C3;
+            const float* s = SL_.empty() ? nullptr : SL_.data() + (v * K + l) * C3 * C3;
+            float t = 0.0f;
+            for (size_t i = 0; i < size_t(C3) * C3; ++i) t += b[i] + (s ? s[i] : 0.0f);
+            strength[l] = t;
+            strongest = std::max(strongest, t);
+        }
+        if (strongest <= 0.0f) continue;
+        // The weakest old-enough link.
+        uint32_t weakest = KK;
+        for (uint32_t l = 0; l < KK; ++l) {
+            if (now - linkBirth_[v * K + l] < age || strength[l] >= prune * strongest) continue;
+            if (weakest == KK || strength[l] < strength[weakest]) weakest = l;
+        }
+        if (weakest == KK) continue;
+        // Grow toward the most active of a few random voxels of this field (not yet a partner).
+        const size_t fieldBase = (v / Vf_) * Vf_;
+        size_t best = v;
+        float bestActivity = 0.0f;
+        for (uint32_t k = 0; k < samples; ++k) {
+            const double u = hashUniform(cfg_.seed, kStreamRewire, (uint64_t(v) * 1000003ull + now) * 64 + k);
+            const size_t t = fieldBase + std::min(size_t(u * double(Vf_)), Vf_ - 1);
+            if (t == v || inhib3_[t]) continue;
+            const float a = activity(t);
+            if (a <= bestActivity) continue;
+            bool partner = false;
+            for (uint32_t l = 0; l < K && !partner; ++l) partner = lrTarget_[v * K + l] == t;
+            if (partner) continue;
+            best = t;
+            bestActivity = a;
+        }
+        if (best == v) continue;
+        const size_t link = v * K + weakest;
+        lrTarget_[link] = uint32_t(best);
+        linkBirth_[link] = now;
+        std::fill(WL_.data() + link * C3 * C3, WL_.data() + (link + 1) * C3 * C3, 0.0f);
+        if (!SL_.empty()) std::fill(SL_.data() + link * C3 * C3, SL_.data() + (link + 1) * C3 * C3, 0.0f);
+        if (!asmInh_.empty()) asmInh_[link] = 0.0f;
+        ++made;
+    }
+    rewired_ += made;
+}
+
 void NeuralCellularMatrix::endLetter() {
     if (letter3_.empty()) return;
     // A letter heard for less than a 3D step still counts (its sheets reach the voxels next step).
@@ -1483,6 +1554,7 @@ void NeuralCellularMatrix::learn(float modulator) {
         }
     }
     learnStats_.calls += 1;
+    if (cfg_.learning.rewire >= 1.0f && !replay && learnStats_.calls % uint64_t(cfg_.learning.rewire) == 0) rewireLinks(post);
     learnStats_.learners += learners;
     learnStats_.change += change;
     learnStats_.scaled += scaled;

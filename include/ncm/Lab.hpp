@@ -165,6 +165,8 @@ public:
     float lastModulator() const { return lastModulator_; }
     float lastMode() const { return mode_; } // encoding/recall mode applied (1 = learned links suppressed)
     ~Session() {
+        if (m_ && m_->rewiredLinks())
+            std::printf("  growing wiring: %llu links regrown%c", (unsigned long long)m_->rewiredLinks(), 10);
         if (std::getenv("NCM_PROFILE") && m_)
             std::fprintf(stderr, "profile: lines %.1fs, sheets %.1fs, voxels %.1fs, learning %.1fs\n", m_->time1D, m_->time2D,
                          m_->time3D, m_->timeLearn);
