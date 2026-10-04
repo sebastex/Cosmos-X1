@@ -11,6 +11,10 @@ on:
         description: Brains to test, as a list like [22,23,24]
         required: true
         default: "[22,23,24,25]"
+      env:
+        description: Extra environment settings, like NCM_PAIR_FAST=1
+        required: false
+        default: ""
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -27,8 +31,10 @@ jobs:
         env:
           ARGS: ${{ inputs.args }}
           SEED: ${{ matrix.seed }}
+          EXTRA_ENV: ${{ inputs.env }}
         run: |
           export OMP_NUM_THREADS=$(nproc)
+          [ -n "$EXTRA_ENV" ] && export $EXTRA_ENV
           ./build/cosmos_x1 $ARGS --seed $SEED | tee result_$SEED.txt
       - uses: actions/upload-artifact@v4
         if: always()
