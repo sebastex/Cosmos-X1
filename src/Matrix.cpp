@@ -177,7 +177,8 @@ template <uint32_t C>
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
                            float oja, const float* room, const float* predicted, const float* assocPost,
-                           const float* assocPre, float hetero, const float* preRoom) {
+                           const float* assocPre, float hetero, const float* preRoom, float linkMax = 0.0f,
+                           bool growOnly = false) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
@@ -190,9 +191,10 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
             // `hetero` times the covariance term (1 = full covariance, 0 = only active inputs
             // change). Silent inputs include other memories' cells, so this erases them.
             const float preTerm = assocPre[b] == 0.0f ? hetero * (0.0f - avgPre) : assocPre[b] - avgPre;
-            const float dw =
-                da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
-            const float grow = up * (preRoom ? preRoom[b] : 1.0f);
+            float dw = da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+            if (growOnly && dw < 0.0f) dw = 0.0f; // replay only strengthens
+            float grow = up * (preRoom ? preRoom[b] : 1.0f);
+            if (linkMax > 0.0f) grow *= std::max(0.0f, 1.0f - row[b] / linkMax); // per-link bound
             const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
             change += std::fabs(updated - row[b]);
             row[b] = updated;
@@ -677,6 +679,7 @@ void NeuralCellularMatrix::step2D() {
 // three fields, and a summary from each voxel's own 2D sheet.
 void NeuralCellularMatrix::step3D() {
     ScopeTimer timer_(time3D);
+    ++step3Count_;
     // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
     // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
     // can settle instead of wearing itself out.
@@ -943,6 +946,13 @@ void NeuralCellularMatrix::step3D() {
                 in[c] = u[c];
             }
         }
+        // Quiet-time replay: a spontaneous kick on one channel of a few deep voxels (each voxel
+        // decides for itself from a hash of its index and the step; no central choice).
+        if (replayKick_ > 0.0f && f > 0) {
+            uint64_t h = (uint64_t(v) + 1) * 0x9E3779B97F4A7C15ull ^ step3Count_ * 0xC2B2AE3D27D4EB4Full;
+            h ^= h >> 31; h *= 0xBF58476D1CE4E5B9ull; h ^= h >> 29;
+            if (double(h >> 11) * 0x1.0p-53 < double(replayShare_)) in[(h >> 3) % C3] += replayKick_;
+        }
         // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
         if (!usage3_.empty() && f > 0 && modulator_ > 0.0f) {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
@@ -1162,7 +1172,9 @@ void NeuralCellularMatrix::learn(float modulator) {
     ScopeTimer timer_(timeLearn);
     const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f);
     if (rate <= 0.0f) return;
-    const float lambda = cfg_.learning.order_gain;
+    // Replay: a recalled memory is played as one pattern, so it carries no order of its own.
+    const bool replay = replaying();
+    const float lambda = replay ? 0.0f : cfg_.learning.order_gain;
     // After step3D() swapped the buffers, `cur` holds the new state and `next` the previous one.
     const float* post = s3_.cur.data();
     const float* prev = s3_.next.data();
@@ -1173,9 +1185,11 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
     const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
     const bool useTrace = cfg_.learning.trace_tau > 0.0f;
-    const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
+    const float hetero = replay ? 0.0f : std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
     const float consolidate = S3_.empty() ? 0.0f : std::clamp(cfg_.learning.consolidation_rate, 0.0f, 1.0f);
     const float slowBudget = std::max(0.0f, cfg_.learning.consolidated_budget);
+    const bool trim = cfg_.learning.budget_trim > 0.5f;
+    const float linkMax = std::max(0.0f, cfg_.learning.link_bound);
     // Presynaptic budget: each source channel's total outgoing plastic strength, refreshed
     // every 20 learning steps (it changes slowly). A cell already wired strongly into stored
     // memories forms new outgoing links slowly, so new memories recruit fresh cells instead
@@ -1269,7 +1283,7 @@ void NeuralCellularMatrix::learn(float modulator) {
                                         soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr,
                                         useTrace ? trace3_.data() + v * C3 : pi,
                                         useTrace ? trace3_.data() + src * C3 : sp, hetero,
-                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr);
+                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax, replay);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
@@ -1284,36 +1298,66 @@ void NeuralCellularMatrix::learn(float modulator) {
                 if (factor[a] < 1.0f)
                     for (uint32_t b = 0; b < C3; ++b) block[size_t(a) * C3 + b] *= factor[a];
         };
-        forEachLearnedBlock(v, [&](float* block, size_t) { addRows(block); });
-        float factor[C3];
+        // Weakest-first trimming (budget_trim): the excess is taken off every live link of the
+        // channel by the same amount, so stray weak links are let go before memory links fade.
+        // The amount is the excess shared over the live links (links that would drop below zero
+        // give up less; the small remainder is trimmed on the next step).
+        auto countRows = [&](const float* block, float* live) {
+            for (uint32_t a = 0; a < C3; ++a)
+                for (uint32_t b = 0; b < C3; ++b) live[a] += block[size_t(a) * C3 + b] > 0.0f ? 1.0f : 0.0f;
+        };
+        auto trimRows = [&](float* block, const float* cut) {
+            for (uint32_t a = 0; a < C3; ++a)
+                if (cut[a] > 0.0f)
+                    for (uint32_t b = 0; b < C3; ++b) {
+                        float& wv = block[size_t(a) * C3 + b];
+                        wv = std::max(0.0f, wv - cut[a]);
+                    }
+        };
+        float live[C3] = {};
+        forEachLearnedBlock(v, [&](float* block, size_t) {
+            addRows(block);
+            if (trim) countRows(block, live);
+        });
+        float factor[C3], cut[C3];
         bool scale = false;
         for (uint32_t a = 0; a < C3; ++a) {
             factor[a] = total[a] > budget ? budget / total[a] : 1.0f;
+            cut[a] = trim && total[a] > budget && live[a] > 0.0f ? (total[a] - budget) / live[a] : 0.0f;
             scale = scale || factor[a] < 1.0f;
             scaled += double(total[a]) * (1.0 - double(factor[a]));
         }
-        if (scale) forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(block, factor); });
+        if (scale) {
+            if (trim) forEachLearnedBlock(v, [&](float* block, size_t) { trimRows(block, cut); });
+            else forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(block, factor); });
+        }
 
         // Consolidation: the slow part follows the fast part upward, then its own budget.
         if (consolidate > 0.0f) {
-            float slowTotal[C3] = {};
+            float slowTotal[C3] = {}, slowLive[C3] = {};
             forEachLearnedBlock(v, [&](float* block, size_t) {
                 float* slow = slowOf(block);
                 if (!slow) return; // blocks without a slow part (learned cue route)
                 for (size_t i = 0; i < size_t(C3) * C3; ++i) {
                     if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
                     slowTotal[i / C3] += slow[i];
+                    if (slow[i] > 0.0f) slowLive[i / C3] += 1.0f;
                 }
             });
-            float slowFactor[C3];
+            float slowFactor[C3], slowCut[C3];
             bool slowScale = false;
             for (uint32_t a = 0; a < C3; ++a) {
                 slowFactor[a] = slowTotal[a] > slowBudget ? slowBudget / slowTotal[a] : 1.0f;
+                slowCut[a] = trim && slowTotal[a] > slowBudget && slowLive[a] > 0.0f
+                                 ? (slowTotal[a] - slowBudget) / slowLive[a] : 0.0f;
                 slowScale = slowScale || slowFactor[a] < 1.0f;
             }
             if (slowScale)
                 forEachLearnedBlock(v, [&](float* block, size_t) {
-                    if (float* sb = slowOf(block)) scaleRows(sb, slowFactor);
+                    if (float* sb = slowOf(block)) {
+                        if (trim) trimRows(sb, slowCut);
+                        else scaleRows(sb, slowFactor);
+                    }
                 });
         }
     }

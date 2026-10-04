@@ -76,6 +76,11 @@ public:
     // mode: high M = encoding (learned connections turned down), low M = recall.
     void setModulator(float modulator) { modulator_ = modulator; }
 
+    // Quiet-time replay: spontaneous kicks of strength `kick` to a `share` of deep voxels per
+    // 3D step (0 = none), and strengthening-only learning while it is on.
+    void setReplay(float kick, float share) { replayKick_ = kick; replayShare_ = share; }
+    bool replaying() const { return replayKick_ > 0.0f; }
+
     // Share of a fingerprint's motor-surface lines whose exit cells are active:
     // how strongly the matrix is "about to say" that character (spec Section 5A).
     double motorOverlap(const std::vector<uint32_t>& fingerprint) const;
@@ -200,6 +205,8 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
+    float replayKick_ = 0.0f, replayShare_ = 0.0f;
+    uint64_t step3Count_ = 0; // 3D steps so far (seeds the spontaneous kicks)
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};

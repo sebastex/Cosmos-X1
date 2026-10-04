@@ -171,6 +171,25 @@ struct LearningParams {
     float sheet_rate = 0.0f;
     float sheet_budget = 0.5f; // per output channel of each sheet cell
     float consolidation_rate = 0.0f;
+    // Weakest-first trimming: when a channel's learned input exceeds its budget, the excess is
+    // taken off every link by the same amount (links that reach zero are let go) instead of
+    // shrinking every link by the same share. Weak, stray links go first; the strong links that
+    // carry stored memories lose only a little. 0 = off (shrink by share).
+    float budget_trim = 0.0f;
+    // Per-link bound: each link strengthens in proportion to its own room, 1 - w / link_bound,
+    // so a new memory is written at full strength however full the channel already is (the
+    // channel-wide soft bound wrote newer memories weaker). 0 = off.
+    float link_bound = 0.0f;
+    // Quiet-time replay (like sleep): after replay_after 1D ticks of silence while learning is
+    // on, the learned links transmit again (recall mode), a small share of deep voxels
+    // (replay_share per 3D step) gets a spontaneous kick of strength `replay`, the learned links
+    // complete it into a stored memory, and that memory is re-strengthened at replay_rate times
+    // the learning rate (strengthening only: replay never weakens anything directly; the budget
+    // still applies). Each replayed memory tires, so the next kick finds another. 0 = off.
+    float replay = 0.0f;
+    float replay_share = 0.01f;
+    float replay_after = 30.0f;
+    float replay_rate = 0.25f;
     float consolidated_budget = 0.5f; // per output channel, like plastic_budget
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
