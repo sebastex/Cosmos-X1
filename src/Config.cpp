@@ -47,7 +47,7 @@ const std::vector<std::string>& evolvedRule() {
         // Competition, gain control and projection strength balanced by a short search
         // (tools/foundation_search.py) for steadiness under held input, volume use, repeatability
         // and recall at small and dev sizes, strong and weak inputs.
-        "winners3=3",
+        "winners3=5",
         // Input-field depth: interior Input voxels hear random sensory-face voxels, so the Input
         // field uses its whole volume too (helps the bigger matrix most).
         "input_depth_spread=4", "input_depth_gain=0.179",
@@ -60,9 +60,9 @@ const std::vector<std::string>& evolvedRule() {
         // down learned input, learned 4D links muted while encoding (no capture of new words onto
         // old cells), full muting of learned links in silence, and learned inhibition (each
         // voxel's inhibition learns to balance its excitation).
-        "long_range_links=64", "presynaptic_bound=1",
+        "long_range_links=64", "presynaptic_bound=0.89812",
         "agc_input_only=1", "agc_plastic=1", "encoding_suppression_4d=1",
-        "istdp_rate=50",
+        "istdp_rate=0",  // learned inhibition switched off by evolution 2 (c332, 2026-10-04)
         // Rhythm restart (adopted 2026-10-01): the 2D and 3D clocks restart their cycle after a word
         // gap and when input begins after a pause, so a word is cut into the same chunks every
         // time it is heard (a streamed word was only 25% alike to itself without it; 67-97% with).
@@ -74,40 +74,43 @@ const std::vector<std::string>& evolvedRule() {
         // its full strength); a word then keeps its identity whatever came before it. Honest word
         // memory (true recall of the partner word, dev seeds 22-31): 32 words 68% (was at chance),
         // 16 words 91%; held-letter capacity holds.
-        "field_sweep=1", "line_recency=0.6",
+        "field_sweep=1", "line_recency=0.48403",
         // Two-route memory (adopted 2026-10-01): pattern separation at storage (channels already
         // loaded with memories are harder to recruit while encoding, separation 3) and a learned
         // cue route (the feedforward spread sources learn which input leads to the stored cells,
         // transmitted at half strength). Keeping old memories while learning new: 7/10 -> 9/10,
         // all checks 65/70 -> 67/70 on fresh dev brains 2002-2011.
-        "separation=3", "spread_plastic=0.5",
-        "channel_winners3=4",
-        "covariance=1",
+        "separation=4.94742", "spread_plastic=0.45398",
+        // Evolution 2 winner c332 (adopted 2026-10-04; fair check on fresh dev brains 3000-3009):
+        // 64 words truly recalled 37% -> 73%, checks 68/70 -> 68/70. Also tunes the values below.
+        "assembly_inhibition=0.00321", "consolidated_budget=0.50842", "consolidation_rate=0.0056", "istdp_target=0.01627",
+        "channel_winners3=2",
+        "covariance=0.58435",
         "downward_gain=0.0224",
         "encoding_suppression=1",
         "fatigue_gain2=1.0101",
-        "fatigue_gain3=0.0638",
+        "fatigue_gain3=0.04569",
         "fatigue_tau3=12.9342",
         "fire_gain2=4.8308",
         "fire_gain3=3.5738",
         "fire_threshold2=0.01",
-        "fire_threshold3=0.0256",
-        "hetero_ltd=1",
+        "fire_threshold3=0.02107",
+        "hetero_ltd=0.9733",
         "homeostasis3=0.0012",
-        "learning_rate=0.04",
+        "learning_rate=0.02222",
         "line_upward_gain=0.5199",
         "link4d=0.2482",
         "link4d_backward=0.0217",
         "long_range=0.00205",
-        "mode_tau=30",
+        "mode_tau=13.44333",
         "modulation_rate=0",
         "modulator_tau=0",
-        "order_gain=4",
-        "order_tau=5",
-        "plastic_budget=4",
+        "order_gain=6.23347",
+        "order_tau=2.90192",
+        "plastic_budget=5.67831",
         "sheet_neighbour=0.0104",
         "sheet_self=0.1184",
-        "soft_bound=1",
+        "soft_bound=0.82446",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};

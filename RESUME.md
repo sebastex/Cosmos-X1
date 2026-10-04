@@ -2,7 +2,10 @@
 
 ## Main version: Cosmos Prime (git tag cosmos-prime, branch master)
 Default rule = version B memory + clock_reset + field_sweep + line_recency 0.6
-+ two-route memory: separation 3 + spread_plastic 0.5 (adopted 2026-10-01; 67/70 vs 65/70 on dev 2002-2011).
++ two-route memory: separation 3 + spread_plastic 0.5 (adopted 2026-10-01; 67/70 vs 65/70 on dev 2002-2011)
++ evolution 2 winner c332 (adopted 2026-10-04): fresh dev brains 3000-3009, checks 68/70,
+  64 words truly recalled 93/128 = 73% (old Prime 47/128 = 37%, c241 68/128 = 53% with 70/70).
+  Archive: tools/results/evolution2_2026-10-03. Learned inhibition (istdp) is now off.
 
 ## What we know (evidence in tools/results/)
 - evolution_2026-10-01/FINDINGS.md: 120 brain tests, 44 versions. Main failures: retention 50/120,

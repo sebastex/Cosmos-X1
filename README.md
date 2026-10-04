@@ -1,12 +1,13 @@
 # Cosmos X1: Neural Cellular Matrix (NCM)
 
-## Cosmos Prime (main version, updated 2026-10-01)
+## Cosmos Prime (main version, updated 2026-10-04)
 
 **Cosmos Prime** is the main version: the default rule in `src/Config.cpp`, git tag `cosmos-prime`.
 It is the best version measured so far on the big brain (dev preset):
 
 - Memory foundation ("version B"): 64 learnable long-range partners per voxel, anti-hub learning,
-  strong learned links kept in check by learned inhibition, gain control that adapts only with input.
+  strong learned links kept in check by gain control that adapts only with input (learned
+  inhibition is built but switched off since evolution 2).
 - Rhythm restart (`clock_reset`): the 2D/3D clocks restart at word gaps and onsets, so a word is
   cut into the same chunks every time.
 - Front-to-back sweep (`field_sweep`): the four fields update in order within each step.
@@ -17,7 +18,13 @@ It is the best version measured so far on the big brain (dev preset):
   On fresh dev brains 2002-2011: all checks 67/70 (before 65/70), brains passing every check 8/10
   (before 6/10), keeping old memories while learning new 9/10 (before 7/10).
 
-Measured (true recall of the partner word, `--test pairload`, seeds 22-31): 16 words 91%,
+- Evolution 2 tuning (winner c332, adopted 2026-10-04): more winners per voxel (5) with fewer per
+  channel (2), slower learning (0.022) with a larger budget (5.7), stronger separation (4.9),
+  partial covariance (0.58), shorter mode/order memory. Fair check on fresh dev brains 3000-3009:
+  64 words truly recalled 73% (previous Prime 37%, runner-up c241 53%); checks 68/70 (same as before;
+  one capacity and one continual miss, old memories kept).
+
+Measured earlier (true recall of the partner word, `--test pairload`, seeds 22-31): 16 words 91%,
 32 words 68% (the previous main version was at chance); an untrained twin stays at chance.
 Official check: `--test suite` (CP2 recall, CP3 capacity, CP4 efficiency, CP5w word pairs, CP6,
 CP6b, CP7). Build: `build.ps1` (Windows) or `build.sh` (Linux) -> `build/cosmos_x1(.exe)`.
