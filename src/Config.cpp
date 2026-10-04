@@ -179,6 +179,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"sheet_rate", &c.learning.sheet_rate},
         {"sheet_budget", &c.learning.sheet_budget},
         {"sheet_links", &c.learning.sheet_links},
+        {"sheet_far", &c.learning.sheet_far},
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"budget_trim", &c.learning.budget_trim},
         {"link_bound", &c.learning.link_bound},

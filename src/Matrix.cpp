@@ -362,6 +362,31 @@ void NeuralCellularMatrix::initVoxelWeights() {
         }
     }
 
+    // Far sheet links: each sheet cell's own random partner voxels in its field, fixed for life.
+    if (cfg_.learning.sheet_rate > 0.0f && cfg_.learning.sheet_far >= 1.0f) {
+        K2_ = uint32_t(cfg_.learning.sheet_far);
+        F2_.assign(Q_ * K2_ * C2 * C3, 0.0f);
+        farTarget2_.resize(Q_ * K2_);
+        voxelOn_.assign(V_, 0);
+        if (orderTrace2_.empty()) orderTrace2_.assign(Q_ * C2, 0.0f);
+        const int64_t sheetCells = int64_t(Q_);
+#pragma omp parallel for schedule(static)
+        for (int64_t qi = 0; qi < sheetCells; ++qi) {
+            const size_t q = size_t(qi);
+            const size_t v = q / SS_;
+            const size_t fieldBase = (v / Vf_) * Vf_;
+            for (uint32_t k = 0; k < K2_; ++k) {
+                size_t t = v;
+                uint64_t attempt = 0;
+                while (t == v && Vf_ > 1) {
+                    const double u = hashUniform(cfg_.seed, kStreamSheetFar, (uint64_t(q) * K2_ + k) * 64 + attempt++);
+                    t = fieldBase + std::min(size_t(u * double(Vf_)), Vf_ - 1);
+                }
+                farTarget2_[q * K2_ + k] = uint32_t(t);
+            }
+        }
+    }
+
     // Pattern-separating 4D sources: random positions within a field, fixed for life. With
     // link4d_spread_scaled the count grows with the field's side length (link4d_spread is the
     // count at side 12): the active share of a field falls as 1/side (activity enters through a
@@ -560,12 +585,20 @@ void NeuralCellularMatrix::step2D() {
     // quiet and whose parent voxel is silent receives no input at all, so every cell's drive
     // and output are exactly 0; only its threshold and fatigue drift, updated in pass 2.
     const int64_t voxels = int64_t(V_);
+    const uint32_t K2 = K2_;
+    if (!F2_.empty()) {
+#pragma omp parallel for schedule(static)
+        for (int64_t vi = 0; vi < voxels; ++vi)
+            voxelOn_[size_t(vi)] = !inhib3_[size_t(vi)] && !isSilent(s3 + size_t(vi) * C3, C3) ? 1 : 0;
+    }
 #pragma omp parallel for schedule(static)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         bool quiet = sheetQuietCur_[v] && isSilent(s3 + v * C3, C3);
         for (size_t c = 0; quiet && c < SS; ++c)
             quiet = lineQuietCur_[v * SS + c] != 0 && (lineUpAny_.empty() || !lineUpAny_[v * SS + c]);
+        // A sheet with far links also hears its partner voxels.
+        for (size_t i = 0; quiet && !F2_.empty() && i < SS * K2; ++i) quiet = !voxelOn_[farTarget2_[v * SS * K2 + i]];
         sheetSkip_[v] = quiet ? 1 : 0;
     }
 
@@ -606,6 +639,11 @@ void NeuralCellularMatrix::step2D() {
         // Sheet learning: a learned block from the cell's summed neighbourhood (same Hebbian rule
         // as the 3D level), transmitted at the encoding/recall mode like other learned links.
         if (!P2_.empty() && anyNeighbour) matvecAdd(P2_.data() + q * C2 * C2, neighbours, in, C2, C2, rec2);
+        // Far sheet links: the partner voxels' states through this cell's learned blocks.
+        for (uint32_t k = 0; k < (F2_.empty() ? 0u : K2); ++k) {
+            const size_t t = farTarget2_[q * K2 + k];
+            if (voxelOn_[t]) matvecAdd(F2_.data() + (q * K2 + k) * C2 * C3, s3 + t * C3, in, C2, C3, rec2);
+        }
         if (!isSilent(s2 + q * C2, C2)) matvecAdd(M2_.data() + v * C2 * C2, s2 + q * C2, in, C2, C2, 1.0f);
         // Upward summary with divisive normalization: scaled by 1/sqrt(active line cells), so
         // a streamed character (one active cell per line) and a held one (a full line) drive
@@ -1526,6 +1564,60 @@ void NeuralCellularMatrix::learn(float modulator) {
         }
     }
 
+    // Far sheet links: each active sheet cell learns from its partner voxels (association plus
+    // order with the order windows of both levels: a partner that fired just before this cell
+    // strengthens, one that fires just after weakens), each link bounded, each output channel
+    // under the sheet budget.
+    if (!F2_.empty()) {
+        const float sheetRate = rate * cfg_.learning.sheet_rate;
+        const float sheetBudget = std::max(0.0f, cfg_.learning.sheet_budget);
+        const float* s2c = s2_.cur.data();
+        const float* tr2 = orderTrace2_.data();
+        const float* tr3 = useOrderTrace ? orderTrace3_.data() : prev;
+        const uint32_t K2 = K2_;
+        const int64_t cells = int64_t(Q_);
+#pragma omp parallel for schedule(dynamic, 256)
+        for (int64_t qi = 0; qi < cells; ++qi) {
+            const size_t q = size_t(qi);
+            const float* post2 = s2c + q * C2;
+            const float* own = tr2 + q * C2;
+            if (!anyActive(post2, own, C2)) continue;
+            float total[C2] = {};
+            bool changed = false;
+            for (uint32_t k = 0; k < K2; ++k) {
+                const size_t t = farTarget2_[q * K2 + k];
+                float* W = F2_.data() + (q * K2 + k) * C2 * C3;
+                const float* pre = post + t * C3;
+                const float* preTr = tr3 + t * C3;
+                if (!inhib3_[t] && anyActive(pre, preTr, C3)) {
+                    changed = true;
+                    for (uint32_t a = 0; a < C2; ++a) {
+                        const float pa = post2[a], qa = own[a];
+                        if (pa == 0.0f && qa == 0.0f) continue;
+                        float* row = W + size_t(a) * C3;
+                        for (uint32_t b = 0; b < C3; ++b) {
+                            float dw = pa * pre[b] + lambda * (preTr[b] * pa - pre[b] * qa);
+                            if (replay && dw < 0.0f) dw = 0.0f;
+                            const float grow = linkMax > 0.0f ? std::max(0.0f, 1.0f - row[b] / linkMax) : 1.0f;
+                            row[b] = std::max(0.0f, row[b] + sheetRate * (dw > 0.0f ? grow * dw : dw));
+                        }
+                    }
+                }
+                for (uint32_t a = 0; a < C2; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) total[a] += W[size_t(a) * C3 + b];
+            }
+            if (!changed) continue;
+            for (uint32_t a = 0; a < C2; ++a) {
+                if (total[a] <= sheetBudget) continue;
+                const float f = sheetBudget / total[a];
+                for (uint32_t k = 0; k < K2; ++k) {
+                    float* row = F2_.data() + (q * K2 + k) * C2 * C3 + size_t(a) * C3;
+                    for (uint32_t b = 0; b < C3; ++b) row[b] *= f;
+                }
+            }
+        }
+    }
+
     const float modRate = std::max(0.0f, cfg_.learning.modulation_rate);
     if (modRate > 0.0f) {
         const float* s2 = s2_.cur.data();
@@ -1674,7 +1766,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
            bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
-           bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(P2_) + bytes(P2N_) + bytes(orderTrace2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
+           bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(P2_) + bytes(P2N_) + bytes(orderTrace2_) + bytes(F2_) + bytes(farTarget2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }
 
 } // namespace ncm

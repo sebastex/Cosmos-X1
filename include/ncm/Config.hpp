@@ -175,6 +175,12 @@ struct LearningParams {
     // so the 512 cells x channels inside every voxel can store which detailed pattern follows
     // which (e.g. word -> partner word) and give it back when the voxel recalls. 0 = off.
     float sheet_links = 0.0f;
+    // Far sheet links (with sheet_rate > 0): each sheet cell learns links from this many random
+    // voxels elsewhere in its field (its own partners, fixed for life). A memory is a group of
+    // cells firing together; with these, the inner detail of each cell in the group is linked to
+    // the other cells of the group too, so the group can bring back its inner detail (the sheets
+    // hold 32x the units of the voxels). 0 = off.
+    float sheet_far = 0.0f;
     float consolidation_rate = 0.0f;
     // Weakest-first trimming: when a channel's learned input exceeds its budget, the excess is
     // taken off every link by the same amount (links that reach zero are let go) instead of

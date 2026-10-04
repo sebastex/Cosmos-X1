@@ -214,6 +214,10 @@ private:
     AVec<float> P2_;               // sheet learning: per sheet cell, C2 x C2 block from its summed neighbourhood
     AVec<float> P2N_;              // sheet links: per sheet cell, 8 neighbours x C2 x C2
     AVec<float> orderTrace2_;      // sheet links: per sheet cell channel, decaying recent activity
+    AVec<float> F2_;               // far sheet links: per sheet cell, K2 partner voxels x C2 x C3
+    std::vector<uint32_t> farTarget2_; // far sheet links: per sheet cell, K2 partner voxels
+    std::vector<uint8_t> voxelOn_;  // far sheet links: excitatory voxel firing now (per 2D step)
+    uint32_t K2_ = 0;
 
     // Shared rules per level (evolved in Stage 5): row-major [out][in] channel matrices.
     AVec<float> W1_; // 3 offsets (left, self, right) x C1 x C1
