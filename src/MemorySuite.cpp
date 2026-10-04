@@ -1675,6 +1675,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     }
     const uint64_t rest = std::getenv("NCM_REST") ? std::stoull(std::getenv("NCM_REST")) : 0;
     const bool watch = std::getenv("NCM_REPLAY_WATCH") != nullptr;
+    const bool echo = std::getenv("NCM_ECHO") != nullptr;
     for (int learning = 1; learning >= (fast ? 1 : 0); --learning) {
         Session s(cfg, learning == 1);
         std::vector<unsigned> replayed(total, 0);
@@ -1759,6 +1760,17 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     ownAlone.push_back(s.present(bw2, 4 * bw2.size(), 1.0f, true, bw2.size()));
                     s.silence(kGap, false);
                 }
+                // Echo check (NCM_ECHO): every cue word heard alone the same way, to see how much of
+                // the activity after a cue is the cue's own echo.
+                Patterns cueOwn;
+                if (echo)
+                    for (size_t k = 0; k <= p; ++k) {
+                        const std::string aw2 = words[2 * k] + " ";
+                        cueOwn.push_back(s.present(aw2, 4 * aw2.size(), 1.0f, true, aw2.size()));
+                        s.silence(kGap, false);
+                    }
+                double echoSum[2][4] = {}; // [wrong, right] x {after~cue, after~own, after~taken, cue~taken}
+                size_t echoN[2] = {0, 0}, rightNoEcho = 0;
                 s.setLearning(learning == 1);
                 // Stored links, read directly (no dynamics): the learned flow from each cue word's
                 // own shape into every partner's shape, and back. Tells "not stored" from "stored
@@ -1863,6 +1875,27 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     }
                     rightOwn += ownO > bestO;
                     recalledOwn[k] = ownO > bestO;
+                    if (echo && learning) {
+                        const int ok = ownO > bestO ? 1 : 0;
+                        echoSum[ok][0] += lab::cosine(after, cueOwn[k]);
+                        echoSum[ok][1] += ownO;
+                        echoSum[ok][2] += ok ? 0.0 : bestO;
+                        echoSum[ok][3] += ok ? 0.0 : lab::cosine(cueOwn[k], ownAlone[bestOJ]);
+                        ++echoN[ok];
+                        // The same choice with the cue's own echo taken out of the activity.
+                        std::vector<double> rest = after;
+                        double dot = 0.0, nn = 0.0;
+                        for (size_t i = 0; i < rest.size(); ++i) {
+                            dot += rest[i] * cueOwn[k][i];
+                            nn += cueOwn[k][i] * cueOwn[k][i];
+                        }
+                        const double proj = nn > 0.0 ? dot / nn : 0.0;
+                        for (size_t i = 0; i < rest.size(); ++i) rest[i] = std::max(0.0, rest[i] - proj * cueOwn[k][i]);
+                        double o2 = lab::cosine(rest, ownAlone[k]), b2 = -1.0;
+                        for (size_t j = 0; j <= p; ++j)
+                            if (j != k) b2 = std::max(b2, lab::cosine(rest, ownAlone[j]));
+                        rightNoEcho += o2 > b2;
+                    }
                     marginOwn += (ownO - bestO) / double(p + 1);
                     if (ownO <= bestO && learning) mistakesOwn += " " + words[2 * k] + ">" + words[2 * bestOJ + 1];
                 }
@@ -1875,6 +1908,19 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                             rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
                 finalRecall[learning] = double(rightOwn) / double(p + 1);
                 if (!mistakesOwn.empty()) std::printf("       wrong (cue>recalled):%s\n", mistakesOwn.c_str());
+                if (echo && learning) {
+                    for (int ok = 1; ok >= 0; --ok) {
+                        const double n = double(std::max<size_t>(1, echoN[ok]));
+                        std::printf("       echo check, %s pairs (%zu): activity after cue is like the cue %.3f, like own "
+                                    "partner %.3f", ok ? "right" : "wrong", echoN[ok], echoSum[ok][0] / n, echoSum[ok][1] / n);
+                        if (!ok)
+                            std::printf(", like the word taken %.3f; cue itself like the word taken %.3f",
+                                        echoSum[ok][2] / n, echoSum[ok][3] / n);
+                        std::printf("\n");
+                    }
+                    std::printf("       echo check: right with the cue's echo taken out %zu of %zu (%.0f%%)\n", rightNoEcho, p + 1,
+                                100.0 * double(rightNoEcho) / double(p + 1));
+                }
                 // Per pair (learning matrix): the stored link measured on the words as they were
                 // heard together (cue -> own partner vs the strongest cue -> other partner), and
                 // whether the partner was truly recalled. Tells "not stored" from "not expressed".
