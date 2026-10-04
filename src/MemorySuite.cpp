@@ -3,6 +3,7 @@
 // matrix that never learns, and passes only if learning makes recall measurably more
 // specific. Bars are fixed in advance.
 
+#include <map>
 #include <cmath>
 #include <numeric>
 #include <algorithm>
@@ -1393,6 +1394,42 @@ int runWordContinualTest(const Config& cfg, bool swapped) {
 // for every pair: shared letters and similarity of the 3D shapes. Then the same with the
 // common background removed (the mean shape of all words subtracted), and how much of each
 // word's activity lies in cells that are active for most words.
+// Look-alike words: how alike the matrix's own shapes of words that share most letters are
+// (light / night), against unrelated words. The shapes are heard as in the word-pair yardstick
+// (listening mode, no learning). Words recalled wrongly were mostly such look-alikes.
+int runLookAlikeTest(const Config& cfg) {
+    const std::vector<std::pair<std::string, std::string>> alike = {
+        {"light", "night"}, {"table", "fable"}, {"cider", "rider"}, {"ember", "amber"}, {"mango", "maple"},
+        {"voice", "juice"}, {"badge", "hedge"}, {"quest", "quilt"}, {"kneel", "knife"}, {"frost", "first"}};
+    const std::vector<std::pair<std::string, std::string>> unrelated = {
+        {"light", "candy"}, {"table", "mouse"}, {"cider", "storm"}, {"ember", "plant"}, {"mango", "river"},
+        {"voice", "bench"}, {"badge", "otter"}, {"quest", "honey"}, {"kneel", "zebra"}, {"frost", "apple"}};
+    Session s(cfg, false);
+    std::map<std::string, std::vector<double>> shape;
+    auto hear = [&](const std::string& w) {
+        if (shape.count(w)) return;
+        const std::string ws = w + " ";
+        shape[w] = s.present(ws, 4 * ws.size(), 1.0f, true, ws.size());
+        s.silence(kGap, false);
+    };
+    for (const auto* list : {&alike, &unrelated})
+        for (const auto& [a, b] : *list) {
+            hear(a);
+            hear(b);
+        }
+    auto mean = [&](const std::vector<std::pair<std::string, std::string>>& list) {
+        double m = 0.0;
+        for (const auto& [a, b] : list) m += lab::cosine(shape[a], shape[b]) / double(list.size());
+        return m;
+    };
+    const double ma = mean(alike), mu = mean(unrelated);
+    std::printf("Look-alike words: similarity of shapes (1 = identical)\n");
+    for (const auto& [a, b] : alike) std::printf("  %s / %s: %.3f\n", a.c_str(), b.c_str(), lab::cosine(shape[a], shape[b]));
+    std::printf("  look-alike pairs %.3f vs unrelated pairs %.3f -> gap %.3f (smaller = look-alikes kept apart)\n", ma, mu,
+                ma - mu);
+    return 0;
+}
+
 int runWordShapeTest(const Config& cfg, bool withSpace, uint64_t hold) {
     hold = std::max<uint64_t>(1, hold); // ticks each letter is held in the steadiness part (1 = normal stream)
     std::vector<std::string> items = {"apple ", "river ", "storm ", "candy ", "light ", "mouse ", "bench ", "think "};

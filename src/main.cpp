@@ -184,6 +184,7 @@ int main(int argc, char** argv) {
     if (opt.test == "wordcontext") return ncm::runWordContextTest(cfg);
     if (opt.test == "pairlinks") return ncm::runPairLinksTest(cfg);
     if (opt.test == "pairload") return ncm::runPairLoadTest(cfg, opt.storeTicks);
+    if (opt.test == "lookalike") return ncm::runLookAlikeTest(cfg);
     if (opt.test == "wordload") return ncm::runWordLoadTest(cfg, opt.storeTicks);
     if (opt.test == "wordshape") return ncm::runWordShapeTest(cfg, true, opt.storeTicks);
     if (opt.test == "wordshapenospace") return ncm::runWordShapeTest(cfg, false);
