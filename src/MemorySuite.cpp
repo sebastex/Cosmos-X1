@@ -1771,6 +1771,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     }
                 double echoSum[2][4] = {}; // [wrong, right] x {after~cue, after~own, after~taken, cue~taken}
                 size_t echoN[2] = {0, 0}, rightNoEcho = 0;
+                std::string stillWrong;
                 s.setLearning(learning == 1);
                 // Stored links, read directly (no dynamics): the learned flow from each cue word's
                 // own shape into every partner's shape, and back. Tells "not stored" from "stored
@@ -1892,9 +1893,17 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         const double proj = nn > 0.0 ? dot / nn : 0.0;
                         for (size_t i = 0; i < rest.size(); ++i) rest[i] = std::max(0.0, rest[i] - proj * cueOwn[k][i]);
                         double o2 = lab::cosine(rest, ownAlone[k]), b2 = -1.0;
-                        for (size_t j = 0; j <= p; ++j)
-                            if (j != k) b2 = std::max(b2, lab::cosine(rest, ownAlone[j]));
+                        size_t b2J = k;
+                        for (size_t j = 0; j <= p; ++j) {
+                            if (j == k) continue;
+                            const double sim = lab::cosine(rest, ownAlone[j]);
+                            if (sim > b2) {
+                                b2 = sim;
+                                b2J = j;
+                            }
+                        }
                         rightNoEcho += o2 > b2;
+                        if (o2 <= b2) stillWrong += " " + words[2 * k] + ">" + words[2 * b2J + 1];
                     }
                     marginOwn += (ownO - bestO) / double(p + 1);
                     if (ownO <= bestO && learning) mistakesOwn += " " + words[2 * k] + ">" + words[2 * bestOJ + 1];
@@ -1920,6 +1929,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     }
                     std::printf("       echo check: right with the cue's echo taken out %zu of %zu (%.0f%%)\n", rightNoEcho, p + 1,
                                 100.0 * double(rightNoEcho) / double(p + 1));
+                    if (!stillWrong.empty()) std::printf("       echo check: still wrong (cue>taken):%s\n", stillWrong.c_str());
                 }
                 // Per pair (learning matrix): the stored link measured on the words as they were
                 // heard together (cue -> own partner vs the strongest cue -> other partner), and

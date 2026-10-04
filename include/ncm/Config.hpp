@@ -234,6 +234,11 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Tiring of what was heard (heard_adapt): while input arrives, each voxel tracks how much of
+    // its firing its fixed input paths caused (the sound itself, not memory). When the input
+    // ends, its fatigue rises by heard_adapt times that, so the heard word's own cells step aside
+    // while cells that memory brought back (the associate) stay fresh. 0 = off.
+    float heard_adapt = 0.0f;
     float replay = 0.0f;
     float replay_share = 0.01f;
     float replay_after = 30.0f;

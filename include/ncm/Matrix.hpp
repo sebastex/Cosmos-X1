@@ -92,6 +92,8 @@ public:
     void endLetter();
     // Tiring after hearing: input has just ended; recently active voxels tire by k x activity.
     void adaptToHeard(float k);
+    // Tiring of what was heard: input has just ended; voxels tire by k x their input-driven firing.
+    void tireHeard(float k);
     // Growing wiring: links rewired so far (diagnostic).
     uint64_t rewiredLinks() const { return rewired_; }
 
@@ -223,6 +225,7 @@ private:
     AVec<float> context3_; // per voxel channel: ended letters of the current word (whole-word code)
     AVec<float> letter3_;  // per voxel channel: activity summed over the letter being heard
     uint32_t letterSteps_ = 0;
+    AVec<float> heard3_; // per voxel: recent firing caused by fixed input paths (tiring of what was heard)
     std::vector<uint32_t> linkBirth_; // growing wiring: learning step each long-range link was made
     uint64_t rewired_ = 0;
     void rewireLinks(const float* post);

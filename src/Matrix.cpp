@@ -265,6 +265,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         }
     }
     fatigue3_.assign(V_, 0.0f);
+    if (cfg.learning.heard_adapt > 0.0f) heard3_.assign(V_, 0.0f);
     if (cfg.learning.word_context != 0.0f) {
         context3_.assign(V_ * C3, 0.0f);
         letter3_.assign(V_ * C3, 0.0f);
@@ -824,6 +825,12 @@ void NeuralCellularMatrix::adaptToHeard(float k) {
     }
 }
 
+void NeuralCellularMatrix::tireHeard(float k) {
+    if (k <= 0.0f || heard3_.empty()) return;
+#pragma omp parallel for schedule(static)
+    for (int64_t vi = 0; vi < int64_t(V_); ++vi) fatigue3_[size_t(vi)] += k * heard3_[size_t(vi)];
+}
+
 void NeuralCellularMatrix::endLetter() {
     if (letter3_.empty()) return;
     // A letter heard for less than a 3D step still counts (its sheets reach the voxels next step).
@@ -1167,6 +1174,12 @@ void NeuralCellularMatrix::step3D() {
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
         average3_[v] += (final - average3_[v]) / avgTau;
+        if (!heard3_.empty() && sensoryOn_) {
+            // Share of this voxel's drive that came from fixed paths (what is being heard).
+            const float total = diagInput3_[v];
+            const float share = total > 0.0f ? std::clamp(1.0f - diagPlastic3_[v] / total, 0.0f, 1.0f) : 0.0f;
+            heard3_[v] += (firing3 * share - heard3_[v]) / std::max(1.0f, lp.fatigue_tau);
+        }
         if (traceTau > 0.0f) {
             float* tr = trace3_.data() + v * C3;
             const float* cell = out + v * C3;
