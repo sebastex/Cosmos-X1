@@ -197,6 +197,21 @@ struct LearningParams {
     // complete it into a stored memory, and that memory is re-strengthened at replay_rate times
     // the learning rate (strengthening only: replay never weakens anything directly; the budget
     // still applies). Each replayed memory tires, so the next kick finds another. 0 = off.
+    // Magnet fix (hub_norm): a cell already loaded with many memories (its share of the learned
+    // budget in use) gets its learned input divided by 1 + hub_norm * load, so the strongly
+    // wired cells of old memories cannot capture every new cue. 0 = off.
+    float hub_norm = 0.0f;
+    // Whole-word code (word_context): each voxel keeps a trace of its own activity since the
+    // current word began (reset at every word gap and onset after a pause, time constant
+    // word_tau 3D steps) and adds word_context times it to its input, so which cells answer a
+    // later letter depends on the letters before it in the same word (light vs night). 0 = off.
+    float word_context = 0.0f;
+    float word_tau = 8.0f;
+    // Recall settling (recall_settle): in recall mode a firing cell adds recall_settle times its
+    // own previous state to its input, so a partly recalled memory stays on for a few steps and
+    // the learned links can bring in the rest of it. Scaled by (1 - mode): no effect while
+    // encoding. 0 = off.
+    float recall_settle = 0.0f;
     float replay = 0.0f;
     float replay_share = 0.01f;
     float replay_after = 30.0f;

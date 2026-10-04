@@ -265,6 +265,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         }
     }
     fatigue3_.assign(V_, 0.0f);
+    if (cfg.learning.word_context > 0.0f) context3_.assign(V_ * C3, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
     trace3_.assign(V_ * C3, 0.0f);
@@ -990,8 +991,20 @@ void NeuralCellularMatrix::step3D() {
                 ds[kLearned4D] += pl4[c];
             }
             float plSum = 0.0f, inSum = 0.0f;
+            // Magnet fix: learned input divided by 1 + hub_norm * the channel's memory load.
+            const float hub = usage3_.empty() ? 0.0f : std::max(0.0f, cfg_.learning.hub_norm);
+            const float* load = hub > 0.0f ? usage3_.data() + v * C3 : nullptr;
+            // Whole-word code and recall settling: the voxel's own word-so-far trace and, in
+            // recall mode, its own previous state.
+            const float* ctx = context3_.empty() ? nullptr : context3_.data() + v * C3;
+            const float ctxGain = cfg_.learning.word_context * afferentGain;
+            const float settle = cfg_.learning.recall_settle * (1.0f - std::clamp(modulator_, 0.0f, 1.0f));
+            const float* own = s3 + v * C3;
             for (uint32_t c = 0; c < C3; ++c) {
-                const float learned = plScale * pl[c] + pl4[c];
+                float learned = plScale * pl[c] + pl4[c];
+                if (load) learned /= 1.0f + hub * load[c];
+                if (ctx) in[c] += ctxGain * ctx[c];
+                if (settle > 0.0f) in[c] += settle * own[c];
                 in[c] += learned;
                 plSum += learned;
                 inSum += std::max(0.0f, in[c]);
@@ -1056,6 +1069,12 @@ void NeuralCellularMatrix::step3D() {
             float* tr = trace3_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / traceTau;
+        }
+        if (!context3_.empty() && sensoryOn_) { // word-so-far trace, built while the word is heard
+            float* cx = context3_.data() + v * C3;
+            const float* cell = out + v * C3;
+            const float wt = std::max(1.0f, cfg_.learning.word_tau);
+            for (uint32_t c = 0; c < C3; ++c) cx[c] += (cell[c] - cx[c]) / wt;
         }
         if (orderTau > 0.0f) {
             float* tr = orderTrace3_.data() + v * C3;

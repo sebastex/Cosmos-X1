@@ -81,6 +81,10 @@ public:
     void setReplay(float kick, float share) { replayKick_ = kick; replayShare_ = share; }
     bool replaying() const { return replayKick_ > 0.0f; }
 
+    // Whole-word code: a new word begins (word gap or onset after a pause); every voxel clears
+    // its word-context trace.
+    void resetWordContext() { std::fill(context3_.begin(), context3_.end(), 0.0f); }
+
     // Share of a fingerprint's motor-surface lines whose exit cells are active:
     // how strongly the matrix is "about to say" that character (spec Section 5A).
     double motorOverlap(const std::vector<uint32_t>& fingerprint) const;
@@ -206,6 +210,7 @@ private:
     LearningStats learnStats_;
     float modulator_ = 0.0f;
     float replayKick_ = 0.0f, replayShare_ = 0.0f;
+    AVec<float> context3_; // per voxel channel: activity since the current word began (whole-word code)
     uint64_t step3Count_ = 0; // 3D steps so far (seeds the spontaneous kicks)
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
