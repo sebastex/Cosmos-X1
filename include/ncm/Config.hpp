@@ -201,10 +201,12 @@ struct LearningParams {
     // budget in use) gets its learned input divided by 1 + hub_norm * load, so the strongly
     // wired cells of old memories cannot capture every new cue. 0 = off.
     float hub_norm = 0.0f;
-    // Whole-word code (word_context): each voxel keeps a trace of its own activity since the
-    // current word began (reset at every word gap and onset after a pause, time constant
-    // word_tau 3D steps) and adds word_context times it to its input, so which cells answer a
-    // later letter depends on the letters before it in the same word (light vs night). 0 = off.
+    // Whole-word code (word_context): each voxel keeps a trace of what it did for the letters of
+    // the current word that have already ended (reset at every word gap and onset after a
+    // pause; each ended letter's pattern is folded in with time constant word_tau letters) and
+    // adds word_context times it to its input, so which cells answer a later letter depends on
+    // the letters before it in the same word (light vs night). A held letter never ends while
+    // held, so it is not fed back to itself. 0 = off.
     float word_context = 0.0f;
     float word_tau = 8.0f;
     // Recall settling (recall_settle): in recall mode a firing cell adds recall_settle times its

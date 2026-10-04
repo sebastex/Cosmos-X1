@@ -53,7 +53,8 @@ public:
         // Onset after a pause: the slower clocks start a fresh cycle, so a word is cut into the
         // same chunks whether it follows a pause or another word.
         if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f) clock_.resetPhase();
-        if (fingerprint && wasSilent_ && cfg_.learning.word_context > 0.0f) m_->resetWordContext();
+        if (fingerprint && wasSilent_ && cfg_.learning.word_context != 0.0f) m_->resetWordContext();
+        if (!fingerprint) lastChar_ = 0;
         wasSilent_ = fingerprint == nullptr;
         if (fingerprint) {
             // Surprise (spec Section 5A): read the matrix's guess before the character
@@ -120,6 +121,9 @@ public:
                 if (t >= recordFrom) accumulate(acc);
                 continue;
             }
+            // Whole-word code: a new character means the previous letter has ended.
+            if (cfg_.learning.word_context != 0.0f && c != lastChar_ && lastChar_ != 0) m_->endLetter();
+            lastChar_ = c;
             const auto& full = codebook_.fingerprint(char32_t(uint8_t(c)));
             if (fraction >= 1.0f) {
                 tick(&full, &full, allowLearning);
@@ -128,7 +132,10 @@ public:
                 tick(&cue, &full, allowLearning);
             }
             if (cfg_.clock_reset > 0.5f && c == ' ') clock_.resetPhase();
-            if (cfg_.learning.word_context > 0.0f && c == ' ') m_->resetWordContext();
+            if (cfg_.learning.word_context != 0.0f && c == ' ') {
+                m_->resetWordContext();
+                lastChar_ = 0;
+            }
             if (t >= recordFrom) accumulate(acc);
         }
         return acc;
@@ -182,6 +189,7 @@ private:
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
     bool wasSilent_ = true; // the previous tick had no input
     uint64_t quietTicks_ = 0; // 1D ticks of silence so far (quiet-time replay)
+    char lastChar_ = 0;       // character heard on the previous tick (whole-word code)
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input
     // ends, suppression builds up gradually, so memory circuits stay in recall mode briefly

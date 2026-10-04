@@ -265,7 +265,10 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         }
     }
     fatigue3_.assign(V_, 0.0f);
-    if (cfg.learning.word_context > 0.0f) context3_.assign(V_ * C3, 0.0f);
+    if (cfg.learning.word_context != 0.0f) {
+        context3_.assign(V_ * C3, 0.0f);
+        letter3_.assign(V_ * C3, 0.0f);
+    }
     average3_.assign(V_, cfg.target_activity);
     averageN3_.assign(V_, cfg.target_activity);
     trace3_.assign(V_ * C3, 0.0f);
@@ -738,9 +741,22 @@ void NeuralCellularMatrix::step2D() {
 
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
 // three fields, and a summary from each voxel's own 2D sheet.
+void NeuralCellularMatrix::endLetter() {
+    if (letter3_.empty()) return;
+    // A letter heard for less than a 3D step still counts (its sheets reach the voxels next step).
+    const float inv = 1.0f / float(std::max<uint32_t>(1, letterSteps_));
+    const float wt = std::max(1.0f, cfg_.learning.word_tau);
+    for (size_t i = 0; i < context3_.size(); ++i) {
+        context3_[i] += (letter3_[i] * inv - context3_[i]) / wt;
+        letter3_[i] = 0.0f;
+    }
+    letterSteps_ = 0;
+}
+
 void NeuralCellularMatrix::step3D() {
     ScopeTimer timer_(time3D);
     ++step3Count_;
+    if (!letter3_.empty() && sensoryOn_) ++letterSteps_;
     // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
     // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
     // can settle instead of wearing itself out.
@@ -1070,11 +1086,10 @@ void NeuralCellularMatrix::step3D() {
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / traceTau;
         }
-        if (!context3_.empty() && sensoryOn_) { // word-so-far trace, built while the word is heard
-            float* cx = context3_.data() + v * C3;
+        if (!letter3_.empty() && sensoryOn_) { // the letter being heard, summed
+            float* lt = letter3_.data() + v * C3;
             const float* cell = out + v * C3;
-            const float wt = std::max(1.0f, cfg_.learning.word_tau);
-            for (uint32_t c = 0; c < C3; ++c) cx[c] += (cell[c] - cx[c]) / wt;
+            for (uint32_t c = 0; c < C3; ++c) lt[c] += cell[c];
         }
         if (orderTau > 0.0f) {
             float* tr = orderTrace3_.data() + v * C3;
