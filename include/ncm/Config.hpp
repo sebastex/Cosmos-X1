@@ -170,80 +170,17 @@ struct LearningParams {
     // (e.g. streamed letters) can be stored. Learning-rate multiplier; 0 = off.
     float sheet_rate = 0.0f;
     float sheet_budget = 0.5f; // per output channel of each sheet cell
-    // Sheet links (with sheet_rate > 0): each sheet cell learns a separate block from each of its
-    // 8 neighbours (instead of one block from their sum) with an order window like the 3D level,
-    // so the 512 cells x channels inside every voxel can store which detailed pattern follows
-    // which (e.g. word -> partner word) and give it back when the voxel recalls. 0 = off.
-    float sheet_links = 0.0f;
-    // Far sheet links (with sheet_rate > 0): each sheet cell learns links from this many random
-    // voxels elsewhere in its field (its own partners, fixed for life). A memory is a group of
-    // cells firing together; with these, the inner detail of each cell in the group is linked to
-    // the other cells of the group too, so the group can bring back its inner detail (the sheets
-    // hold 32x the units of the voxels). 0 = off.
-    float sheet_far = 0.0f;
     float consolidation_rate = 0.0f;
-    // Weakest-first trimming: when a channel's learned input exceeds its budget, the excess is
-    // taken off every link by the same amount (links that reach zero are let go) instead of
-    // shrinking every link by the same share. Weak, stray links go first; the strong links that
-    // carry stored memories lose only a little. 0 = off (shrink by share).
-    float budget_trim = 0.0f;
+    float consolidated_budget = 0.5f; // per output channel, like plastic_budget
     // Per-link bound: each link strengthens in proportion to its own room, 1 - w / link_bound,
     // so a new memory is written at full strength however full the channel already is (the
     // channel-wide soft bound wrote newer memories weaker). 0 = off.
     float link_bound = 0.0f;
-    // Quiet-time replay (like sleep): after replay_after 1D ticks of silence while learning is
-    // on, the learned links transmit again (recall mode), a small share of deep voxels
-    // (replay_share per 3D step) gets a spontaneous kick of strength `replay`, the learned links
-    // complete it into a stored memory, and that memory is re-strengthened at replay_rate times
-    // the learning rate (strengthening only: replay never weakens anything directly; the budget
-    // still applies). Each replayed memory tires, so the next kick finds another. 0 = off.
-    // Magnet fix (hub_norm): a cell already loaded with many memories (its share of the learned
-    // budget in use) gets its learned input divided by 1 + hub_norm * load, so the strongly
-    // wired cells of old memories cannot capture every new cue. 0 = off.
-    float hub_norm = 0.0f;
-    // Whole-word code (word_context): each voxel keeps a trace of what it did for the letters of
-    // the current word that have already ended (reset at every word gap and onset after a
-    // pause; each ended letter's pattern is folded in with time constant word_tau letters) and
-    // adds word_context times it to its input, so which cells answer a later letter depends on
-    // the letters before it in the same word (light vs night). A held letter never ends while
-    // held, so it is not fed back to itself. 0 = off.
-    float word_context = 0.0f;
-    float word_tau = 8.0f;
-    // Recall settling (recall_settle): in recall mode a firing cell adds recall_settle times its
-    // own previous state to its input, so a partly recalled memory stays on for a few steps and
-    // the learned links can bring in the rest of it. Scaled by (1 - mode): no effect while
-    // encoding. 0 = off.
-    float recall_settle = 0.0f;
-    // Growing wiring (rewire = every how many learning steps; 0 = off): an active voxel drops
-    // a long-range link that has stayed weak (its strength below rewire_prune times the voxel's
-    // strongest link, and older than rewire_age learning steps) and grows a new one to a voxel
-    // of its field that is firing at the same moment (the most active of rewire_samples random
-    // voxels; none firing = keep the link). The new link starts empty; learning strengthens it
-    // only if the two keep firing together. The number of links stays the same.
-    float rewire = 0.0f;
-    float rewire_prune = 0.05f;
-    float rewire_age = 200.0f;
-    float rewire_samples = 32.0f;
-    // Tiring after hearing (offset_adapt): when input ends, every voxel's fatigue rises by
-    // offset_adapt times its recent activity, so the cells the heard word used step aside and
-    // what the word recalls (its associate) can come forward instead of the word's own echo.
-    // 0 = off.
-    float offset_adapt = 0.0f;
     // Quiet ears (silence_gate): while no input arrives, each voxel turns its fixed input paths
     // (the fading trace of what was heard) down by silence_gate and keeps its learned links at
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
-    // Tiring of what was heard (heard_adapt): while input arrives, each voxel tracks how much of
-    // its firing its fixed input paths caused (the sound itself, not memory). When the input
-    // ends, its fatigue rises by heard_adapt times that, so the heard word's own cells step aside
-    // while cells that memory brought back (the associate) stay fresh. 0 = off.
-    float heard_adapt = 0.0f;
-    float replay = 0.0f;
-    float replay_share = 0.01f;
-    float replay_after = 30.0f;
-    float replay_rate = 0.25f;
-    float consolidated_budget = 0.5f; // per output channel, like plastic_budget
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

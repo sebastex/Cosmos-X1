@@ -1663,6 +1663,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     double finalRecall[2] = {0.0, 0.0}; // [untrained, learned] true-recall share at the last stage
     // Big runs (NCM_PAIR_FAST set): learning matrix only, no link readouts, tested from 16 pairs on.
     const bool fast = std::getenv("NCM_PAIR_FAST") != nullptr;
+    const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
     // Reference shapes free of the cue: every partner word heard alone by a fresh untrained matrix
     // with the same wiring. An echo of the cue word has nothing in common with them.
     Patterns alone;
@@ -1673,12 +1674,8 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             ref.silence(kGap, false);
         }
     }
-    const uint64_t rest = std::getenv("NCM_REST") ? std::stoull(std::getenv("NCM_REST")) : 0;
-    const bool watch = std::getenv("NCM_REPLAY_WATCH") != nullptr;
-    const bool echo = std::getenv("NCM_ECHO") != nullptr;
     for (int learning = 1; learning >= (fast ? 1 : 0); --learning) {
         Session s(cfg, learning == 1);
-        std::vector<unsigned> replayed(total, 0);
         Patterns partner; // shape of each pair's second word while the pair was learned
         Patterns cueInPair; // shape of each pair's first word while the pair was learned
         size_t next = fast ? 16 : 4;
@@ -1700,50 +1697,6 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             partner.push_back(shape);
             cueInPair.push_back(cueShape);
             s.silence(kGap, true);
-            // Optional rest after each pair (NCM_REST = 1D ticks of silence with learning on), the
-            // same for every version; quiet-time replay can only happen in such pauses.
-            if (rest > 0) {
-                if (!watch) {
-                    s.silence(rest, true);
-                } else {
-                    // Replay watch: what plays during the rest? Each snapshot (every 8 ticks) is
-                    // compared with every stored pair's shape (cue + partner while learned).
-                    std::vector<double> snap;
-                    uint64_t active = 0, snaps = 0;
-                    double best = 0.0, mean = 0.0;
-                    for (uint64_t t = 0; t < rest; ++t) {
-                        s.silence(1, true);
-                        if (t % 8 != 7) continue;
-                        snap.clear();
-                        s.accumulate(snap);
-                        ++snaps;
-                        double tot = 0.0;
-                        for (double x : snap) tot += x;
-                        if (tot <= 0.0) continue;
-                        ++active;
-                        double b1 = -1.0, m1 = 0.0;
-                        size_t who = 0;
-                        for (size_t k = 0; k <= p; ++k) {
-                            std::vector<double> both = partner[k];
-                            for (size_t i = 0; i < both.size() && i < cueInPair[k].size(); ++i) both[i] += cueInPair[k][i];
-                            const double c = lab::cosine(snap, both);
-                            m1 += c / double(p + 1);
-                            if (c > b1) { b1 = c; who = k; }
-                        }
-                        best += b1;
-                        mean += m1;
-                        replayed[who] += 1;
-                    }
-                    if (p + 1 == next || p + 1 == total) {
-                        std::printf("  replay watch after pair %zu: active %llu of %llu snapshots, best match %.3f vs "
-                                    "average %.3f; replays per pair:", p + 1, (unsigned long long)active,
-                                    (unsigned long long)snaps, active ? best / double(active) : 0.0,
-                                    active ? mean / double(active) : 0.0);
-                        for (size_t k = 0; k <= p; ++k) std::printf(" %u", replayed[k]);
-                        std::printf("\n");
-                    }
-                }
-            }
             if (p + 1 == next || p + 1 == total) {
                 size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0;
                 std::vector<bool> recalledOwn(p + 1, false);

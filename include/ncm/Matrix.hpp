@@ -76,27 +76,6 @@ public:
     // mode: high M = encoding (learned connections turned down), low M = recall.
     void setModulator(float modulator) { modulator_ = modulator; }
 
-    // Quiet-time replay: spontaneous kicks of strength `kick` to a `share` of deep voxels per
-    // 3D step (0 = none), and strengthening-only learning while it is on.
-    void setReplay(float kick, float share) { replayKick_ = kick; replayShare_ = share; }
-    bool replaying() const { return replayKick_ > 0.0f; }
-
-    // Whole-word code: a new word begins (word gap or onset after a pause); every voxel clears
-    // its word-context trace.
-    void resetWordContext() {
-        std::fill(context3_.begin(), context3_.end(), 0.0f);
-        std::fill(letter3_.begin(), letter3_.end(), 0.0f);
-        letterSteps_ = 0;
-    }
-    // Whole-word code: the letter being heard has ended; its pattern joins the word context.
-    void endLetter();
-    // Tiring after hearing: input has just ended; recently active voxels tire by k x activity.
-    void adaptToHeard(float k);
-    // Tiring of what was heard: input has just ended; voxels tire by k x their input-driven firing.
-    void tireHeard(float k);
-    // Growing wiring: links rewired so far (diagnostic).
-    uint64_t rewiredLinks() const { return rewired_; }
-
     // Share of a fingerprint's motor-surface lines whose exit cells are active:
     // how strongly the matrix is "about to say" that character (spec Section 5A).
     double motorOverlap(const std::vector<uint32_t>& fingerprint) const;
@@ -221,26 +200,11 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
-    float replayKick_ = 0.0f, replayShare_ = 0.0f;
-    AVec<float> context3_; // per voxel channel: ended letters of the current word (whole-word code)
-    AVec<float> letter3_;  // per voxel channel: activity summed over the letter being heard
-    uint32_t letterSteps_ = 0;
-    AVec<float> heard3_; // per voxel: recent firing caused by fixed input paths (tiring of what was heard)
-    std::vector<uint32_t> linkBirth_; // growing wiring: learning step each long-range link was made
-    uint64_t rewired_ = 0;
-    void rewireLinks(const float* post);
-    uint64_t step3Count_ = 0; // 3D steps so far (seeds the spontaneous kicks)
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
     std::vector<float> voxelGain_; // local gain control: per-voxel gain on incoming signals
     AVec<float> P2_;               // sheet learning: per sheet cell, C2 x C2 block from its summed neighbourhood
-    AVec<float> P2N_;              // sheet links: per sheet cell, 8 neighbours x C2 x C2
-    AVec<float> orderTrace2_;      // sheet links: per sheet cell channel, decaying recent activity
-    AVec<float> F2_;               // far sheet links: per sheet cell, K2 partner voxels x C2 x C3
-    std::vector<uint32_t> farTarget2_; // far sheet links: per sheet cell, K2 partner voxels
-    std::vector<uint8_t> voxelOn_;  // far sheet links: excitatory voxel firing now (per 2D step)
-    uint32_t K2_ = 0;
 
     // Shared rules per level (evolved in Stage 5): row-major [out][in] channel matrices.
     AVec<float> W1_; // 3 offsets (left, self, right) x C1 x C1
