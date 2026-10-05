@@ -954,23 +954,6 @@ int runHealthTest(const Config& cfg) {
                 std::printf("             %4llu  %-10s %.3f          %.2f             %+.3f      %.2f\n",
                             (unsigned long long)points[pi], names[f], a[0] / n, a[1] / n, a[2] / n, a[3] / n);
             }
-        {
-            const auto wi = s.matrix().meanInhibitionWeight();
-            const auto& st = s.matrix().voxelState();
-            std::printf("    INHIB    learned inhibition weight per field:");
-            for (uint32_t f = 0; f < kFields; ++f) std::printf(" %s %.3f", names[f], wi[f]);
-            double ySum = 0.0;
-            size_t yN = 0;
-            for (size_t v = 0; v < st.size() / C3; ++v) {
-                double y = 0.0;
-                for (uint32_t c = 0; c < C3; ++c) y += st[v * C3 + c];
-                if (y > 0.0) {
-                    ySum += y / C3;
-                    ++yN;
-                }
-            }
-            std::printf(" | mean channel output of firing voxels now %.3f\n", yN ? ySum / double(yN) : 0.0);
-        }
         std::printf("    ENDS IN  ");
         for (size_t k = 0; k < items.size(); ++k)
             std::printf("%s->%s%s ", items[k].c_str(), items[endsIn[k]].c_str(), endsIn[k] == k ? "" : "(!)");
@@ -1003,7 +986,7 @@ int runHumTest(const Config& cfg) {
         const size_t sheetPerField = m.sheetState().size() / kFields, linePerField = m.lineState().size() / kFields;
         // [bin][field]: firing, sheet cells, line cells, sources...
         std::vector<std::array<std::array<double, 3 + kSources>, kFields>> acc(bins);
-        std::vector<double> resource(bins, 0.0), mod(bins, 0.0);
+        std::vector<double> mod(bins, 0.0);
         std::vector<std::array<double, kFields>> gain(bins);
         for (const auto& item : items) {
             s.present(item, kCue, kCueFraction, false, UINT64_MAX);
@@ -1022,14 +1005,13 @@ int runHumTest(const Config& cfg) {
                     for (uint32_t k = 0; k < kSources; ++k) a[3 + k] += src[f].net[k];
                     gain[b][f] += g[f] / double(items.size());
                 }
-                resource[b] += m.meanResource() / double(items.size());
                 mod[b] += s.lastMode() / double(items.size());
             }
             s.silence(kGap, false);
         }
         (void)Vf;
         std::printf("  %s\n", learning ? "LEARNED" : "UNTRAINED");
-        std::printf("    tick field      firing  sheet-ch  line-ch | per firing voxel: learnW  learn4D  local  longR  fix4D  depth  spread  upward  inhib | gain\n");
+        std::printf("    tick field      firing  sheet-ch  line-ch | per firing voxel: learnW  learn4D  local  longR  fix4D  depth  spread  upward | gain\n");
         for (int b = 0; b < bins; ++b) {
             for (uint32_t f = 0; f < kFields; ++f) {
                 const auto& a = acc[b][f];
@@ -1039,7 +1021,7 @@ int runHumTest(const Config& cfg) {
                 for (uint32_t k = 0; k < kSources; ++k) std::printf(" %6.3f", a[3 + k] / fv);
                 std::printf(" | %.2f\n", gain[b][f]);
             }
-            std::printf("         mode (1 = memories suppressed) %.2f, transmitter resource %.3f\n", mod[b], resource[b]);
+            std::printf("         mode (1 = memories suppressed) %.2f\n", mod[b]);
         }
     }
     return 0;

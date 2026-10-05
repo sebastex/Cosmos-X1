@@ -92,20 +92,6 @@ struct LearningParams {
     // path between fields, is never suppressed). In the hippocampal model acetylcholine turns
     // down every learned associative pathway and spares only afferent input. 0 = off.
     float encoding_suppression_4d = 0.0f;
-    // Short-term synaptic depression of learned connections: each source channel has a
-    // transmitter resource r in [0, 1]; learned connections transmit activity * r. Firing uses
-    // depression_use * activity * r per 3D tick, and r recovers toward 1 with time constant
-    // depression_tau (3D ticks). A memory that keeps itself active wears out its own links and
-    // lets go, and a chain moves on to its next element. 0 = off.
-    // Learned inhibition (inhibitory plasticity, E/I balance): each voxel receives inhibition
-    // w_inh * pool, where pool is the mean activity of its 3x3x3 neighbourhood (a local
-    // interneuron pool). w_inh learns on every 3D step, whether or not memories are being
-    // written: dw = istdp_rate * pool * (y - istdp_target), y = the voxel's mean channel output.
-    // A voxel firing above target while its neighbourhood is busy gains inhibition; one firing
-    // below loses it. As learned excitation grows, inhibition grows with it. 0 = off.
-    float istdp_rate = 0.0f;
-    float istdp_target = 0.02f;
-    float istdp_max = 50.0f;
     // Learned competition between memories (assembly inhibition): each long-range link also has a
     // learned inhibitory weight. While memories are written, a partner that fires while this voxel
     // stays silent strengthens its inhibition onto the voxel (they belong to different memories),
@@ -114,34 +100,6 @@ struct LearningParams {
     // links (muted while encoding). rate 0 = off; assembly_max caps each link's weight.
     float assembly_inhibition = 0.0f;
     float assembly_max = 0.02f;
-    // Averaging window of the inhibitory learning signal (3D steps). 0 = instantaneous. A long
-    // window makes the balance slow (homeostatic): cells that overshoot again and again gain
-    // inhibition, but one recall does not wear its own memory down within the recall.
-    float istdp_tau = 0.0f;
-    float depression_use = 0.0f;
-    float depression_tau = 20.0f;
-    // Normalized plasticity: learning sees each cell's firing pattern scaled to its strongest
-    // channel (like all-or-nothing spikes), not raw amplitudes. Without it, learning scales
-    // with the square of activity, so faint streamed input learns far more slowly than held
-    // input. 0 = raw amplitudes, 1 = normalized.
-    float normalized = 0.0f;
-    // Soft bounds (metaplasticity): strengthening is scaled by 1 - soft_bound * (used budget
-    // share) per output channel, so channels already holding memories learn new ones slowly
-    // (protecting what they store) while unused channels learn at full speed. 0 = off.
-    float soft_bound = 0.0f;
-    // Predictive (delta-rule) association: each cell learns only the part of its activity that
-    // its plastic inputs do not already predict, so learning stops once a memory reproduces the
-    // experience instead of growing until the budget cap. Without it, full-strength recall
-    // overshoots and distorts the stored pattern. 0 = plain covariance, 1 = full prediction.
-    float predictive = 0.0f;
-    // Trace-based association (calcium-like): association uses each cell's short running
-    // average of activity (time constant in 3D ticks) instead of its instantaneous state, so
-    // sustained patterns are stored and the brief wave of activity that passes through the
-    // fields when an input arrives is not. The order term keeps instantaneous timing. 0 = off.
-    float trace_tau = 0.0f;
-    // Time constant (3D ticks) over which the learning signal builds up after surprise
-    // begins and decays after it ends. 0 = instantaneous.
-    float modulator_tau = 0.0f;
     // Timing window of the order term (3D ticks): "j before i" counts j's decaying recent
     // activity, as in spike-timing-dependent plasticity, not only the previous step. Without
     // it an order link forms only in the one or two steps where one item hands over to the
@@ -166,15 +124,11 @@ struct LearningParams {
     // upward at this rate per learning step and has its own budget. Old memories persist in the
     // slow part when new learning reshapes the fast part, without slowing new learning.
     // 0 = off (no slow part).
-    // Sheet learning: the 2D level learns too (same Hebbian rule), so detail inside a voxel
-    // (e.g. streamed letters) can be stored. Learning-rate multiplier; 0 = off.
-    float sheet_rate = 0.0f;
-    float sheet_budget = 0.5f; // per output channel of each sheet cell
     float consolidation_rate = 0.0f;
     float consolidated_budget = 0.5f; // per output channel, like plastic_budget
     // Per-link bound: each link strengthens in proportion to its own room, 1 - w / link_bound,
     // so a new memory is written at full strength however full the channel already is (the
-    // channel-wide soft bound wrote newer memories weaker). 0 = off.
+    // earlier channel-wide room wrote newer memories weaker). 0 = off.
     float link_bound = 0.0f;
     // Quiet ears (silence_gate): while no input arrives, each voxel turns its fixed input paths
     // (the fading trace of what was heard) down by silence_gate and keeps its learned links at
@@ -226,17 +180,10 @@ struct Config {
 
     // Position weights are scaled by 1/sqrt(fan-in), so an upward gain of 1 keeps a
     // summary's strength roughly equal to what it summarizes (spec Section 2B).
-    // Upward summary gains (line -> sheet, sheet -> voxel). With normalize_upward = 1 each
-    // summary is divided by sqrt(active child cells) (divisive normalization).
+    // Upward summary gains (line -> sheet, sheet -> voxel).
     float line_upward_gain = 1.0f;
     float upward_gain   = 1.0f;
-    float normalize_upward = 0.0f; // 0 = off, 1 = on
 
-    // Output normalization (divisive, per cell): a cell that wins the competition fires at a
-    // consistent strength, out = s * (1 + sigma) / (sigma + strongest channel), so faint and
-    // strong inputs transmit comparably, like same-sized spikes. sigma is the semi-saturation
-    // constant: activity well below it stays faint (noise is not amplified). 0 = off.
-    float output_sigma = 0.0f;
 
     // Firing (all-or-none output): a cell that wins the competition and whose strongest
     // channel reaches this level fires at full strength (pattern kept, strongest channel 1);
@@ -260,40 +207,19 @@ struct Config {
     float agc_rate = 0.0f;  // per 3D tick, relative adjustment toward the target (off by default)
     float agc_min = 0.25f;
     float agc_max = 16.0f;
-    // Local gain control: 1 = each voxel adjusts its own gain from its neighbourhood (radius
-    // agc_radius) instead of one gain per field; silent neighbourhoods relax the gain toward 1
-    // at agc_relax per 3D tick. Scale- and growth-safe (no field-wide statistic).
-    float agc_local = 0.0f;
-    float agc_relax = 0.02f;
     float agc_relax_field = 0.0f; // field-wide gain control: relaxation toward 1 per 3D tick in silence
     // 1 = gain control below 1 also turns down the learned (recurrent) input, not only the input
     // path: when a field is too active because memories drive it, the memories are turned down
     // instead of the cue. Gain above 1 never amplifies learned input (loops would self-sustain).
     float agc_plastic = 0.0f;
     // 1 = gain control adapts only while the senses receive input; in silence every gain relaxes
-    // toward 1 (at agc_relax_field / agc_relax). Otherwise a faint echo after the input ends is
+    // toward 1 (at agc_relax_field). Otherwise a faint echo after the input ends is
     // taken for weak input, and the rising gain turns the echo into self-sustaining activity.
     float agc_input_only = 0.0f;
-    // Hierarchy of speeds between the four fields (4D level): field f integrates its input with
-    // time constant field_pace^f 3D steps (Input 1, then x field_pace per field). 1 = every field
-    // runs at the same speed. With a pace above 1 the Input field follows each letter while deeper
-    // fields change more slowly and can hold one shape for a whole word. The golden ratio (1.618)
-    // continues the ratio between the 1D, 2D and 3D clocks.
-    float field_pace = 1.0f;
-    // Pooled upward summaries: 1 = each level hands up everything that happened since the level
-    // above last updated (the mean of its summaries over those ticks), not a snapshot taken at the
-    // moment of the update. The levels run on different clocks (ratio 1.618), so a snapshot lets
-    // the slower level miss letters and catch a different slice of a word every time; pooled,
-    // nothing is dropped between levels.
-    float upward_pool = 0.0f;
     // 1 = the 2D and 3D clocks restart their cycle after every word gap (space character) and
     // when input begins after a pause, so a word is cut into the same chunks every time it is
     // heard, wherever it appears.
     float clock_reset = 0.0f;
-    // 1 = the gap between words (space character) is a pause: no input for that tick, instead of a
-    // character of its own that every word shares. With clock_reset the slower clocks then restart
-    // when input begins again after a pause (an onset), not on a special character.
-    float space_silent = 0.0f;
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's
@@ -314,31 +240,16 @@ struct Config {
     // (muted while encoding with encoding_suppression_4d). The value scales how strongly the
     // learned route transmits (1 = like the other learned links). 0 = off (fixed sources only).
     float spread_plastic = 0.0f;
-    // 1 = while learning, the matrix is always in full encoding mode (stored memories muted),
-    // however familiar the input feels. 0 = encoding mode follows surprise, so familiar input
-    // lets stored memories fire while new links are written (they then get tied to everything
-    // learned later and turn into hubs).
-    float encoding_full = 0.0f;
     // Recency weighting of a line's summary: the cell at line position k (the letter heard k ticks
     // ago) counts line_recency^k when the line reports to its sheet. The line itself keeps all its
     // activity; the weights are scaled to sum to the line length, so the total signal (and a held
     // letter's strength) is unchanged. In a stream the newest letters dominate, so a word is not
     // drowned by the words before it. 1 = all positions count the same.
     float line_recency = 1.0f;
-    uint32_t agc_radius = 2;
     float downward_gain = 0.3f;
-    // Share of fatigue kept in recall mode (modulator 0); full fatigue while encoding and in
-    // silence. 1 = fatigue independent of mode.
-    float fatigue_recall = 1.0f;
-    // 1 = fatigue divides a cell's output (rate adaptation; the cell keeps firing under steady
-    // input) instead of raising its threshold (which can silence it). 0 = subtractive,
-    // 2 = divisive while sensory input is present and subtractive in silence.
-    float fatigue_divisive = 0.0f;
-    // Maximum threshold rise from (subtractive) fatigue; 0 = no cap. Ends weak leftover
-    // activity without silencing input-driven cells (held input collapsed on some seeds).
-    float fatigue_cap = 0.0f;
-    // 1 = divisive fatigue in the 2D sheets only (they relay the input; a weak but real input
-    // is never silenced there), leaving the 3D cells (where memories live) as set above.
+    // 1 = divisive fatigue in the 2D sheets (they relay the input; a weak but real input is
+    // never silenced there): a tired cell fires more slowly instead of having its threshold
+    // raised. The 3D cells (where memories live) always use the threshold rise.
     float fatigue_divisive2 = 0.0f;
 
     // 1D lines carry sequences intact, so homeostasis is off there by default (spec Section 3C).

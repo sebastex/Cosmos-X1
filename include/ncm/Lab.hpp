@@ -64,7 +64,7 @@ public:
             // While storing, surprise sets encoding mode. During recall the cue is familiar
             // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
             // motor path learns to predict (Stage 3) surprise cannot tell the two apart itself.
-            setMode(allowLearning ? (cfg_.encoding_full > 0.5f ? 1.0f : float(1.0 - guess)) : 0.0f, false);
+            setMode(allowLearning ? float(1.0 - guess) : 0.0f, false);
         } else {
             m_->clearSensoryInput();
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
@@ -75,16 +75,9 @@ public:
         if (t.sheet) m_->step2D();
         if (t.voxel) {
             m_->step3D();
-            float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
+            const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
-            // Neuromodulator kinetics: the learning signal builds up over modulator_tau 3D ticks
-            // after surprise begins (and decays in silence), so the wave of activity that passes
-            // through the fields as an input arrives is not stored; the settled pattern is.
-            if (cfg_.learning.modulator_tau > 0.0f) {
-                gate_ += (modulator - gate_) / std::max(1.0f, cfg_.learning.modulator_tau);
-                modulator = gate_;
-            }
             if (learning_ && allowLearning) {
                 modSum_ += modulator;
                 ++modCount_;
@@ -102,11 +95,6 @@ public:
         std::vector<double> acc;
         for (uint64_t t = 0; t < ticks; ++t) {
             const char c = text[t % text.size()];
-            if (cfg_.space_silent > 0.5f && c == ' ') { // a word gap is a pause
-                tick(nullptr, nullptr, allowLearning);
-                if (t >= recordFrom) accumulate(acc);
-                continue;
-            }
             const auto& full = codebook_.fingerprint(char32_t(uint8_t(c)));
             if (fraction >= 1.0f) {
                 tick(&full, &full, allowLearning);
@@ -162,7 +150,6 @@ private:
     double surpriseSum_ = 0.0;
     uint64_t surpriseCount_ = 0;
     float lastModulator_ = 0.0f;
-    float gate_ = 0.0f; // learning signal with neuromodulator kinetics
     double modSum_ = 0.0;
     uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)

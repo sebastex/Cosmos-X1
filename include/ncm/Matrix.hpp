@@ -39,18 +39,18 @@ struct MatrixStats {
 struct DriveBreakdown {
     double plastic = 0.0, total = 0.0, plasticActive = 0.0, totalActive = 0.0, activeVoxels = 0.0;
 };
-// Diagnostic: how the learned connections of a field are used. Fill = a channel's incoming learned
-// strength / plastic budget; topSourceShare = share of all outgoing learned strength held by the
-// top 1% of source channels (hubs).
 // Diagnostic: net input of the firing voxels of a field on the last step, by source.
 enum DriveSource : uint32_t {
     kLearnedWithin, kLearned4D, kFixedLocal, kFixedLongRange, kFixed4D, kInputDepth, kFixedSpread, kUpward,
-    kLearnedInhibition, kSources
+    kSources
 };
 struct DriveSources {
     double firing = 0.0;               // firing voxels
     std::array<double, kSources> net{}; // summed over firing voxels
 };
+// Diagnostic: how the learned connections of a field are used. Fill = a channel's incoming learned
+// strength / plastic budget; topSourceShare = share of all outgoing learned strength held by the
+// top 1% of source channels (hubs).
 struct WeightHealth {
     double meanFill = 0.0, shareFull = 0.0, shareUsed = 0.0, topSourceShare = 0.0;
 };
@@ -109,8 +109,6 @@ public:
     std::array<DriveBreakdown, kFields> driveBreakdown() const;
     std::array<WeightHealth, kFields> weightHealth();
     std::array<DriveSources, kFields> driveSources() const;
-    double meanResource() const; // short-term depression: mean transmitter resource (1 = rested)
-    std::array<double, kFields> meanInhibitionWeight() const; // learned inhibition per field
 
     const Config& config() const { return cfg_; }
     const AVec<float>& lineState() const { return s1_.cur; }
@@ -151,15 +149,6 @@ private:
     AVec<float> drive3_;
     AVec<float> diagPlastic3_; // learned part of each voxel's input on the last step (diagnostic)
     AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
-    AVec<float> resource3_;    // short-term depression: transmitter resource per voxel channel
-    AVec<float> membrane3_;    // slowly integrated input per voxel channel (field_pace > 1)
-    // Pooled upward summaries (upward_pool): sums since the receiving level's last update.
-    AVec<float> lineUp_;             // per sheet cell, C2 channels: summed line summaries
-    std::vector<uint8_t> lineUpAny_; // per sheet cell: any line activity since the last 2D step
-    uint32_t lineUpTicks_ = 0;
-    AVec<float> sheetUp_; // per voxel, C3 channels: summed sheet summaries
-    uint32_t sheetUpTicks_ = 0;
-    void poolLines();
 public:
     // Time spent per level (seconds), for finding what to speed up (NCM_PROFILE prints it).
     double time1D = 0.0, time2D = 0.0, time3D = 0.0, timeLearn = 0.0;
@@ -178,11 +167,7 @@ private:
         for (uint32_t h = 0; h < g; ++h) off += spreadCount(h);
         return spreadBase_[f] + (v - size_t(f) * Vf_) * spreadLinks_[f] + off + l;
     }
-    void poolSheets();
     AVec<float> diagSource3_;  // net input per voxel and DriveSource on the last step (diagnostic)
-    AVec<float> inhibW3_;      // learned inhibition weight per voxel (inhibitory plasticity)
-    AVec<float> pool3_;        // neighbourhood activity each voxel heard on the last step
-    AVec<float> inhibSignal3_; // averaged inhibitory learning signal pool * (y - target) per voxel
 
     // Fatigue per cell (2D and 3D), and each voxel's long-run average activity (covariance learning).
     AVec<float> fatigue2_;
@@ -195,16 +180,12 @@ private:
     // sheets skipped in the current 2D step.
     std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
     AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
-    AVec<float> trace3_;    // per voxel channel: short running average of activity (trace-based association)
-    AVec<float> averageN3_; // long-run average of the normalized firing pattern (normalized plasticity)
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
-    std::vector<float> voxelGain_; // local gain control: per-voxel gain on incoming signals
-    AVec<float> P2_;               // sheet learning: per sheet cell, C2 x C2 block from its summed neighbourhood
 
     // Shared rules per level (evolved in Stage 5): row-major [out][in] channel matrices.
     AVec<float> W1_; // 3 offsets (left, self, right) x C1 x C1
@@ -221,8 +202,8 @@ private:
     AVec<float> W3_;               // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused)
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
     std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
-    uint32_t spreadK_ = 0;
-    std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)            // random 4D sources per voxel (link4d_spread, scaled with size if set)
+    uint32_t spreadK_ = 0;                // random 4D sources per voxel (link4d_spread, scaled with size if set)
+    std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)
     AVec<float> WL_;               // per voxel: long-range links x C3 x C3
     AVec<float> H_;                // per voxel: 3 other fields x C3 x C3 (4D link)
     // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when

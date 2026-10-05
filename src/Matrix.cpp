@@ -113,8 +113,7 @@ inline float scaleCell(float* out, float factor) {
 // together, which Hebbian learning needs to bind them. Returns the final mean.
 template <uint32_t C>
 inline float competeCell(float* out, float ownDrive, size_t own, const size_t* rivals, uint32_t rivalCount,
-                         const float* drive, uint32_t winners, float sigma = 0.0f, float fireLevel = 0.0f,
-                         float fireGain = 0.0f) {
+                         const float* drive, uint32_t winners, float fireLevel = 0.0f, float fireGain = 0.0f) {
     uint32_t stronger = 0;
     bool wins = ownDrive > 0.0f;
     for (uint32_t r = 0; wins && r < rivalCount; ++r) {
@@ -147,15 +146,6 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
             for (uint32_t c = 0; c < C; ++c) out[c] = 0.0f;
             return 0.0f;
         }
-        if (sigma > 0.0f) {
-            // Output normalization (divisive): winners fire at a consistent strength.
-            float strongest = 0.0f;
-            for (uint32_t c = 0; c < C; ++c) strongest = std::max(strongest, out[c]);
-            const float scale = (1.0f + sigma) / (sigma + strongest);
-            float sum = 0.0f;
-            for (uint32_t c = 0; c < C; ++c) sum += (out[c] = std::min(1.0f, out[c] * scale));
-            return sum / float(C);
-        }
         return ownDrive;
     }
     for (uint32_t c = 0; c < C; ++c) out[c] = 0.0f;
@@ -168,31 +158,27 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
 //                     - post[a]^2 * W[a][b] )                             Oja normalization
 // c blends plain Hebbian (0) and covariance (1) association. Strengths stay
 // non-negative; a connection's sign comes from its source cell.
+// `preRoom` (optional, per source channel in [0, 1]) scales strengthening by the source's unused
+// outgoing budget (presynaptic bound); `linkMax` bounds each link by its own room.
 // Returns the total absolute change applied to the block.
 template <uint32_t C>
-// `room` (optional, one value per output channel in [0, 1]) scales strengthening only: soft
-// bounds, so a channel whose plastic budget is already full of memories learns new ones slowly.
-// `predicted` (optional, per output channel) is what the cell's plastic inputs already predict;
-// association then learns only the unpredicted part of the cell's activity (delta rule).
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja, const float* room, const float* predicted, const float* assocPost,
-                           const float* assocPre, float hetero, const float* preRoom, float linkMax = 0.0f) {
+                           float oja, float hetero, const float* preRoom, float linkMax) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
-        if (pa == 0.0f && qa == 0.0f && assocPost[a] == 0.0f) continue;
+        if (pa == 0.0f && qa == 0.0f) continue;
         float* row = W + size_t(a) * C;
-        const float da = assocPost[a] - avgPost - (predicted ? predicted[a] : 0.0f);
-        const float up = room ? room[a] : 1.0f;
+        const float da = pa - avgPost;
         for (uint32_t b = 0; b < C; ++b) {
             // Heterosynaptic depression: a silent input of an active cell is weakened by
             // `hetero` times the covariance term (1 = full covariance, 0 = only active inputs
             // change). Silent inputs include other memories' cells, so this erases them.
-            const float preTerm = assocPre[b] == 0.0f ? hetero * (0.0f - avgPre) : assocPre[b] - avgPre;
+            const float preTerm = pre[b] == 0.0f ? hetero * (0.0f - avgPre) : pre[b] - avgPre;
             const float dw =
                 da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
-            float grow = up * (preRoom ? preRoom[b] : 1.0f);
+            float grow = preRoom ? preRoom[b] : 1.0f;
             if (linkMax > 0.0f) grow *= std::max(0.0f, 1.0f - row[b] / linkMax); // per-link bound
             const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
             change += std::fabs(updated - row[b]);
@@ -254,26 +240,12 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     diagPlastic3_.assign(V_, 0.0f);
     diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
-    voxelGain_.assign(V_, 1.0f);
-    if (cfg.learning.sheet_rate > 0.0f) P2_.assign(Q_ * C2 * C2, 0.0f);
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
-    averageN3_.assign(V_, cfg.target_activity);
-    trace3_.assign(V_ * C3, 0.0f);
     orderTrace3_.assign(V_ * C3, 0.0f);
-    resource3_.assign(V_ * C3, 1.0f);
-    membrane3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
     if (cfg_.separation > 0.0f) usage3_.assign(V_ * C3, 0.0f);
-    if (cfg_.upward_pool > 0.5f) {
-        lineUp_.assign(Q_ * C2, 0.0f);
-        lineUpAny_.assign(Q_, 0);
-        sheetUp_.assign(V_ * C3, 0.0f);
-    }
     diagSource3_.assign(V_ * kSources, 0.0f);
-    inhibW3_.assign(V_, 0.0f);
-    pool3_.assign(V_, 0.0f);
-    inhibSignal3_.assign(V_, 0.0f);
 
     initInhibitory();
     initSharedRules();
@@ -510,36 +482,22 @@ void NeuralCellularMatrix::step1D() {
     applySurfaceClamps();
     s1_.swap();
     lineQuietCur_.swap(lineQuietNext_);
-    if (cfg_.upward_pool > 0.5f) poolLines();
 }
 
 // 2D level: lateral interaction within each sheet, a summary from each cell's own
 // 1D line, drive from the parent voxel, and the voxel's learned modulation.
 void NeuralCellularMatrix::step2D() {
     ScopeTimer timer_(time2D);
-    // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
-    // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
-    // can settle instead of wearing itself out.
-    const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
-                              (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
-    // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
-    // input is never switched off (subtractive fatigue silenced whole fields under held input).
-    // fatigue_divisive 2 = divisive only while sensory input is present (steady input keeps
-    // cells firing) and subtractive in silence (activity that outlasts its input still ends).
-    const bool divisiveFatigue = cfg_.fatigue_divisive2 > 0.5f ||
-                                 (cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f);
-    // Capped fatigue: the threshold rise is limited to fatigue_cap, enough to end the weak
-    // activity that outlasts its input but not to silence cells a present input drives.
-    const float fatigueCap = cfg_.fatigue_cap;
-    auto fatigueShift = [fatigueCap](float shift) { return fatigueCap > 0.0f ? std::min(shift, fatigueCap) : shift; };
+    // Divisive fatigue in the sheets (fatigue_divisive2): a tired cell fires more slowly instead
+    // of being silenced, so a steady input is never switched off. Otherwise fatigue raises the
+    // firing threshold (subtractive).
+    const bool divisiveFatigue = cfg_.fatigue_divisive2 > 0.5f;
     const float* s1 = s1_.cur.data();
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
     float* out = s2_.next.data();
     float* theta = s2_.theta.data();
     const float gd = cfg_.downward_gain;
-    const float rec2 = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) *
-                                  std::clamp(modulator_, 0.0f, 1.0f);
     const LevelParams lp = cfg_.level2;
     const float target = cfg_.target_activity;
     const float inh = -cfg_.inhibitory_strength;
@@ -554,8 +512,7 @@ void NeuralCellularMatrix::step2D() {
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         bool quiet = sheetQuietCur_[v] && isSilent(s3 + v * C3, C3);
-        for (size_t c = 0; quiet && c < SS; ++c)
-            quiet = lineQuietCur_[v * SS + c] != 0 && (lineUpAny_.empty() || !lineUpAny_[v * SS + c]);
+        for (size_t c = 0; quiet && c < SS; ++c) quiet = lineQuietCur_[v * SS + c] != 0;
         sheetSkip_[v] = quiet ? 1 : 0;
     }
 
@@ -573,8 +530,6 @@ void NeuralCellularMatrix::step2D() {
         const int sy = int(cell / S), sx = int(cell % S);
 
         float in[C2] = {};
-        float neighbours[C2] = {}; // summed excitatory neighbour state (input to sheet learning)
-        bool anyNeighbour = false;
         for (int dy = -1; dy <= 1; ++dy)
             for (int dx = -1; dx <= 1; ++dx) {
                 const int ny = sy + dy, nx = sx + dx;
@@ -585,47 +540,30 @@ void NeuralCellularMatrix::step2D() {
                 // Self-persistence is not a synapse; lateral inputs carry the sender's sign.
                 const float sign = (o == 4 || !inhib2_[qn]) ? 1.0f : inh;
                 matvecAdd(W2_.data() + size_t(o) * C2 * C2, s2 + qn * C2, in, C2, C2, sign);
-                if (o != 4 && !inhib2_[qn]) {
-                    addScaled(s2 + qn * C2, neighbours, C2, 1.0f);
-                    anyNeighbour = true;
-                }
             }
-        // Sheet learning: a learned block from the cell's summed neighbourhood (same Hebbian rule
-        // as the 3D level), transmitted at the encoding/recall mode like other learned links.
-        if (!P2_.empty() && anyNeighbour) matvecAdd(P2_.data() + q * C2 * C2, neighbours, in, C2, C2, rec2);
+        // Sheet modulation (spec Section 2C): the voxel's learned C2 x C2 map of its sheet cells' state.
         if (!isSilent(s2 + q * C2, C2)) matvecAdd(M2_.data() + v * C2 * C2, s2 + q * C2, in, C2, C2, 1.0f);
-        // Upward summary with divisive normalization: scaled by 1/sqrt(active line cells), so
-        // a streamed character (one active cell per line) and a held one (a full line) drive
-        // the sheet cell in the same useful range.
-        if (cfg_.upward_pool > 0.5f) {
-            if (lineUpAny_[q] && lineUpTicks_ > 0) {
-                const float inv = 1.0f / float(lineUpTicks_);
-                for (uint32_t c = 0; c < C2; ++c) in[c] += inv * lineUp_[q * C2 + c];
-            }
-        } else {
+        // Upward summary from the cell's own line: each active line cell through its position
+        // weight, weighted by recency (line_recency), scaled by line_upward_gain.
+        {
             float up[C2] = {};
-            uint32_t activeCells = 0;
-            float weightSq = 0.0f;
+            bool anyActive = false;
             // A quiet line contributes nothing: its flag spares reading it.
             for (uint32_t k = 0; k < (lineQuietCur_[q] ? 0u : L); ++k) {
                 const float* cell = s1 + (q * L + k) * C1;
                 bool active = false;
                 for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
                 if (!active) continue;
-                ++activeCells;
+                anyActive = true;
                 matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, lineWeight_[k]);
-                weightSq += lineWeight_[k] * lineWeight_[k];
             }
-            if (activeCells > 0) {
-                const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(weightSq) : 1.0f;
-                const float scale = cfg_.line_upward_gain / norm;
-                for (uint32_t c = 0; c < C2; ++c) in[c] += scale * up[c];
-            }
+            if (anyActive)
+                for (uint32_t c = 0; c < C2; ++c) in[c] += cfg_.line_upward_gain * up[c];
         }
         if (!isSilent(s3 + v * C3, C3)) matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
 
         drive2_[q] = activateCell<C2>(in, out + q * C2,
-                                      theta[q] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue2_[q])),
+                                      theta[q] + (divisiveFatigue ? 0.0f : lp.fatigue_gain * fatigue2_[q]),
                                       cfg_.channel_winners2);
     }
 
@@ -650,9 +588,9 @@ void NeuralCellularMatrix::step2D() {
                 if ((dy == 0 && dx == 0) || ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
                 rivals[n++] = v * SS + size_t(ny) * S + size_t(nx);
             }
-        float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.output_sigma,
-                                         cfg_.fire_threshold2, cfg_.fire_gain2);
-        if (divisiveFatigue && final > 0.0f) final = scaleCell<C2>(out + q * C2, 1.0f / (1.0f + lp.fatigue_gain * fatigueMode * fatigue2_[q]));
+        float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.fire_threshold2,
+                                         cfg_.fire_gain2);
+        if (divisiveFatigue && final > 0.0f) final = scaleCell<C2>(out + q * C2, 1.0f / (1.0f + lp.fatigue_gain * fatigue2_[q]));
         adaptThreshold(theta[q], final, lp, target);
         // Fatigue follows the activity of the channels that fire (the mean over all channels
         // understates it by C / channel_winners, so fatigue could never build up).
@@ -666,32 +604,13 @@ void NeuralCellularMatrix::step2D() {
     }
     s2_.swap();
     sheetQuietCur_.swap(sheetQuietNext_);
-    if (cfg_.upward_pool > 0.5f) {
-        std::fill(lineUp_.begin(), lineUp_.end(), 0.0f);
-        std::fill(lineUpAny_.begin(), lineUpAny_.end(), uint8_t(0));
-        lineUpTicks_ = 0;
-        poolSheets();
-    }
 }
 
 // 3D level: learned neighbourhood, long-range links, the 4D link to the other
 // three fields, and a summary from each voxel's own 2D sheet.
 void NeuralCellularMatrix::step3D() {
     ScopeTimer timer_(time3D);
-    // Fatigue at full strength while encoding and in silence (it ends activity that outlasts
-    // its input); in recall mode (M = 0) it is scaled to fatigue_recall so a recalled memory
-    // can settle instead of wearing itself out.
-    const float fatigueMode = std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f) +
-                              (1.0f - std::clamp(cfg_.fatigue_recall, 0.0f, 1.0f)) * std::clamp(modulator_, 0.0f, 1.0f);
-    // Divisive fatigue: a tired cell fires more slowly instead of being silenced, so a steady
-    // input is never switched off (subtractive fatigue silenced whole fields under held input).
-    // fatigue_divisive 2 = divisive only while sensory input is present (steady input keeps
-    // cells firing) and subtractive in silence (activity that outlasts its input still ends).
-    const bool divisiveFatigue = cfg_.fatigue_divisive > 1.5f ? sensoryOn_ : cfg_.fatigue_divisive > 0.5f;
-    // Capped fatigue: the threshold rise is limited to fatigue_cap, enough to end the weak
-    // activity that outlasts its input but not to silence cells a present input drives.
-    const float fatigueCap = cfg_.fatigue_cap;
-    auto fatigueShift = [fatigueCap](float shift) { return fatigueCap > 0.0f ? std::min(shift, fatigueCap) : shift; };
+    // Fatigue raises a voxel's firing threshold (it ends activity that outlasts its input).
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
     float* out = s3_.next.data();
@@ -701,7 +620,6 @@ void NeuralCellularMatrix::step3D() {
     const float target = cfg_.target_activity;
     const float inh = -cfg_.inhibitory_strength;
     const float avgTau = std::max(1.0f, cfg_.learning.average_tau);
-    const float traceTau = cfg_.learning.trace_tau > 0.0f ? std::max(1.0f, cfg_.learning.trace_tau) : 0.0f;
     const float orderTau = cfg_.learning.order_tau > 0.0f ? std::max(1.0f, cfg_.learning.order_tau) : 0.0f;
     // Learned excitatory connections transmit less in encoding mode (high modulator).
     const float rec = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) *
@@ -713,8 +631,6 @@ void NeuralCellularMatrix::step3D() {
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
     const size_t SS = SS_;
-    const bool depression = cfg_.learning.depression_use > 0.0f;
-    const bool learnedInhibition = cfg_.learning.istdp_rate > 0.0f;
 
     const int64_t voxels = int64_t(V_);
     // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
@@ -741,19 +657,9 @@ void NeuralCellularMatrix::step3D() {
             for (uint32_t c = 0; c < C3; ++c) t += in[c];
             return t;
         };
-        // Learned connections transmit the source's activity times its transmitter resource.
-        float depressed[C3];
-        auto learnedSource = [&](size_t sv, const float* src) -> const float* {
-            if (!depression) return src;
-            const float* r = resource3_.data() + sv * C3;
-            for (uint32_t c = 0; c < C3; ++c) depressed[c] = src[c] * r[c];
-            return depressed;
-        };
-        // Gain control scales incoming signals only: per voxel (local) or per field.
-        const float afferentGain = cfg_.agc_local > 0.5f ? voxelGain_[v] : fieldGain_[f];
+        // Gain control scales incoming signals only (per field).
+        const float afferentGain = fieldGain_[f];
         const float* w = W3_.data() + v * 27 * C3 * C3;
-        float poolSum = 0.0f;
-        uint32_t poolCount = 0;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
                 for (int dx = -1; dx <= 1; ++dx) {
@@ -762,18 +668,15 @@ void NeuralCellularMatrix::step3D() {
                     const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                     const uint32_t o = uint32_t((dz + 1) * 9 + (dy + 1) * 3 + (dx + 1));
                     const float* src = s3 + vn * C3;
-                    ++poolCount;
                     if (isSilent(src, C3)) continue; // silent sources contribute nothing
-                    for (uint32_t c = 0; c < C3; ++c) poolSum += src[c];
                     if (o == 13) {
                         addScaled(src, in, C3, r.voxel_self); // self-persistence: fixed
                     } else if (inhib3_[vn]) {
                         addScaled(src, in, C3, inh * r.voxel_neighbour); // inhibitory: fixed scaffold only
                     } else {
-                        addScaled(src, in, C3, r.voxel_neighbour);                // scaffold
-                        const float* ls = learnedSource(vn, src);
-                        matvecAdd(w + size_t(o) * C3 * C3, ls, pl, C3, C3, rec); // plastic memory part
-                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, ls, pl, C3, C3, rec);
+                        addScaled(src, in, C3, r.voxel_neighbour);                 // scaffold
+                        matvecAdd(w + size_t(o) * C3 * C3, src, pl, C3, C3, rec); // plastic memory part
+                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, pl, C3, C3, rec);
                     }
                 }
 
@@ -793,9 +696,8 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
                 addScaled(src, in, C3, r.long_range);
-                const float* ls = learnedSource(t, src);
-                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, ls, pl, C3, C3, rec);
-                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, ls, pl, C3, C3, rec);
+                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
+                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
             }
         }
 
@@ -826,10 +728,9 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, gain * inh * link);
             } else {
                 addScaled(src, in, C3, gain * link);
-                const float* ls = learnedSource(vg, src);
-                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, ls, pl4, C3, C3, gain * plasticScale * rec4);
+                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
                 if (!SH_.empty())
-                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, ls, pl4, C3, C3, gain * plasticScale * rec4);
+                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
         }
@@ -865,52 +766,35 @@ void NeuralCellularMatrix::step3D() {
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
                     // Learned cue route: this source's learned block (excitatory sources only).
                     if (!WS_.empty() && !inhib3_[vs])
-                        matvecAdd(WS_.data() + spreadBlock(v, g, l) * C3 * C3, learnedSource(vs, src), pl4, C3, C3,
+                        matvecAdd(WS_.data() + spreadBlock(v, g, l) * C3 * C3, src, pl4, C3, C3,
                                   afferentGain * rec4 * cfg_.spread_plastic);
                 }
         }
 
         const float cSpread = sumIn();
-        // Upward summary from the voxel's sheet, divisively normalized like the line summary:
-        // scaled by 1/sqrt(active sheet cells), so sparse (streamed) and dense (held) input
-        // drive the voxel in the same useful range.
-        if (cfg_.upward_pool > 0.5f) {
-            if (sheetUpTicks_ > 0) {
-                const float inv = 1.0f / float(sheetUpTicks_);
-                for (uint32_t c = 0; c < C3; ++c) in[c] += inv * sheetUp_[v * C3 + c];
-            }
-        } else {
+        // Upward summary from the voxel's sheet: each active sheet cell through its position
+        // weight, scaled by upward_gain. Not scaled by gain control: a voxel's sheet is driven by
+        // the voxel itself, so voxel -> sheet -> voxel is a loop, and amplifying it made activity
+        // self-sustain.
+        {
             float up[C3] = {};
-            uint32_t activeCells = 0;
+            bool anyActive = false;
             for (size_t cell = 0; cell < SS; ++cell) {
                 const float* sc = s2 + (v * SS + cell) * C2;
                 bool active = false;
                 for (uint32_t c = 0; c < C2; ++c) active = active || sc[c] != 0.0f;
                 if (!active) continue;
-                ++activeCells;
+                anyActive = true;
                 matvecAdd(U2_.data() + cell * C3 * C2, sc, up, C3, C2, 1.0f);
             }
-            if (activeCells > 0) {
-                const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(float(activeCells)) : 1.0f;
-                // Not scaled by gain control: a voxel's sheet is driven by the voxel itself, so
-                // voxel -> sheet -> voxel is a loop, and amplifying it made activity self-sustain.
-                const float scale = gu / norm;
-                for (uint32_t c = 0; c < C3; ++c) in[c] += scale * up[c];
-            }
+            if (anyActive)
+                for (uint32_t c = 0; c < C3; ++c) in[c] += gu * up[c];
         }
 
         {
             // Gain control turning the field down also turns down its learned recurrent input.
             const float plScale = cfg_.agc_plastic > 0.5f ? std::min(1.0f, afferentGain) : 1.0f;
             const float cUp = sumIn();
-            // Learned inhibition from the local interneuron pool (same on every channel).
-            const float pool = poolCount ? poolSum / float(poolCount * C3) : 0.0f;
-            pool3_[v] = pool;
-            float inhibition = 0.0f;
-            if (learnedInhibition) {
-                inhibition = inhibW3_[v] * pool;
-                for (uint32_t c = 0; c < C3; ++c) in[c] -= inhibition;
-            }
             float* ds = diagSource3_.data() + v * kSources;
             ds[kFixedLocal] = cLocal;
             ds[kFixedLongRange] = cLong - cLocal;
@@ -918,7 +802,6 @@ void NeuralCellularMatrix::step3D() {
             ds[kInputDepth] = cDepth - c4D;
             ds[kFixedSpread] = cSpread - cDepth;
             ds[kUpward] = cUp - cSpread;
-            ds[kLearnedInhibition] = -inhibition * float(C3);
             ds[kLearnedWithin] = 0.0f;
             ds[kLearned4D] = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) {
@@ -938,24 +821,13 @@ void NeuralCellularMatrix::step3D() {
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
         }
-        // Field pace: deeper fields integrate their input over more steps (leaky integration).
-        if (cfg_.field_pace > 1.0f && f > 0) {
-            const float rate = 1.0f / std::pow(cfg_.field_pace, float(f));
-            float* u = membrane3_.data() + v * C3;
-            for (uint32_t c = 0; c < C3; ++c) {
-                u[c] += (in[c] - u[c]) * rate;
-                in[c] = u[c];
-            }
-        }
         // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
         if (!usage3_.empty() && f > 0 && modulator_ > 0.0f) {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
             const float* u = usage3_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
         }
-        drive3_[v] = activateCell<C3>(in, out + v * C3,
-                                      theta[v] + (divisiveFatigue ? 0.0f : fatigueShift(lp.fatigue_gain * fatigueMode * fatigue3_[v])),
-                                      cfg_.channel_winners3);
+        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v], cfg_.channel_winners3);
     }
 
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
@@ -977,32 +849,16 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3, cfg_.output_sigma,
-                                         cfg_.fire_threshold3, cfg_.fire_gain3);
-        if (divisiveFatigue && final > 0.0f) final = scaleCell<C3>(out + v * C3, 1.0f / (1.0f + lp.fatigue_gain * fatigueMode * fatigue3_[v]));
+        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
+                                            cfg_.fire_threshold3, cfg_.fire_gain3);
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
         average3_[v] += (final - average3_[v]) / avgTau;
-        if (traceTau > 0.0f) {
-            float* tr = trace3_.data() + v * C3;
-            const float* cell = out + v * C3;
-            for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / traceTau;
-        }
         if (orderTau > 0.0f) {
             float* tr = orderTrace3_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / orderTau;
-        }
-        {
-            const float* cell = out + v * C3;
-            float strongest = 0.0f, sum = 0.0f;
-            for (uint32_t c = 0; c < C3; ++c) {
-                strongest = std::max(strongest, cell[c]);
-                sum += cell[c];
-            }
-            const float normMean = strongest > 0.0f ? sum / (strongest * float(C3)) : 0.0f;
-            averageN3_[v] += (normMean - averageN3_[v]) / avgTau;
         }
     }
     } // fields (front-to-back sweep)
@@ -1011,85 +867,7 @@ void NeuralCellularMatrix::step3D() {
     // share of clearly firing voxels (strongest channel at or above the active level;
     // faint traces do not count). Multiplicative and bounded. With no input the field stays
     // silent whatever its gain, because only incoming signals are scaled.
-    // Local gain control: each voxel adjusts its own gain toward the target share of firing
-    // voxels in its neighbourhood (radius agc_radius); where the neighbourhood is silent the
-    // gain relaxes back toward 1. No field-wide statistic, so a cell sees the same local rule
-    // at any size and when the matrix grows.
-    // Short-term depression: firing uses transmitter resource, which recovers in time.
-    if (depression) {
-        const float use = cfg_.learning.depression_use;
-        const float recover = 1.0f / std::max(1.0f, cfg_.learning.depression_tau);
-#pragma omp parallel for schedule(static)
-        for (int64_t i = 0; i < int64_t(V_ * C3); ++i) {
-            float& r = resource3_[size_t(i)];
-            r = std::clamp(r + (1.0f - r) * recover - use * out[size_t(i)] * r, 0.0f, 1.0f);
-        }
-    }
-
-    // Inhibitory plasticity: a voxel above its target activity while its neighbourhood is busy
-    // strengthens its inhibition, one below it weakens it (Vogels et al. 2011, rate form).
-    if (learnedInhibition) {
-        const float eta = cfg_.learning.istdp_rate, rho = cfg_.learning.istdp_target;
-        const float wMax = std::max(0.0f, cfg_.learning.istdp_max);
-        const float tau = cfg_.learning.istdp_tau;
-#pragma omp parallel for schedule(static)
-        for (int64_t vi = 0; vi < voxels; ++vi) {
-            const size_t v = size_t(vi);
-            const float pool = pool3_[v];
-            float y = 0.0f;
-            for (uint32_t c = 0; c < C3; ++c) y += out[v * C3 + c];
-            y /= float(C3);
-            float signal = pool * (y - rho);
-            if (tau > 1.0f) {
-                inhibSignal3_[v] += (signal - inhibSignal3_[v]) / tau;
-                signal = inhibSignal3_[v];
-            } else if (pool <= 0.0f) {
-                continue;
-            }
-            inhibW3_[v] = std::clamp(inhibW3_[v] + eta * signal, 0.0f, wMax);
-        }
-    }
-
-    if (cfg_.agc_rate > 0.0f && cfg_.agc_local > 0.5f) {
-        const float level = lp.active_level;
-        std::vector<uint8_t> firing(V_, 0), anything(V_, 0);
-#pragma omp parallel for schedule(static)
-        for (int64_t vi = 0; vi < voxels; ++vi) {
-            const float* cell = out + size_t(vi) * C3;
-            float strongest = 0.0f;
-            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, cell[c]);
-            firing[size_t(vi)] = strongest >= level;
-            anything[size_t(vi)] = strongest > 0.0f;
-        }
-        const int RA = int(std::min<uint32_t>(cfg_.agc_radius, 4));
-        const float relax = std::clamp(cfg_.agc_relax, 0.0f, 1.0f);
-#pragma omp parallel for schedule(dynamic, 256)
-        for (int64_t vi = 0; vi < voxels; ++vi) {
-            const size_t v = size_t(vi);
-            const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
-            const uint32_t f = uint32_t(v / Vf_);
-            uint32_t count = 0, active = 0;
-            bool heard = false;
-            for (int dz = -RA; dz <= RA; ++dz)
-                for (int dy = -RA; dy <= RA; ++dy)
-                    for (int dx = -RA; dx <= RA; ++dx) {
-                        const int nx = int(x) + dx, ny = int(y) + dy, nz = int(z) + dz;
-                        if (nx < 0 || ny < 0 || nz < 0 || nx >= int(N) || ny >= int(N) || nz >= int(N)) continue;
-                        const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
-                        ++count;
-                        active += firing[vn];
-                        heard = heard || anything[vn];
-                    }
-            float& g = voxelGain_[v];
-            if (!heard || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
-                g += (1.0f - g) * relax;
-                continue;
-            }
-            const float share = float(active) / float(std::max<uint32_t>(1, count));
-            const float error = (target - share) / std::max(target, 1e-6f);
-            g = std::clamp(g * std::exp(cfg_.agc_rate * std::clamp(error, -1.0f, 1.0f)), cfg_.agc_min, cfg_.agc_max);
-        }
-    } else if (cfg_.agc_rate > 0.0f) {
+    if (cfg_.agc_rate > 0.0f) {
         const float level = lp.active_level;
         for (uint32_t f = 0; f < kFields; ++f) {
             size_t active = 0;
@@ -1115,10 +893,6 @@ void NeuralCellularMatrix::step3D() {
         }
     }
     s3_.swap();
-    if (cfg_.upward_pool > 0.5f) {
-        std::fill(sheetUp_.begin(), sheetUp_.end(), 0.0f);
-        sheetUpTicks_ = 0;
-    }
 }
 
 template <class Fn>
@@ -1173,10 +947,6 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float cov = std::clamp(cfg_.learning.covariance, 0.0f, 1.0f);
     const float budget = std::max(0.0f, cfg_.learning.plastic_budget);
     const float oja = std::max(0.0f, cfg_.learning.oja);
-    const bool normalized = cfg_.learning.normalized > 0.5f;
-    const float soft = std::clamp(cfg_.learning.soft_bound, 0.0f, 1.0f);
-    const float predictive = std::clamp(cfg_.learning.predictive, 0.0f, 1.0f);
-    const bool useTrace = cfg_.learning.trace_tau > 0.0f;
     const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
     const float consolidate = S3_.empty() ? 0.0f : std::clamp(cfg_.learning.consolidation_rate, 0.0f, 1.0f);
     const float slowBudget = std::max(0.0f, cfg_.learning.consolidated_budget);
@@ -1205,14 +975,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     // instead of only the previous step, so j -> i also forms when i starts a few steps
     // after j. The antisymmetric form cancels the shared current step.
     const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
-    auto avgOf = [&](size_t cell) { return cov * (normalized ? averageN3_[cell] : average3_[cell]); };
-    // Normalized plasticity: a cell's pattern scaled so its strongest channel is 1.
-    auto normalizeInto = [](const float* x, float* outv, uint32_t n) {
-        float strongest = 0.0f;
-        for (uint32_t c = 0; c < n; ++c) strongest = std::max(strongest, x[c]);
-        const float inv = strongest > 0.0f ? 1.0f / strongest : 0.0f;
-        for (uint32_t c = 0; c < n; ++c) outv[c] = x[c] * inv;
-    };
+    auto avgOf = [&](size_t cell) { return cov * average3_[cell]; };
 
     const int64_t voxels = int64_t(V_);
     double change = 0.0, scaled = 0.0;
@@ -1225,17 +988,9 @@ void NeuralCellularMatrix::learn(float modulator) {
         if (!anyActive(pi, qi, C3)) continue; // only active cells change their incoming connections
         ++learners;
 
-        float piN[C3], qiN[C3];
-        if (normalized) {
-            normalizeInto(pi, piN, C3);
-            normalizeInto(qi, qiN, C3);
-            pi = piN;
-            qi = qiN;
-        }
-
-        // Soft bounds: each output channel strengthens in proportion to its unused budget.
-        float room[C3];
-        if (soft > 0.0f || !usage3_.empty()) {
+        // Each output channel's memory load (share of its learned-input budget in use), for
+        // pattern separation at storage.
+        if (!usage3_.empty()) {
             float used[C3] = {};
             forEachLearnedBlock(v, [&](float* block, size_t) {
                 for (uint32_t a = 0; a < C3; ++a)
@@ -1243,37 +998,15 @@ void NeuralCellularMatrix::learn(float modulator) {
             });
             for (uint32_t a = 0; a < C3; ++a) {
                 const float freeShare = budget > 0.0f ? std::clamp(1.0f - used[a] / budget, 0.0f, 1.0f) : 0.0f;
-                room[a] = 1.0f - soft + soft * freeShare;
-                if (!usage3_.empty()) usage3_[v * C3 + a] = 1.0f - freeShare; // load, for pattern separation
+                usage3_[v * C3 + a] = 1.0f - freeShare;
             }
-        }
-
-        // Local prediction: the drive the cell's plastic inputs gave it from the previous state,
-        // at full (recall-mode) strength. Learning stops once memory reproduces the experience.
-        float predicted[C3] = {};
-        if (predictive > 0.0f) {
-            forEachLearnedBlock(v, [&](float* block, size_t src) {
-                const float* sq = prev + src * C3;
-                if (isSilent(sq, C3)) return;
-                matvecAdd(block, sq, predicted, C3, C3, predictive);
-            });
         }
 
         // Inhibitory connections and self-persistence are not visited: they stay fixed.
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
-            float spN[C3], sqN[C3];
-            if (normalized) {
-                normalizeInto(sp, spN, C3);
-                normalizeInto(sq, sqN, C3);
-                sp = spN;
-                sq = sqN;
-            }
-            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja,
-                                        soft > 0.0f ? room : nullptr, predictive > 0.0f ? predicted : nullptr,
-                                        useTrace ? trace3_.data() + v * C3 : pi,
-                                        useTrace ? trace3_.data() + src * C3 : sp, hetero,
+            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
                                         preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
         });
 
@@ -1357,48 +1090,6 @@ void NeuralCellularMatrix::learn(float modulator) {
     // (previous state -> current state), averaged over the sheet, with Oja's bound and
     // the same synaptic-scaling budget as every other plastic connection. (Uncapped, it
     // grew until the sheets sustained their own activity and pulled memories together.)
-    // Sheet learning: each active sheet cell associates its state with its summed
-    // excitatory neighbourhood (plain Hebbian + order term), capped by its own budget.
-    if (!P2_.empty()) {
-        const float sheetRate = rate * cfg_.learning.sheet_rate;
-        const float sheetBudget = std::max(0.0f, cfg_.learning.sheet_budget);
-        const float* s2c = s2_.cur.data();
-        const float* s2p = s2_.next.data();
-        const uint32_t S = S_;
-        const size_t SS = SS_;
-        const int64_t cells = int64_t(Q_);
-#pragma omp parallel for schedule(dynamic, 256)
-        for (int64_t qi = 0; qi < cells; ++qi) {
-            const size_t q = size_t(qi);
-            const float* post2 = s2c + q * C2;
-            const float* pre2 = s2p + q * C2;
-            if (!anyActive(post2, pre2, C2)) continue;
-            const size_t v = q / SS, cell = q % SS;
-            const int sy = int(cell / S), sx = int(cell % S);
-            float nCur[C2] = {}, nPrev[C2] = {};
-            for (int dy = -1; dy <= 1; ++dy)
-                for (int dx = -1; dx <= 1; ++dx) {
-                    if (dx == 0 && dy == 0) continue;
-                    const int ny = sy + dy, nx = sx + dx;
-                    if (ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
-                    const size_t qn = v * SS + size_t(ny) * S + size_t(nx);
-                    if (inhib2_[qn]) continue;
-                    addScaled(s2c + qn * C2, nCur, C2, 1.0f);
-                    addScaled(s2p + qn * C2, nPrev, C2, 1.0f);
-                }
-            float* block = P2_.data() + q * C2 * C2;
-            hebbianBlock<C2>(block, post2, pre2, nCur, nPrev, 0.0f, 0.0f, sheetRate, lambda, 0.0f, nullptr, nullptr,
-                             post2, nCur, 1.0f, nullptr);
-            for (uint32_t a = 0; a < C2; ++a) {
-                float* row = block + size_t(a) * C2;
-                float total = 0.0f;
-                for (uint32_t b = 0; b < C2; ++b) total += row[b];
-                if (total > sheetBudget)
-                    for (uint32_t b = 0; b < C2; ++b) row[b] *= sheetBudget / total;
-            }
-        }
-    }
-
     const float modRate = std::max(0.0f, cfg_.learning.modulation_rate);
     if (modRate > 0.0f) {
         const float* s2 = s2_.cur.data();
@@ -1413,13 +1104,6 @@ void NeuralCellularMatrix::learn(float modulator) {
             for (size_t cell = 0; cell < SS; ++cell) {
                 const float* post2 = s2 + (v * SS + cell) * C2;
                 const float* pre2 = s2prev + (v * SS + cell) * C2;
-                float post2N[C2], pre2N[C2];
-                if (normalized) {
-                    normalizeInto(post2, post2N, C2);
-                    normalizeInto(pre2, pre2N, C2);
-                    post2 = post2N;
-                    pre2 = pre2N;
-                }
                 for (uint32_t a = 0; a < C2; ++a) {
                     const float pa = post2[a];
                     if (pa == 0.0f) continue;
@@ -1480,15 +1164,7 @@ void NeuralCellularMatrix::clearActivity() {
     }
     std::fill(fatigue2_.begin(), fatigue2_.end(), 0.0f);
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
-    std::fill(trace3_.begin(), trace3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
-    std::fill(resource3_.begin(), resource3_.end(), 1.0f);
-    std::fill(membrane3_.begin(), membrane3_.end(), 0.0f);
-    std::fill(lineUp_.begin(), lineUp_.end(), 0.0f);
-    std::fill(lineUpAny_.begin(), lineUpAny_.end(), uint8_t(0));
-    std::fill(sheetUp_.begin(), sheetUp_.end(), 0.0f);
-    lineUpTicks_ = 0;
-    sheetUpTicks_ = 0;
     std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
     std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
     std::fill(sheetQuietCur_.begin(), sheetQuietCur_.end(), uint8_t(1));
@@ -1545,7 +1221,7 @@ size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
-           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(averageN3_) + bytes(trace3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
+           bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
            bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
            bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }
@@ -1618,77 +1294,6 @@ std::array<DriveSources, kFields> NeuralCellularMatrix::driveSources() const {
         for (uint32_t k = 0; k < kSources; ++k) d.net[k] += diagSource3_[v * kSources + k];
     }
     return out;
-}
-
-double NeuralCellularMatrix::meanResource() const {
-    double t = 0.0;
-    for (float r : resource3_) t += r;
-    return resource3_.empty() ? 1.0 : t / double(resource3_.size());
-}
-
-std::array<double, kFields> NeuralCellularMatrix::meanInhibitionWeight() const {
-    std::array<double, kFields> out{};
-    for (size_t v = 0; v < V_; ++v) out[v / Vf_] += inhibW3_[v] / double(Vf_);
-    return out;
-}
-
-// Pooled upward summaries: after every 1D tick each line's summary (as step2D would read it) is
-// added to its sheet cell's pool; after every 2D step each sheet's summary (as step3D would read
-// it) is added to its voxel's pool. The receiving level uses the mean and clears the pool.
-void NeuralCellularMatrix::poolLines() {
-    const float* s1 = s1_.cur.data();
-    const uint32_t L = L_;
-    const int64_t cells = int64_t(Q_);
-#pragma omp parallel for schedule(dynamic, 1024)
-    for (int64_t qi = 0; qi < cells; ++qi) {
-        const size_t q = size_t(qi);
-        if (lineQuietCur_[q]) continue;
-        float up[C2] = {};
-        uint32_t activeCells = 0;
-        float weightSq = 0.0f;
-        for (uint32_t k = 0; k < L; ++k) {
-            const float* cell = s1 + (q * L + k) * C1;
-            bool active = false;
-            for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
-            if (!active) continue;
-            ++activeCells;
-            matvecAdd(U1_.data() + size_t(k) * C2 * C1, cell, up, C2, C1, lineWeight_[k]);
-            weightSq += lineWeight_[k] * lineWeight_[k];
-        }
-        if (activeCells == 0) continue;
-        const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(weightSq) : 1.0f;
-        const float scale = cfg_.line_upward_gain / norm;
-        for (uint32_t c = 0; c < C2; ++c) lineUp_[q * C2 + c] += scale * up[c];
-        lineUpAny_[q] = 1;
-    }
-    ++lineUpTicks_;
-}
-
-void NeuralCellularMatrix::poolSheets() {
-    const float* s2 = s2_.cur.data();
-    const size_t SS = SS_;
-    const float gu = cfg_.upward_gain;
-    const int64_t voxels = int64_t(V_);
-#pragma omp parallel for schedule(dynamic, 256)
-    for (int64_t vi = 0; vi < voxels; ++vi) {
-        const size_t v = size_t(vi);
-        if (sheetQuietCur_[v]) continue;
-        float up[C3] = {};
-        uint32_t activeCells = 0;
-        for (size_t cell = 0; cell < SS; ++cell) {
-            const float* sc = s2 + (v * SS + cell) * C2;
-            bool active = false;
-            for (uint32_t c = 0; c < C2; ++c) active = active || sc[c] != 0.0f;
-            if (!active) continue;
-            ++activeCells;
-            matvecAdd(U2_.data() + cell * C3 * C2, sc, up, C3, C2, 1.0f);
-        }
-        if (activeCells == 0) continue;
-        const float norm = cfg_.normalize_upward > 0.0f ? std::sqrt(float(activeCells)) : 1.0f;
-        const float scale = gu / norm;
-        for (uint32_t c = 0; c < C3; ++c) sheetUp_[v * C3 + c] += scale * up[c];
-    }
-    ++sheetUpTicks_;
 }
 
 } // namespace ncm

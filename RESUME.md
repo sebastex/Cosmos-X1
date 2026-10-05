@@ -6,7 +6,7 @@ Default rule = version B memory + clock_reset + field_sweep + line_recency 0.6
 + evolution 2 winner c332 (adopted 2026-10-04): fresh dev brains 3000-3009, checks 68/70,
   64 words truly recalled 93/128 = 73% (old Prime 47/128 = 37%, c241 68/128 = 53% with 70/70).
   Archive: tools/results/evolution2_2026-10-03. Learned inhibition (istdp) is now off.
-+ per-link bounds link_bound 0.3, soft_bound 0 (adopted 2026-10-04): 70/70 checks, 32w 100%, 64w 87%.
++ per-link bounds link_bound 0.3, replacing the channel-wide soft bound (adopted 2026-10-04): 70/70 checks, 32w 100%, 64w 87%.
   Tested and REMOVED from the code 2026-10-05 (no gain or worse; kept on branch
   archive/tested-parts-2026-10-05): budget_trim, replay, sheet_links, sheet_far, hub_norm,
   recall_settle, word_context, rewire (growing wiring), offset_adapt, heard_adapt.

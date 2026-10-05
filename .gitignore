@@ -1,12 +1,9 @@
 build/
 out/
-tools/*.jsonl
-tools/evolve_best.json
-tools/evolve_firing_best.json
-tools/evolve_rate_best.json
-tools/evolve_round2_log_best.json
-tools/evolve_round3_log_best.json
-tools/baseline_report.json
-tools/evolve_round4_log_best.json
-tools/foundation_log.jsonl
+# local logs of the archived laptop searches
+tools/results/legacy_laptop_search/*.jsonl
+tools/results/legacy_laptop_search/*_best.json
+tools/results/legacy_laptop_search/baseline_report.json
+tools/results/legacy_laptop_search/evolve.py
+tools/results/legacy_laptop_search/evolve_report.py
 __pycache__/

@@ -60,10 +60,9 @@ const std::vector<std::string>& evolvedRule() {
         // adapts only while there is input (no self-amplified echo), gain control also turning
         // down learned input, learned 4D links muted while encoding (no capture of new words onto
         // old cells) and full muting of learned links in silence. (Learned inhibition was part of
-        // version B; evolution 2 switched it off, istdp_rate 0.)
+        // version B; evolution 2 switched it off and it was removed from the code.)
         "long_range_links=64", "presynaptic_bound=0.89812",
         "agc_input_only=1", "agc_plastic=1", "encoding_suppression_4d=1",
-        "istdp_rate=0",
         // Rhythm restart (adopted 2026-10-01): the 2D and 3D clocks restart their cycle after a word
         // gap and when input begins after a pause, so a word is cut into the same chunks every
         // time it is heard (a streamed word was only 25% alike to itself without it; 67-97% with).
@@ -86,7 +85,7 @@ const std::vector<std::string>& evolvedRule() {
         // 64 words truly recalled 37% -> 73%, checks 68/70 -> 68/70. It also set the values below
         // that differ from the earlier search (channel_winners3, covariance, fatigue_gain3,
         // fire_threshold3, hetero_ltd, learning_rate, mode_tau, order_gain, order_tau, plastic_budget).
-        "assembly_inhibition=0.00321", "consolidated_budget=0.50842", "consolidation_rate=0.0056", "istdp_target=0.01627",
+        "assembly_inhibition=0.00321", "consolidated_budget=0.50842", "consolidation_rate=0.0056",
         "channel_winners3=2",
         "covariance=0.58435",
         "downward_gain=0.0224",
@@ -107,17 +106,16 @@ const std::vector<std::string>& evolvedRule() {
         "long_range=0.00205",
         "mode_tau=13.44333",
         "modulation_rate=0",
-        "modulator_tau=0",
         "order_gain=6.23347",
         "order_tau=2.90192",
         "plastic_budget=5.67831",
         "sheet_neighbour=0.0104",
         "sheet_self=0.1184",
         // Per-link bounds (adopted 2026-10-04): each link strengthens by its own room (link_bound
-        // 0.3) instead of the channel-wide room (soft_bound off), so new memories are written at
+        // 0.3) instead of the earlier channel-wide room, so new memories are written at
         // full strength however full a cell already is. Fresh dev brains 3000-3009: checks 70/70
         // (was 68/70); 32 words truly recalled 100% (was 94%), 64 words 87% (was 71%).
-        "soft_bound=0", "link_bound=0.3",
+        "link_bound=0.3",
         // Quiet ears (adopted 2026-10-05): without input, fixed paths (the echo of what was heard)
         // turn down by 0.6 while learned links stay full, so the associate comes forward instead
         // of the cue's own echo. Checks 70/70 on dev 3000-3009; 128 words truly recalled 72% vs 61%
@@ -138,8 +136,6 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"inhibitory_strength", &c.inhibitory_strength},
         {"upward_gain", &c.upward_gain},
         {"line_upward_gain", &c.line_upward_gain},
-        {"normalize_upward", &c.normalize_upward},
-        {"output_sigma", &c.output_sigma},
         {"agc_rate", &c.agc_rate},
         {"agc_min", &c.agc_min},
         {"agc_max", &c.agc_max},
@@ -170,47 +166,25 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"average_tau", &c.learning.average_tau},
         {"encoding_suppression", &c.learning.encoding_suppression},
         {"encoding_suppression_4d", &c.learning.encoding_suppression_4d},
-        {"depression_use", &c.learning.depression_use},
-        {"istdp_rate", &c.learning.istdp_rate},
-        {"istdp_target", &c.learning.istdp_target},
-        {"istdp_max", &c.learning.istdp_max},
         {"assembly_inhibition", &c.learning.assembly_inhibition},
         {"assembly_max", &c.learning.assembly_max},
-        {"istdp_tau", &c.learning.istdp_tau},
-        {"depression_tau", &c.learning.depression_tau},
-        {"normalized_plasticity", &c.learning.normalized},
-        {"soft_bound", &c.learning.soft_bound},
-        {"predictive", &c.learning.predictive},
-        {"trace_tau", &c.learning.trace_tau},
-        {"modulator_tau", &c.learning.modulator_tau},
         {"order_tau", &c.learning.order_tau},
         {"mode_tau", &c.learning.mode_tau},
         {"hetero_ltd", &c.learning.hetero_ltd},
         {"presynaptic_bound", &c.learning.presynaptic_bound},
         {"consolidation_rate", &c.learning.consolidation_rate},
-        {"sheet_rate", &c.learning.sheet_rate},
-        {"sheet_budget", &c.learning.sheet_budget},
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
-        {"fatigue_recall", &c.fatigue_recall},
-        {"fatigue_divisive", &c.fatigue_divisive},
-        {"fatigue_cap", &c.fatigue_cap},
         {"fatigue_divisive2", &c.fatigue_divisive2},
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
-        {"agc_local", &c.agc_local},
-        {"agc_relax", &c.agc_relax},
         {"agc_relax_field", &c.agc_relax_field},
         {"agc_plastic", &c.agc_plastic},
         {"agc_input_only", &c.agc_input_only},
-        {"field_pace", &c.field_pace},
-        {"upward_pool", &c.upward_pool},
         {"clock_reset", &c.clock_reset},
-        {"space_silent", &c.space_silent},
         {"field_sweep", &c.field_sweep},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
-        {"encoding_full", &c.encoding_full},
         {"line_recency", &c.line_recency},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},
@@ -232,7 +206,6 @@ std::map<std::string, uint32_t*> countTable(Config& c) {
         {"long_range_links", &c.long_range_links},
         {"codebook_seed", &c.codebook_seed},
         {"link4d_spread", &c.link4d_spread},
-        {"agc_radius", &c.agc_radius},
         {"input_depth_spread", &c.input_depth_spread},
         {"winners2", &c.winners2},
         {"winners3", &c.winners3},
