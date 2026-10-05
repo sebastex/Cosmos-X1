@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <new>
@@ -39,18 +40,87 @@ struct Options {
     bool silenceRecall = false; // diagnostic: full-strength recall mode during silence
     bool earlyExit = false;     // suite: stop after recall if learning clearly hurts it
     uint64_t storeTicks = 0;    // recall test: exposure per stored item (0 = default)
-    float cueFraction = 0.0f;
-    double timeScale = 1.0;     // tests: multiplies storing, gap and cue durations   // recall test: share of the fingerprint kept in cues (0 = default)
+    float cueFraction = 0.0f;   // recall test: share of the fingerprint kept in cues (0 = default)
+    double timeScale = 1.0;     // tests: multiplies storing, gap and cue durations
     std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
 };
 
+// Every test by name: main() runs it, --help lists it.
+struct TestEntry {
+    const char* name;
+    std::function<int(const ncm::Config&, const Options&)> run;
+};
+
+const std::vector<TestEntry>& tests() {
+    static const std::vector<TestEntry> table = {
+        {"recall", [](const ncm::Config& cfg, const Options& opt) {
+             std::printf("COSMOS X1: NEURAL CELLULAR MATRIX, preset %s\n", opt.preset.c_str());
+             ncm::RecallOptions ro;
+             ro.quiet = opt.quiet;
+             ro.clearBetween = opt.clearGaps;
+             ro.silenceSuppressed = !opt.silenceRecall;
+             if (!opt.patterns.empty()) ro.patterns = opt.patterns;
+             if (opt.storeTicks > 0) ro.storeTicks = opt.storeTicks;
+             if (opt.cueFraction > 0.0f) ro.cueFraction = opt.cueFraction;
+             ro.storeTicks = uint64_t(double(ro.storeTicks) * opt.timeScale + 0.5);
+             ro.gapTicks = uint64_t(double(ro.gapTicks) * opt.timeScale + 0.5);
+             ro.cueTicks = uint64_t(double(ro.cueTicks) * opt.timeScale + 0.5);
+             return ncm::runRecallTest(cfg, ro);
+         }},
+        {"reliability", [](const ncm::Config& cfg, const Options& opt) {
+             ncm::RecallOptions ro;
+             if (!opt.patterns.empty()) ro.patterns = opt.patterns;
+             return ncm::runReliabilityTest(cfg, ro);
+         }},
+        {"capacity", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runCapacityTest(cfg); }},
+        {"efficiency", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runEfficiencyTest(cfg); }},
+        {"streamed", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runStreamedTest(cfg); }},
+        {"continual", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runContinualTest(cfg); }},
+        {"order", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runOrderTest(cfg); }},
+        {"context", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runContextTest(cfg); }},
+        {"profile", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runProfileTest(cfg); }},
+        {"retention", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runRetentionTest(cfg); }},
+        {"streamdiag", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runStreamDiagTest(cfg); }},
+        {"health", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runHealthTest(cfg); }},
+        {"hum", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runHumTest(cfg); }},
+        {"chain", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runChainTest(cfg); }},
+        {"overlap", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runOverlapTest(cfg); }},
+        {"recalldetail", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runRecallDetailTest(cfg); }},
+        {"wordcontext", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordContextTest(cfg); }},
+        {"pairlinks", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runPairLinksTest(cfg); }},
+        {"pairload", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runPairLoadTest(cfg, opt.storeTicks); }},
+        {"lookalike", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runLookAlikeTest(cfg); }},
+        {"wordload", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordLoadTest(cfg, opt.storeTicks); }},
+        {"wordshape", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordShapeTest(cfg, true, opt.storeTicks); }},
+        {"wordshapenospace", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordShapeTest(cfg, false); }},
+        {"wordcapacity", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordCapacityTest(cfg); }},
+        {"wordcontinual", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordContinualTest(cfg); }},
+        {"wordcontinualswap", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordContinualTest(cfg, true); }},
+        {"discriminate", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runDiscriminationTest(cfg); }},
+        {"interfere", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runInterferenceTest(cfg); }},
+        {"completion", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runCompletionTest(cfg, opt.storeTicks > 0 ? opt.storeTicks : 3); }},
+        {"settle", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runSettleTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]); }},
+        {"occupancy", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runOccupancyTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]); }},
+        {"drift", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runDriftTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0], opt.storeTicks); }},
+        {"suite", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runMemorySuite(cfg, opt.earlyExit); }},
+    };
+    return table;
+}
+
+std::string testNames() {
+    std::string names = "stage0";
+    for (const auto& t : tests()) names += std::string(", ") + t.name;
+    return names;
+}
+
 void usage() {
-    std::cout << "usage: cosmos_x1 [--test stage0|recall] [--preset tiny|dev|full] [--ticks N] [--input-ticks N]\n"
+    std::cout << "usage: cosmos_x1 [--test NAME] [--preset tiny|small|dev|full] [--ticks N] [--input-ticks N]\n"
                  "                 [--snap N] [--out DIR] [--text \"...\"] [--seed N] [--quiet]\n"
                  "                 [--set name=value]...\n"
-                 "settings: "
-              << ncm::settingNames() << "\n";
+                 "tests: "
+              << testNames() << "\n"
+              << "settings: " << ncm::settingNames() << "\n";
 }
 
 bool parse(int argc, char** argv, Options& o) {
@@ -148,59 +218,10 @@ int main(int argc, char** argv) {
     if (opt.seedSet) cfg.seed = opt.seed;
     ncm::setTestTimeScale(opt.timeScale);
 
-    if (opt.test == "recall") {
-        std::printf("COSMOS X1: NEURAL CELLULAR MATRIX, preset %s\n", opt.preset.c_str());
-        ncm::RecallOptions ro;
-        ro.quiet = opt.quiet;
-        ro.clearBetween = opt.clearGaps;
-        ro.silenceSuppressed = !opt.silenceRecall;
-        if (!opt.patterns.empty()) ro.patterns = opt.patterns;
-        if (opt.storeTicks > 0) ro.storeTicks = opt.storeTicks;
-        if (opt.cueFraction > 0.0f) ro.cueFraction = opt.cueFraction;
-        ro.storeTicks = uint64_t(double(ro.storeTicks) * opt.timeScale + 0.5);
-        ro.gapTicks = uint64_t(double(ro.gapTicks) * opt.timeScale + 0.5);
-        ro.cueTicks = uint64_t(double(ro.cueTicks) * opt.timeScale + 0.5);
-        return ncm::runRecallTest(cfg, ro);
-    }
-    if (opt.test == "reliability") {
-        ncm::RecallOptions ro;
-        if (!opt.patterns.empty()) ro.patterns = opt.patterns;
-        return ncm::runReliabilityTest(cfg, ro);
-    }
-    if (opt.test == "capacity") return ncm::runCapacityTest(cfg);
-    if (opt.test == "efficiency") return ncm::runEfficiencyTest(cfg);
-    if (opt.test == "streamed") return ncm::runStreamedTest(cfg);
-    if (opt.test == "continual") return ncm::runContinualTest(cfg);
-    if (opt.test == "order") return ncm::runOrderTest(cfg);
-    if (opt.test == "context") return ncm::runContextTest(cfg);
-    if (opt.test == "profile") return ncm::runProfileTest(cfg);
-    if (opt.test == "retention") return ncm::runRetentionTest(cfg);
-    if (opt.test == "streamdiag") return ncm::runStreamDiagTest(cfg);
-    if (opt.test == "health") return ncm::runHealthTest(cfg);
-    if (opt.test == "hum") return ncm::runHumTest(cfg);
-    if (opt.test == "chain") return ncm::runChainTest(cfg);
-    if (opt.test == "overlap") return ncm::runOverlapTest(cfg);
-    if (opt.test == "recalldetail") return ncm::runRecallDetailTest(cfg);
-    if (opt.test == "wordcontext") return ncm::runWordContextTest(cfg);
-    if (opt.test == "pairlinks") return ncm::runPairLinksTest(cfg);
-    if (opt.test == "pairload") return ncm::runPairLoadTest(cfg, opt.storeTicks);
-    if (opt.test == "lookalike") return ncm::runLookAlikeTest(cfg);
-    if (opt.test == "wordload") return ncm::runWordLoadTest(cfg, opt.storeTicks);
-    if (opt.test == "wordshape") return ncm::runWordShapeTest(cfg, true, opt.storeTicks);
-    if (opt.test == "wordshapenospace") return ncm::runWordShapeTest(cfg, false);
-    if (opt.test == "wordcapacity") return ncm::runWordCapacityTest(cfg);
-    if (opt.test == "wordcontinual") return ncm::runWordContinualTest(cfg);
-    if (opt.test == "wordcontinualswap") return ncm::runWordContinualTest(cfg, true);
-    if (opt.test == "discriminate") return ncm::runDiscriminationTest(cfg);
-    if (opt.test == "interfere") return ncm::runInterferenceTest(cfg);
-    if (opt.test == "completion") return ncm::runCompletionTest(cfg, opt.storeTicks > 0 ? opt.storeTicks : 3);
-    if (opt.test == "settle") return ncm::runSettleTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);
-    if (opt.test == "occupancy") return ncm::runOccupancyTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0]);
-    if (opt.test == "drift") return ncm::runDriftTest(cfg, opt.patterns.empty() ? "a" : opt.patterns[0], opt.storeTicks);
-    if (opt.test == "suite") return ncm::runMemorySuite(cfg, opt.earlyExit);
+    for (const auto& t : tests())
+        if (opt.test == t.name) return t.run(cfg, opt);
     if (opt.test != "stage0") {
-        std::cerr << "error: unknown test '" << opt.test
-                  << "' (use stage0, recall, capacity, efficiency, streamed, continual, order or suite)\n";
+        std::cerr << "error: unknown test '" << opt.test << "' (use " << testNames() << ")\n";
         return 2;
     }
 

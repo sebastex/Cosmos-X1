@@ -1,6 +1,6 @@
 # Cosmos X1: Neural Cellular Matrix (NCM)
 
-## Cosmos Prime (main version, updated 2026-10-04)
+## Cosmos Prime (main version, updated 2026-10-05)
 
 **Cosmos Prime** is the main version: the default rule in `src/Config.cpp`, git tag `cosmos-prime`.
 It is the best version measured so far on the big brain (dev preset):
@@ -11,13 +11,12 @@ It is the best version measured so far on the big brain (dev preset):
 - Rhythm restart (`clock_reset`): the 2D/3D clocks restart at word gaps and onsets, so a word is
   cut into the same chunks every time.
 - Front-to-back sweep (`field_sweep`): the four fields update in order within each step.
-- Recency-weighted lines (`line_recency` 0.6): the newest letters count most; full strength kept.
-- Two-route memory (`separation` 3, `spread_plastic` 0.5, added 2026-10-01): while a memory is
+- Recency-weighted lines (`line_recency`, now 0.48): the newest letters count most; full strength kept.
+- Two-route memory (`separation`, `spread_plastic`; added 2026-10-01 at 3 / 0.5, now 4.9 / 0.45): while a memory is
   stored, cells already loaded with memories are harder to recruit (pattern separation), and the
   feedforward sources from earlier fields learn the route from a cue to the stored cells (recall).
   On fresh dev brains 2002-2011: all checks 67/70 (before 65/70), brains passing every check 8/10
   (before 6/10), keeping old memories while learning new 9/10 (before 7/10).
-
 - Evolution 2 tuning (winner c332, adopted 2026-10-04): more winners per voxel (5) with fewer per
   channel (2), slower learning (0.022) with a larger budget (5.7), stronger separation (4.9),
   partial covariance (0.58), shorter mode/order memory. Fair check on fresh dev brains 3000-3009:
@@ -34,6 +33,8 @@ Measured earlier (true recall of the partner word, `--test pairload`, seeds 22-3
 32 words 68% (the previous main version was at chance); an untrained twin stays at chance.
 Official check: `--test suite` (CP2 recall, CP3 capacity, CP4 efficiency, CP5w word pairs, CP6,
 CP6b, CP7). Build: `build.ps1` (Windows) or `build.sh` (Linux) -> `build/cosmos_x1(.exe)`.
+All tests: `cosmos_x1 --help`. Diagnostics: `--test lookalike` (are look-alike words kept apart?),
+`--test pairload` with `NCM_PAIR_FAST=1` (big loads) and `NCM_ECHO=1` (how much of recall is the cue's echo).
 
 
 Test environment for Cosmos X1, an AI built on cellular-automaton principles: four 3D fields (Input, Memory, Reasoning, Output), every voxel holding a 2D sheet, every sheet cell holding a 1D line. Cells behave like neurons; knowledge is meant to emerge from local rules and local learning.

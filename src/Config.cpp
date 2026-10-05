@@ -46,7 +46,8 @@ const std::vector<std::string>& evolvedRule() {
         "agc_rate=0.0646", "agc_max=16", "agc_relax_field=0.1264",
         // Competition, gain control and projection strength balanced by a short search
         // (tools/foundation_search.py) for steadiness under held input, volume use, repeatability
-        // and recall at small and dev sizes, strong and weak inputs.
+        // and recall at small and dev sizes, strong and weak inputs (winners3 retuned 3 -> 5 by
+        // evolution 2, 2026-10-04).
         "winners3=5",
         // Input-field depth: interior Input voxels hear random sensory-face voxels, so the Input
         // field uses its whole volume too (helps the bigger matrix most).
@@ -54,15 +55,15 @@ const std::vector<std::string>& evolvedRule() {
         // Streamed-word memory (adopted 2026-09-29, "version B"; diagnosed with --test completion,
         // chain, health and hum). Learned links reach 64 random partners per voxel (the fixed part
         // of those links keeps the old total), so sparse, scattered letter patterns can associate.
-        // Anti-hub learning (full covariance, presynaptic budget). Strong learned links let a
+        // Anti-hub learning (covariance, presynaptic budget). Strong learned links let a
         // word's start reactivate the whole word; they are kept in check by: gain control that
         // adapts only while there is input (no self-amplified echo), gain control also turning
         // down learned input, learned 4D links muted while encoding (no capture of new words onto
-        // old cells), full muting of learned links in silence, and learned inhibition (each
-        // voxel's inhibition learns to balance its excitation).
+        // old cells) and full muting of learned links in silence. (Learned inhibition was part of
+        // version B; evolution 2 switched it off, istdp_rate 0.)
         "long_range_links=64", "presynaptic_bound=0.89812",
         "agc_input_only=1", "agc_plastic=1", "encoding_suppression_4d=1",
-        "istdp_rate=0",  // learned inhibition switched off by evolution 2 (c332, 2026-10-04)
+        "istdp_rate=0",
         // Rhythm restart (adopted 2026-10-01): the 2D and 3D clocks restart their cycle after a word
         // gap and when input begins after a pause, so a word is cut into the same chunks every
         // time it is heard (a streamed word was only 25% alike to itself without it; 67-97% with).
@@ -73,16 +74,18 @@ const std::vector<std::string>& evolvedRule() {
         // weights the newest letters most (weights sum to the line length, so a held letter keeps
         // its full strength); a word then keeps its identity whatever came before it. Honest word
         // memory (true recall of the partner word, dev seeds 22-31): 32 words 68% (was at chance),
-        // 16 words 91%; held-letter capacity holds.
+        // 16 words 91%; held-letter capacity holds. (line_recency retuned 0.6 -> 0.484 by evolution 2.)
         "field_sweep=1", "line_recency=0.48403",
         // Two-route memory (adopted 2026-10-01): pattern separation at storage (channels already
-        // loaded with memories are harder to recruit while encoding, separation 3) and a learned
-        // cue route (the feedforward spread sources learn which input leads to the stored cells,
-        // transmitted at half strength). Keeping old memories while learning new: 7/10 -> 9/10,
-        // all checks 65/70 -> 67/70 on fresh dev brains 2002-2011.
+        // loaded with memories are harder to recruit while encoding) and a learned cue route (the
+        // feedforward spread sources learn which input leads to the stored cells). Keeping old
+        // memories while learning new: 7/10 -> 9/10, all checks 65/70 -> 67/70 on fresh dev brains
+        // 2002-2011 (adopted at separation 3, spread_plastic 0.5; retuned by evolution 2).
         "separation=4.94742", "spread_plastic=0.45398",
         // Evolution 2 winner c332 (adopted 2026-10-04; fair check on fresh dev brains 3000-3009):
-        // 64 words truly recalled 37% -> 73%, checks 68/70 -> 68/70. Also tunes the values below.
+        // 64 words truly recalled 37% -> 73%, checks 68/70 -> 68/70. It also set the values below
+        // that differ from the earlier search (channel_winners3, covariance, fatigue_gain3,
+        // fire_threshold3, hetero_ltd, learning_rate, mode_tau, order_gain, order_tau, plastic_budget).
         "assembly_inhibition=0.00321", "consolidated_budget=0.50842", "consolidation_rate=0.0056", "istdp_target=0.01627",
         "channel_winners3=2",
         "covariance=0.58435",
