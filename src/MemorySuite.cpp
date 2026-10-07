@@ -1639,7 +1639,17 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         "quack", "reef", "scarf", "twine", "vault", "woven", "alarm", "berry", "coral", "diner", "eject", "fairy",
         "gland", "hatch", "inlet", "jumbo", "kiosk", "lodge", "mural", "nylon", "onion", "perch", "rally", "sheep",
         "spine", "tango", "udder", "venom", "witty", "brave", "clerk", "dusty", "ferry", "glory", "honor", "inbox",
-        "jazzy", "kitty", "mercy", "noisy", "opera", "pouch", "rusty", "sunny"};
+        "jazzy", "kitty", "mercy", "noisy", "opera", "pouch", "rusty", "sunny",
+        // 100 more words (added 2026-10-07 for the 300-word test; the first 200 are unchanged).
+        "amuse", "bliss", "cargo", "dread", "elder", "glint", "haven", "ideal", "joint", "kebab", "lever", "manor",
+        "nerve", "pixel", "quake", "shrub", "tempo", "unzip", "vigor", "xenon", "yodel", "zonal", "abyss", "brisk",
+        "cobra", "decoy", "epoch", "flair", "gusto", "hippo", "inlay", "jumpy", "knelt", "lusty", "nifty", "ozone",
+        "plaza", "quiet", "rebel", "stoic", "thorn", "umbra", "vinyl", "woken", "yummy", "zippy", "bugle", "dingo",
+        "fjord", "hazel", "icing", "jiffy", "kudos", "mimic", "polka", "quart", "rumba", "sable", "tiara", "upset",
+        "vixen", "wafer", "axiom", "bongo", "crumb", "dwell", "eerie", "fiber", "gnome", "husky", "inert", "jaunt",
+        "lemur", "macaw", "nomad", "pecan", "relic", "angel", "baker", "civic", "drama", "event", "feast", "giver",
+        "hotel", "input", "judge", "karat", "lasso", "medic", "north", "outer", "petal", "quote", "radar", "scout",
+        "trend", "unite", "vocal", "witch"};
     const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
     std::printf("Pair load: pairs learned one after another; hear the first word, is the second one recalled?\n");
     double finalRecall[2] = {0.0, 0.0}; // [untrained, learned] true-recall share at the last stage
