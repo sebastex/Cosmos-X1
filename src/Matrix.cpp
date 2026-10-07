@@ -243,6 +243,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     orderTrace3_.assign(V_ * C3, 0.0f);
+    if (cfg.learning.channel_balance > 0.0f) chanTheta3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
     if (cfg_.separation > 0.0f) usage3_.assign(V_ * C3, 0.0f);
     diagSource3_.assign(V_ * kSources, 0.0f);
@@ -827,6 +828,9 @@ void NeuralCellularMatrix::step3D() {
             const float* u = usage3_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
         }
+        // Channel balance: each channel's own threshold offset (channels that always win are held back).
+        if (!chanTheta3_.empty())
+            for (uint32_t c = 0; c < C3; ++c) in[c] -= chanTheta3_[v * C3 + c];
         drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v], cfg_.channel_winners3);
     }
 
@@ -855,6 +859,13 @@ void NeuralCellularMatrix::step3D() {
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
         average3_[v] += (final - average3_[v]) / avgTau;
+        if (!chanTheta3_.empty() && final > 0.0f) {
+            const float* cell = out + v * C3;
+            float mean = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) mean += cell[c] / float(C3);
+            float* ct = chanTheta3_.data() + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) ct[c] += cfg_.learning.channel_balance * (cell[c] - mean);
+        }
         if (orderTau > 0.0f) {
             float* tr = orderTrace3_.data() + v * C3;
             const float* cell = out + v * C3;

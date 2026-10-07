@@ -114,6 +114,7 @@ public:
     const AVec<float>& lineState() const { return s1_.cur; }
     const AVec<float>& sheetState() const { return s2_.cur; }
     const AVec<float>& voxelState() const { return s3_.cur; }
+    const AVec<float>& voxelThresholds() const { return s3_.theta; }
     size_t memoryBytes() const;
 
     size_t voxelIndex(uint32_t field, uint32_t x, uint32_t y, uint32_t z) const {
@@ -180,6 +181,7 @@ private:
     // sheets skipped in the current 2D step.
     std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
     AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
+    AVec<float> chanTheta3_;  // per voxel channel: threshold offset (channel balance); empty when off
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;

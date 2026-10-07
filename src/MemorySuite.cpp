@@ -1376,6 +1376,201 @@ int runWordContinualTest(const Config& cfg, bool swapped) {
 // for every pair: shared letters and similarity of the 3D shapes. Then the same with the
 // common background removed (the mean shape of all words subtracted), and how much of each
 // word's activity lies in cells that are active for most words.
+// The word pairs of the pair test (pairs are words 2k and 2k + 1).
+const std::vector<std::string>& pairWords() {
+    static const std::vector<std::string> words = {
+        "apple", "river", "storm", "candy", "light", "mouse", "bench", "think", "green", "house", "plant", "water",
+        "smile", "dream", "cloud", "tiger", "fruit", "queen", "jolly", "knife", "lemon", "night", "ocean", "piano",
+        "robot", "sugar", "table", "uncle", "voice", "whale", "zebra", "brick", "chair", "dance", "eagle", "flame",
+        "ghost", "honey", "ivory", "jewel", "koala", "maple", "nurse", "olive", "pearl", "quilt", "raven", "snake",
+        "torch", "urban", "vivid", "wheat", "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape",
+        "hinge", "index", "joker", "karma", "badge", "cabin", "daisy", "fence", "glove", "horse", "lunar", "medal",
+        "novel", "orbit", "paint", "radio", "salad", "tower", "unity", "vapor", "waltz", "youth", "acorn", "beach",
+        "comet", "dodge", "ember", "fable", "giant", "hedge", "igloo", "jelly", "kneel", "ladle", "mango", "noble",
+        "oasis", "pilot", "quest", "rider", "shelf", "tulip", "usher", "valve", "wagon", "bacon", "cider", "denim",
+        "easel", "fudge", "gecko", "hound", "irony", "juice", "kayak", "llama", "mocha", "nacho", "otter", "panda",
+        "quota", "rhino", "sauce", "thumb", "ultra", "viola", "wrist", "yeast", "zesty", "blend", "crisp", "dwarf",
+        "flint", "grain", "haste", "latch", "mirth", "notch", "plume", "quirk", "roost", "slate", "trout", "whisk",
+        "bloom", "chalk", "dough", "flock", "gravy", "hymns", "knack", "lilac", "mossy", "nudge", "oxide", "prism",
+        "quack", "reef", "scarf", "twine", "vault", "woven", "alarm", "berry", "coral", "diner", "eject", "fairy",
+        "gland", "hatch", "inlet", "jumbo", "kiosk", "lodge", "mural", "nylon", "onion", "perch", "rally", "sheep",
+        "spine", "tango", "udder", "venom", "witty", "brave", "clerk", "dusty", "ferry", "glory", "honor", "inbox",
+        "jazzy", "kitty", "mercy", "noisy", "opera", "pouch", "rusty", "sunny",
+        // 100 more words (added 2026-10-07 for the 300-word test; the first 200 are unchanged).
+        "amuse", "bliss", "cargo", "dread", "elder", "glint", "haven", "ideal", "joint", "kebab", "lever", "manor",
+        "nerve", "pixel", "quake", "shrub", "tempo", "unzip", "vigor", "xenon", "yodel", "zonal", "abyss", "brisk",
+        "cobra", "decoy", "epoch", "flair", "gusto", "hippo", "inlay", "jumpy", "knelt", "lusty", "nifty", "ozone",
+        "plaza", "quiet", "rebel", "stoic", "thorn", "umbra", "vinyl", "woken", "yummy", "zippy", "bugle", "dingo",
+        "fjord", "hazel", "icing", "jiffy", "kudos", "mimic", "polka", "quart", "rumba", "sable", "tiara", "upset",
+        "vixen", "wafer", "axiom", "bongo", "crumb", "dwell", "eerie", "fiber", "gnome", "husky", "inert", "jaunt",
+        "lemur", "macaw", "nomad", "pecan", "relic", "angel", "baker", "civic", "drama", "event", "feast", "giver",
+        "hotel", "input", "judge", "karat", "lasso", "medic", "north", "outer", "petal", "quote", "radar", "scout",
+        "trend", "unite", "vocal", "witch"};
+    return words;
+}
+
+// Overlap: how alike different words look inside the matrix, heard alone as in the pair test's
+// yardstick (listening mode, no learning). Stored associations add up in the same links, so a cue
+// recalls its own partner plus every other stored partner weighted by how alike the cues are; the
+// crosstalk reaches the own signal at about 1 / (cue overlap x partner overlap) pairs. Measured per
+// field, with and without the space every word ends with, and with the part all words share removed.
+int runWordOverlapTest(const Config& cfg) {
+    const auto& all = pairWords();
+    const size_t n = std::min<size_t>(80, all.size());
+    const char* names[kFields] = {"Input", "Memory", "Reasoning", "Output"};
+    for (int withSpace = 1; withSpace >= 0; --withSpace) {
+        Session s(cfg, false);
+        Patterns shape;
+        for (size_t k = 0; k < n; ++k) {
+            const std::string w = all[k] + (withSpace ? " " : "");
+            shape.push_back(s.present(w, 4 * w.size(), 1.0f, true, w.size()));
+            s.silence(kGap, false);
+        }
+        const size_t dim = shape[0].size(), perField = dim / kFields;
+        // Shared cells: voxel channels active for many different words (hubs), where they are and
+        // how excitable they are (firing threshold), against the other cells that were active.
+        if (withSpace) {
+            // Footprint: share of all cells a word uses while it is heard (its shape over time),
+            // and at one moment (one step), against the momentary activity target.
+            double foot = 0.0, footVox = 0.0;
+            for (const auto& x : shape) {
+                size_t on = 0, onVox = 0;
+                for (size_t i2 = 0; i2 < dim; ++i2) on += x[i2] > 0.0;
+                for (size_t v2 = 0; v2 < dim / C3; ++v2) {
+                    bool any = false;
+                    for (uint32_t c = 0; c < C3 && !any; ++c) any = x[v2 * C3 + c] > 0.0;
+                    onVox += any;
+                }
+                foot += double(on) / double(dim) / double(n);
+                footVox += double(onVox) / double(dim / C3) / double(n);
+            }
+            Session one(cfg, false);
+            double moment = 0.0, momentVox = 0.0;
+            size_t moments = 0;
+            for (size_t k = 0; k < 20; ++k) {
+                const std::string w = all[k] + " ";
+                for (uint64_t t = 0; t < 4 * w.size(); ++t) {
+                    one.present(std::string(1, w[t % w.size()]), 1, 1.0f, true, UINT64_MAX);
+                    if (t < w.size()) continue;
+                    const auto& st = one.matrix().voxelState();
+                    size_t on = 0, onVox = 0;
+                    for (size_t i2 = 0; i2 < st.size(); ++i2) on += st[i2] > 0.0f;
+                    for (size_t v2 = 0; v2 < st.size() / C3; ++v2) {
+                        bool any = false;
+                        for (uint32_t c = 0; c < C3 && !any; ++c) any = st[v2 * C3 + c] > 0.0f;
+                        onVox += any;
+                    }
+                    moment += double(on) / double(st.size());
+                    momentVox += double(onVox) / double(st.size() / C3);
+                    ++moments;
+                }
+                one.silence(kGap, false);
+            }
+            std::printf("Footprint of one word while heard: %.1f%% of cell channels (%.1f%% of voxels); at one moment: %.2f%% of cell channels (%.1f%% of voxels)\n",
+                        100.0 * foot, 100.0 * footVox, 100.0 * moment / double(moments), 100.0 * momentVox / double(moments));
+            // Channel preference: inside each voxel, how much of its activity over all words goes to
+            // its two most used channels (2 of 16 fire at a time; with no preference the same two would
+            // win only by chance), and how unevenly cells take part across words (variance of the
+            // number of words a cell joins, against the binomial variance of an even share).
+            {
+                double top2 = 0.0, voxels = 0.0;
+                for (size_t v2 = 0; v2 < dim / C3; ++v2) {
+                    double per[C3] = {}, tot = 0.0;
+                    for (const auto& x : shape)
+                        for (uint32_t c = 0; c < C3; ++c) per[c] += x[v2 * C3 + c];
+                    for (uint32_t c = 0; c < C3; ++c) tot += per[c];
+                    if (tot <= 0.0) continue;
+                    std::sort(per, per + C3, std::greater<double>());
+                    top2 += (per[0] + per[1]) / tot;
+                    voxels += 1.0;
+                }
+                double mean = 0.0, var = 0.0;
+                std::vector<double> joins(dim, 0.0);
+                for (size_t i2 = 0; i2 < dim; ++i2) {
+                    for (const auto& x : shape) joins[i2] += x[i2] > 0.0;
+                    mean += joins[i2] / double(dim);
+                }
+                for (size_t i2 = 0; i2 < dim; ++i2) var += (joins[i2] - mean) * (joins[i2] - mean) / double(dim);
+                const double p = mean / double(n), binom = double(n) * p * (1.0 - p);
+                std::printf("Channel preference: a voxel's two most used channels carry %.0f%% of its activity over %zu words; cells join %.2f words on average, spread %.1fx what an even share gives\n",
+                            100.0 * top2 / std::max(1.0, voxels), n, mean, binom > 0.0 ? var / binom : 0.0);
+            }
+            const auto& th = s.matrix().voxelThresholds();
+            const uint32_t N = cfg.field_dim;
+            for (double level : {0.5, 0.9}) {
+                std::printf("Cells active for at least %.0f%% of the words:", 100.0 * level);
+                double hubAct = 0.0, allAct = 0.0, hubTh = 0.0, otherTh = 0.0, hubX = 0.0, otherX = 0.0;
+                size_t hubs = 0, others = 0, hubVox[kFields] = {};
+                for (size_t i2 = 0; i2 < dim; ++i2) {
+                    size_t on = 0;
+                    double act = 0.0;
+                    for (const auto& x : shape) {
+                        on += x[i2] > 0.0;
+                        act += x[i2];
+                    }
+                    allAct += act;
+                    if (on == 0) continue;
+                    const size_t vox = i2 / C3;
+                    const double xpos = double(vox % N);
+                    if (double(on) >= level * double(n)) {
+                        ++hubs;
+                        hubAct += act;
+                        hubTh += th[vox];
+                        hubX += xpos;
+                        ++hubVox[vox / (dim / C3 / kFields)];
+                    } else {
+                        ++others;
+                        otherTh += th[vox];
+                        otherX += xpos;
+                    }
+                }
+                std::printf(" %zu cells (Input %zu, Memory %zu, Reasoning %zu, Output %zu) of %zu active cells, carrying %.0f%% of all activity\n",
+                            hubs, hubVox[0], hubVox[1], hubVox[2], hubVox[3], hubs + others, allAct > 0.0 ? 100.0 * hubAct / allAct : 0.0);
+                if (hubs && others)
+                    std::printf("   their firing threshold %.4f vs other active cells %.4f; depth from the sensory face %.1f vs %.1f\n",
+                                hubTh / double(hubs), otherTh / double(others), hubX / double(hubs), otherX / double(others));
+            }
+        }
+        std::printf("Overlap of %zu different words heard alone (%s): mean cosine between two words\n", n,
+                    withSpace ? "each followed by a space, as in the pair test" : "no space after the word");
+        std::printf("  part      overlap   shared-part removed   share of activity all words share   predicted pairs 1/overlap^2\n");
+        for (int f = -1; f < int(kFields); ++f) {
+            const size_t lo = f < 0 ? 0 : size_t(f) * perField, hi = f < 0 ? dim : lo + perField;
+            auto cut = [&](const std::vector<double>& x) { return std::vector<double>(x.begin() + long(lo), x.begin() + long(hi)); };
+            std::vector<std::vector<double>> xs;
+            std::vector<double> mean(hi - lo, 0.0);
+            for (const auto& x : shape) {
+                xs.push_back(cut(x));
+                for (size_t i2 = 0; i2 < hi - lo; ++i2) mean[i2] += xs.back()[i2] / double(n);
+            }
+            double cos = 0.0, cosC = 0.0, shared = 0.0;
+            size_t pairs = 0;
+            std::vector<std::vector<double>> cs = xs;
+            for (auto& x : cs)
+                for (size_t i2 = 0; i2 < x.size(); ++i2) x[i2] -= mean[i2];
+            for (size_t a = 0; a < n; ++a) {
+                double nx = 0.0, dm = 0.0, nm = 0.0;
+                for (size_t i2 = 0; i2 < xs[a].size(); ++i2) {
+                    nx += xs[a][i2] * xs[a][i2];
+                    dm += xs[a][i2] * mean[i2];
+                    nm += mean[i2] * mean[i2];
+                }
+                shared += (nx > 0.0 && nm > 0.0) ? dm * dm / (nx * nm) / double(n) : 0.0;
+                for (size_t c = a + 1; c < n; ++c) {
+                    cos += lab::cosine(xs[a], xs[c]);
+                    cosC += lab::cosine(cs[a], cs[c]);
+                    ++pairs;
+                }
+            }
+            cos /= double(pairs);
+            cosC /= double(pairs);
+            std::printf("  %-9s %.3f     %+.3f                 %.3f                               %.0f\n", f < 0 ? "all" : names[f],
+                        cos, cosC, shared, cos > 0.0 ? 1.0 / (cos * cos) : 0.0);
+        }
+    }
+    return 0;
+}
+
 // Look-alike words: how alike the matrix's own shapes of words that share most letters are
 // (light / night), against unrelated words. The shapes are heard as in the word-pair yardstick
 // (listening mode, no learning). Words recalled wrongly were mostly such look-alikes.
@@ -1622,34 +1817,7 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // partner is the best match. The cue contains nothing of the partner, so an untrained twin is
 // at chance (1 / number of pairs). Tested after 4, 8, 16 and 32 pairs.
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
-    const std::vector<std::string> words = {
-        "apple", "river", "storm", "candy", "light", "mouse", "bench", "think", "green", "house", "plant", "water",
-        "smile", "dream", "cloud", "tiger", "fruit", "queen", "jolly", "knife", "lemon", "night", "ocean", "piano",
-        "robot", "sugar", "table", "uncle", "voice", "whale", "zebra", "brick", "chair", "dance", "eagle", "flame",
-        "ghost", "honey", "ivory", "jewel", "koala", "maple", "nurse", "olive", "pearl", "quilt", "raven", "snake",
-        "torch", "urban", "vivid", "wheat", "yacht", "amber", "blaze", "crown", "drift", "elbow", "frost", "grape",
-        "hinge", "index", "joker", "karma", "badge", "cabin", "daisy", "fence", "glove", "horse", "lunar", "medal",
-        "novel", "orbit", "paint", "radio", "salad", "tower", "unity", "vapor", "waltz", "youth", "acorn", "beach",
-        "comet", "dodge", "ember", "fable", "giant", "hedge", "igloo", "jelly", "kneel", "ladle", "mango", "noble",
-        "oasis", "pilot", "quest", "rider", "shelf", "tulip", "usher", "valve", "wagon", "bacon", "cider", "denim",
-        "easel", "fudge", "gecko", "hound", "irony", "juice", "kayak", "llama", "mocha", "nacho", "otter", "panda",
-        "quota", "rhino", "sauce", "thumb", "ultra", "viola", "wrist", "yeast", "zesty", "blend", "crisp", "dwarf",
-        "flint", "grain", "haste", "latch", "mirth", "notch", "plume", "quirk", "roost", "slate", "trout", "whisk",
-        "bloom", "chalk", "dough", "flock", "gravy", "hymns", "knack", "lilac", "mossy", "nudge", "oxide", "prism",
-        "quack", "reef", "scarf", "twine", "vault", "woven", "alarm", "berry", "coral", "diner", "eject", "fairy",
-        "gland", "hatch", "inlet", "jumbo", "kiosk", "lodge", "mural", "nylon", "onion", "perch", "rally", "sheep",
-        "spine", "tango", "udder", "venom", "witty", "brave", "clerk", "dusty", "ferry", "glory", "honor", "inbox",
-        "jazzy", "kitty", "mercy", "noisy", "opera", "pouch", "rusty", "sunny",
-        // 100 more words (added 2026-10-07 for the 300-word test; the first 200 are unchanged).
-        "amuse", "bliss", "cargo", "dread", "elder", "glint", "haven", "ideal", "joint", "kebab", "lever", "manor",
-        "nerve", "pixel", "quake", "shrub", "tempo", "unzip", "vigor", "xenon", "yodel", "zonal", "abyss", "brisk",
-        "cobra", "decoy", "epoch", "flair", "gusto", "hippo", "inlay", "jumpy", "knelt", "lusty", "nifty", "ozone",
-        "plaza", "quiet", "rebel", "stoic", "thorn", "umbra", "vinyl", "woken", "yummy", "zippy", "bugle", "dingo",
-        "fjord", "hazel", "icing", "jiffy", "kudos", "mimic", "polka", "quart", "rumba", "sable", "tiara", "upset",
-        "vixen", "wafer", "axiom", "bongo", "crumb", "dwell", "eerie", "fiber", "gnome", "husky", "inert", "jaunt",
-        "lemur", "macaw", "nomad", "pecan", "relic", "angel", "baker", "civic", "drama", "event", "feast", "giver",
-        "hotel", "input", "judge", "karat", "lasso", "medic", "north", "outer", "petal", "quote", "radar", "scout",
-        "trend", "unite", "vocal", "witch"};
+    const std::vector<std::string>& words = pairWords();
     const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
     std::printf("Pair load: pairs learned one after another; hear the first word, is the second one recalled?\n");
     double finalRecall[2] = {0.0, 0.0}; // [untrained, learned] true-recall share at the last stage

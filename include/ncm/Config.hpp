@@ -135,6 +135,13 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Channel balance: homeostasis for each channel of a voxel, not only for the voxel as a whole.
+    // A channel's own threshold offset rises by channel_balance x (its output - the voxel's mean
+    // channel output) whenever the voxel fires, so channels that win for every input (because
+    // their fixed random wiring happens to be stronger) get harder to win and the others easier.
+    // The offsets of a voxel sum to zero, so the voxel's own activity is unchanged. Without it
+    // the same 2 channels carried about half a voxel's activity over all words. 0 = off.
+    float channel_balance = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

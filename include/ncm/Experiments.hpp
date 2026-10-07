@@ -50,7 +50,8 @@ int runOverlapTest(const Config& cfg);
 int runRecallDetailTest(const Config& cfg); // diagnostic: incomplete, contaminated or wrong recall?
 int runWordContextTest(const Config& cfg); // diagnostic: does a word keep its identity across settings?
 int runPairLinksTest(const Config& cfg); // diagnostic: is the order of a word pair stored?
-int runLookAlikeTest(const Config& cfg); // diagnostic: are look-alike words (light/night) kept apart?
+int runWordOverlapTest(const Config& cfg);   // diagnostic: how alike different words are inside the matrix
+int runLookAlikeTest(const Config& cfg);
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs = 0); // word pairs: hear the first, recall the second
 int runWordLoadTest(const Config& cfg, uint64_t maxWords = 0); // how many streamed words the matrix can hold
 int runWordShapeTest(const Config& cfg, bool withSpace = true, uint64_t hold = 1); // diagnostic: why streamed words look alike

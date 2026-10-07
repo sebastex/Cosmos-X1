@@ -176,6 +176,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
+        {"channel_balance", &c.learning.channel_balance},
         {"fatigue_divisive2", &c.fatigue_divisive2},
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
         {"agc_relax_field", &c.agc_relax_field},
