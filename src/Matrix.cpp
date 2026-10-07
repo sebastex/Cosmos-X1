@@ -188,6 +188,28 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
     return change;
 }
 
+// Order part of a link (version A): only the order term, j's recent activity before i fires
+// strengthens, j firing while i was active just before weakens; bounded like the full block.
+template <uint32_t C>
+inline double orderBlock(float* O, const float* post, const float* postPrev, const float* pre, const float* prePrev,
+                         float rate, float lambda, const float* preRoom, float linkMax) {
+    double change = 0.0;
+    for (uint32_t a = 0; a < C; ++a) {
+        const float pa = post[a], qa = postPrev[a];
+        if (pa == 0.0f && qa == 0.0f) continue;
+        float* row = O + size_t(a) * C;
+        for (uint32_t b = 0; b < C; ++b) {
+            const float dw = lambda * (prePrev[b] * pa - pre[b] * qa);
+            float grow = preRoom ? preRoom[b] : 1.0f;
+            if (linkMax > 0.0f) grow *= std::max(0.0f, 1.0f - row[b] / linkMax);
+            const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
+            change += std::fabs(updated - row[b]);
+            row[b] = updated;
+        }
+    }
+    return change;
+}
+
 inline bool anyActive(const float* a, const float* b, uint32_t n) {
     for (uint32_t c = 0; c < n; ++c)
         if (a[c] != 0.0f || b[c] != 0.0f) return true;
@@ -303,6 +325,11 @@ void NeuralCellularMatrix::initVoxelWeights() {
         S3_.assign(V_ * 27 * C3 * C3, 0.0f);
         SL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
         SH_.assign(V_ * 3 * C3 * C3, 0.0f);
+    }
+    if (cfg_.learning.word_links > 0.0f) {
+        O3_.assign(V_ * 27 * C3 * C3, 0.0f);
+        OL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
+        OH_.assign(V_ * 3 * C3 * C3, 0.0f);
     }
     WL_.assign(V_ * K * C3 * C3, 0.0f);
     H_.assign(V_ * 3 * C3 * C3, 0.0f);
@@ -628,6 +655,9 @@ void NeuralCellularMatrix::step3D() {
     const float rec4 = 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d, 0.0f, 1.0f) *
                                   std::clamp(modulator_, 0.0f, 1.0f);
     const StartingRule& r = cfg_.rule;
+    // Version A: once input ends the association part of the learned links turns down.
+    const bool split = !O3_.empty();
+    const float selfScale = split && !sensoryOn_ ? 1.0f - std::clamp(cfg_.learning.word_links, 0.0f, 1.0f) : 1.0f;
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
     const size_t SS = SS_;
@@ -675,8 +705,9 @@ void NeuralCellularMatrix::step3D() {
                         addScaled(src, in, C3, inh * r.voxel_neighbour); // inhibitory: fixed scaffold only
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                 // scaffold
-                        matvecAdd(w + size_t(o) * C3 * C3, src, pl, C3, C3, rec); // plastic memory part
-                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, pl, C3, C3, rec);
+                        matvecAdd(w + size_t(o) * C3 * C3, src, pl, C3, C3, rec * selfScale); // plastic memory part
+                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, pl, C3, C3, rec * selfScale);
+                        if (split) matvecAdd(O3_.data() + (v * 27 + o) * C3 * C3, src, pl, C3, C3, rec);
                     }
                 }
 
@@ -696,8 +727,9 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
                 addScaled(src, in, C3, r.long_range);
-                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
-                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
+                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec * selfScale);
+                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec * selfScale);
+                if (split) matvecAdd(OL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
             }
         }
 
@@ -728,9 +760,11 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, gain * inh * link);
             } else {
                 addScaled(src, in, C3, gain * link);
-                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
+                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4 * selfScale);
                 if (!SH_.empty())
-                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
+                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3,
+                              gain * plasticScale * rec4 * selfScale);
+                if (split) matvecAdd(OH_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
             }
             ++gi;
         }
@@ -1006,9 +1040,35 @@ void NeuralCellularMatrix::learn(float modulator) {
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
-            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
-                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+            float* order = orderOf(block);
+            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, order ? 0.0f : lambda, oja,
+                                        hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+            if (order)
+                change += orderBlock<C3>(order, pi, qi, sp, sq, rate, lambda,
+                                          preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
         });
+        // Order parts: their own budget per output channel (version A).
+        if (!O3_.empty()) {
+            float otot[C3] = {};
+            forEachLearnedBlock(v, [&](float* block, size_t) {
+                if (const float* o = orderOf(block))
+                    for (uint32_t a = 0; a < C3; ++a)
+                        for (uint32_t b = 0; b < C3; ++b) otot[a] += o[size_t(a) * C3 + b];
+            });
+            float ofac[C3];
+            bool any = false;
+            for (uint32_t a = 0; a < C3; ++a) {
+                ofac[a] = otot[a] > budget ? budget / otot[a] : 1.0f;
+                any = any || ofac[a] < 1.0f;
+            }
+            if (any)
+                forEachLearnedBlock(v, [&](float* block, size_t) {
+                    if (float* o = orderOf(block))
+                        for (uint32_t a = 0; a < C3; ++a)
+                            if (ofac[a] < 1.0f)
+                                for (uint32_t b = 0; b < C3; ++b) o[size_t(a) * C3 + b] *= ofac[a];
+                });
+        }
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
         // Oja's term alone cannot bound a cell whose output saturates and competes.

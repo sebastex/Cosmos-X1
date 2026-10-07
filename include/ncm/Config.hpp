@@ -135,6 +135,14 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Partner links apart from self links (version A, after predictive coding: what was just
+    // heard is explained away, what comes next stands out). Every learned link keeps two parts:
+    // the association part (cells active together: it rebuilds a word from part of it, also the
+    // word just heard) and the order part (cells active just before: it leads from a word to the
+    // next one). While input arrives both transmit as one link; once the input ends the
+    // association part turns down by word_links, so what comes next plays and the heard word's
+    // own echo fades. Each part has its own budget. 0 = off (one combined link).
+    float word_links = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

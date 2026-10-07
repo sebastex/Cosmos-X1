@@ -209,6 +209,17 @@ private:
     // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when
     // consolidation is off. Transmission uses fast + slow.
     AVec<float> S3_, SL_, SH_;
+    // Order parts (version A, word_links): same layout as W3_, WL_ and H_; empty when off.
+    AVec<float> O3_, OL_, OH_;
+    float* orderOf(float* fastBlock) {
+        auto map = [&](AVec<float>& fast, AVec<float>& part) -> float* {
+            if (part.empty() || fastBlock < fast.data() || fastBlock >= fast.data() + fast.size()) return nullptr;
+            return part.data() + (fastBlock - fast.data());
+        };
+        if (float* s = map(W3_, O3_)) return s;
+        if (float* s = map(WL_, OL_)) return s;
+        return map(H_, OH_);
+    }
     float* slowOf(float* fastBlock) {
         auto map = [&](AVec<float>& fast, AVec<float>& slow) -> float* {
             if (slow.empty() || fastBlock < fast.data() || fastBlock >= fast.data() + fast.size()) return nullptr;
