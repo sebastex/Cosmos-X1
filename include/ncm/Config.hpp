@@ -135,6 +135,13 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Recall route (version B, after Treves & Rolls: CA3 has a strong input for storing, the
+    // dentate gyrus, and a learned input for recall, the perforant path). The learned cue route
+    // (spread_plastic) learns route_rate times faster than other links, and in recall mode it
+    // transmits route_gain times stronger, so a cue heard alone is carried to the cells its
+    // memory was stored on (storing still uses pattern separation). 1 / 1 = off.
+    float route_rate = 1.0f;
+    float route_gain = 1.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

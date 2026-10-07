@@ -627,6 +627,8 @@ void NeuralCellularMatrix::step3D() {
     // The learned part of the 4D link is an association too; its scaffold is the input path.
     const float rec4 = 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d, 0.0f, 1.0f) *
                                   std::clamp(modulator_, 0.0f, 1.0f);
+    // Recall route: the learned cue route transmits stronger in recall mode (version B).
+    const float routeGain = 1.0f + (cfg_.learning.route_gain - 1.0f) * (1.0f - std::clamp(modulator_, 0.0f, 1.0f));
     const StartingRule& r = cfg_.rule;
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
@@ -767,7 +769,7 @@ void NeuralCellularMatrix::step3D() {
                     // Learned cue route: this source's learned block (excitatory sources only).
                     if (!WS_.empty() && !inhib3_[vs])
                         matvecAdd(WS_.data() + spreadBlock(v, g, l) * C3 * C3, src, pl4, C3, C3,
-                                  afferentGain * rec4 * cfg_.spread_plastic);
+                                  afferentGain * rec4 * cfg_.spread_plastic * routeGain);
                 }
         }
 
@@ -1006,7 +1008,9 @@ void NeuralCellularMatrix::learn(float modulator) {
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
-            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
+            const bool route = !WS_.empty() && block >= WS_.data() && block < WS_.data() + WS_.size();
+            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src),
+                                        route ? rate * cfg_.learning.route_rate : rate, lambda, oja, hetero,
                                         preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
         });
 
