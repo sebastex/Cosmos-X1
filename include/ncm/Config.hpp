@@ -135,6 +135,19 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Real sleep (version F, after complementary learning systems: new words become lasting and
+    // start to compete with similar old words only after sleep replays them). Each Input-field
+    // voxel keeps a slow trace of what it did while input arrived (recent_tau 3D steps). After
+    // replay_after 1D ticks of silence with learning on, the matrix replays: in recall mode a
+    // share replay_share of Input voxels per 3D step is set going in its recent pattern, the
+    // learned links complete it into a stored memory, and that memory is strengthened at
+    // replay_rate times the learning rate (strengthening only, no order term). Full fatigue makes
+    // each replayed memory end so the next one can play. 0 = off.
+    float replay = 0.0f;
+    float replay_share = 0.05f;
+    float replay_after = 40.0f;
+    float replay_rate = 0.25f;
+    float recent_tau = 2000.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

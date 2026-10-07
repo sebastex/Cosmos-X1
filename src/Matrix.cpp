@@ -164,7 +164,7 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
 template <uint32_t C>
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja, float hetero, const float* preRoom, float linkMax) {
+                           float oja, float hetero, const float* preRoom, float linkMax, bool growOnly = false) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
@@ -176,8 +176,8 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
             // `hetero` times the covariance term (1 = full covariance, 0 = only active inputs
             // change). Silent inputs include other memories' cells, so this erases them.
             const float preTerm = pre[b] == 0.0f ? hetero * (0.0f - avgPre) : pre[b] - avgPre;
-            const float dw =
-                da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+            float dw = da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+            if (growOnly && dw < 0.0f) dw = 0.0f; // replay only strengthens
             float grow = preRoom ? preRoom[b] : 1.0f;
             if (linkMax > 0.0f) grow *= std::max(0.0f, 1.0f - row[b] / linkMax); // per-link bound
             const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
@@ -241,6 +241,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
     fatigue3_.assign(V_, 0.0f);
+    if (cfg.learning.replay > 0.0f) recent3_.assign(V_ * C3, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     orderTrace3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
@@ -610,6 +611,7 @@ void NeuralCellularMatrix::step2D() {
 // three fields, and a summary from each voxel's own 2D sheet.
 void NeuralCellularMatrix::step3D() {
     ScopeTimer timer_(time3D);
+    ++step3Count_;
     // Fatigue raises a voxel's firing threshold (it ends activity that outlasts its input).
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
@@ -821,6 +823,21 @@ void NeuralCellularMatrix::step3D() {
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
         }
+        // Real sleep (version F): a few Input voxels, chosen afresh every step, replay what they
+        // recently did; the learned links carry it on into the memory it belongs to.
+        if (replay_ && f == 0 && !recent3_.empty()) {
+            uint64_t h = (uint64_t(v) + 1) * 0x9E3779B97F4A7C15ull ^ step3Count_ * 0xC2B2AE3D27D4EB4Full;
+            h ^= h >> 31;
+            h *= 0xBF58476D1CE4E5B9ull;
+            h ^= h >> 29;
+            if (double(h >> 11) * 0x1.0p-53 < double(cfg_.learning.replay_share)) {
+                const float* rc = recent3_.data() + v * C3;
+                float strongest = 0.0f;
+                for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, rc[c]);
+                if (strongest > 0.0f)
+                    for (uint32_t c = 0; c < C3; ++c) in[c] += cfg_.learning.replay * rc[c] / strongest;
+            }
+        }
         // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
         if (!usage3_.empty() && f > 0 && modulator_ > 0.0f) {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
@@ -859,6 +876,12 @@ void NeuralCellularMatrix::step3D() {
             float* tr = orderTrace3_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / orderTau;
+        }
+        if (!recent3_.empty() && f == 0 && sensoryOn_) { // what this Input voxel recently heard
+            float* rc = recent3_.data() + v * C3;
+            const float* cell = out + v * C3;
+            const float tau = std::max(1.0f, cfg_.learning.recent_tau);
+            for (uint32_t c = 0; c < C3; ++c) rc[c] += (cell[c] - rc[c]) / tau;
         }
     }
     } // fields (front-to-back sweep)
@@ -940,14 +963,17 @@ void NeuralCellularMatrix::learn(float modulator) {
     ScopeTimer timer_(timeLearn);
     const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f);
     if (rate <= 0.0f) return;
-    const float lambda = cfg_.learning.order_gain;
+    // Replay (version F): a replayed memory plays as one pattern, so no order term, and it only
+    // strengthens (no heterosynaptic weakening).
+    const bool replay = replay_;
+    const float lambda = replay ? 0.0f : cfg_.learning.order_gain;
     // After step3D() swapped the buffers, `cur` holds the new state and `next` the previous one.
     const float* post = s3_.cur.data();
     const float* prev = s3_.next.data();
     const float cov = std::clamp(cfg_.learning.covariance, 0.0f, 1.0f);
     const float budget = std::max(0.0f, cfg_.learning.plastic_budget);
     const float oja = std::max(0.0f, cfg_.learning.oja);
-    const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
+    const float hetero = replay ? 0.0f : std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
     const float consolidate = S3_.empty() ? 0.0f : std::clamp(cfg_.learning.consolidation_rate, 0.0f, 1.0f);
     const float slowBudget = std::max(0.0f, cfg_.learning.consolidated_budget);
     const float linkMax = std::max(0.0f, cfg_.learning.link_bound);
@@ -1007,7 +1033,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             const float* sp = post + src * C3;
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
-                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax, replay);
         });
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.

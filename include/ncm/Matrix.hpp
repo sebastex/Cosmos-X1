@@ -76,6 +76,11 @@ public:
     // mode: high M = encoding (learned connections turned down), low M = recall.
     void setModulator(float modulator) { modulator_ = modulator; }
 
+    // Real sleep (version F): replay on or off for the next steps; learning while it is on only
+    // strengthens.
+    void setReplay(bool on) { replay_ = on; }
+    bool replaying() const { return replay_; }
+
     // Share of a fingerprint's motor-surface lines whose exit cells are active:
     // how strongly the matrix is "about to say" that character (spec Section 5A).
     double motorOverlap(const std::vector<uint32_t>& fingerprint) const;
@@ -183,6 +188,9 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
+    bool replay_ = false;
+    uint64_t step3Count_ = 0;
+    AVec<float> recent3_; // per voxel channel (Input field): slow trace of activity while input arrived (replay)
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};

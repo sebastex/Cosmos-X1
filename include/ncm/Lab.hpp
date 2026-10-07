@@ -69,6 +69,15 @@ public:
             m_->clearSensoryInput();
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
+        // Real sleep (version F): after a long enough silence with learning on, replay in recall mode.
+        quietTicks_ = fingerprint ? 0 : quietTicks_ + 1;
+        const bool replay = cfg_.learning.replay > 0.0f && learning_ && allowLearning &&
+                            double(quietTicks_) > double(cfg_.learning.replay_after);
+        if (replay) {
+            mode_ = 0.0f;
+            m_->setModulator(0.0f);
+        }
+        m_->setReplay(replay);
 
         m_->step1D();
         const LevelScheduler::Tick t = clock_.advance();
@@ -78,7 +87,9 @@ public:
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
-            if (learning_ && allowLearning) {
+            if (replay) {
+                m_->learn(cfg_.learning.replay_rate);
+            } else if (learning_ && allowLearning) {
                 modSum_ += modulator;
                 ++modCount_;
                 m_->learn(modulator);
@@ -154,6 +165,7 @@ private:
     uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
     bool wasSilent_ = true; // the previous tick had no input
+    uint64_t quietTicks_ = 0; // 1D ticks of silence so far (replay, version F)
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input
     // ends, suppression builds up gradually, so memory circuits stay in recall mode briefly

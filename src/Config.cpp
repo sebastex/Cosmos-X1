@@ -121,6 +121,8 @@ const std::vector<std::string>& evolvedRule() {
         // of the cue's own echo. Checks 70/70 on dev 3000-3009; 128 words truly recalled 72% vs 61%
         // (fresh dev brains 3004-3007), 67% vs 59% (3000-3003); 64 words about the same.
         "silence_gate=0.6",
+        // Version F: real sleep (replay of recently heard material after 40 ticks of silence).
+        "replay=1",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};
@@ -176,6 +178,11 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
+        {"replay", &c.learning.replay},
+        {"replay_share", &c.learning.replay_share},
+        {"replay_after", &c.learning.replay_after},
+        {"replay_rate", &c.learning.replay_rate},
+        {"recent_tau", &c.learning.recent_tau},
         {"fatigue_divisive2", &c.fatigue_divisive2},
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
         {"agc_relax_field", &c.agc_relax_field},
