@@ -126,6 +126,14 @@ struct LearningParams {
     // 0 = off (no slow part).
     float consolidation_rate = 0.0f;
     float consolidated_budget = 0.5f; // per output channel, like plastic_budget
+    // Links with many speeds (version E, after Benna & Fusi 2016: synapses with a chain of hidden
+    // variables of growing time scales forget slowly, as a power law, close to the best possible
+    // for bounded synapses). Below the slow part each link has a deep part, hidden (not
+    // transmitted): it follows the slow part at cascade_rate per learning step in both directions,
+    // and pulls an eroded slow part back up toward itself at cascade_pull. Same budget as the
+    // slow part. 0 = off (needs consolidation).
+    float cascade_rate = 0.0f;
+    float cascade_pull = 0.0f;
     // Per-link bound: each link strengthens in proportion to its own room, 1 - w / link_bound,
     // so a new memory is written at full strength however full the channel already is (the
     // earlier channel-wide room wrote newer memories weaker). 0 = off.

@@ -301,6 +301,11 @@ void NeuralCellularMatrix::initVoxelWeights() {
     W3_.assign(V_ * 27 * C3 * C3, 0.0f);
     if (cfg_.learning.consolidation_rate > 0.0f) {
         S3_.assign(V_ * 27 * C3 * C3, 0.0f);
+        if (cfg_.learning.cascade_rate > 0.0f) {
+            D3_.assign(V_ * 27 * C3 * C3, 0.0f);
+            DL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
+            DH_.assign(V_ * 3 * C3 * C3, 0.0f);
+        }
         SL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
         SH_.assign(V_ * 3 * C3 * C3, 0.0f);
     }
@@ -1053,6 +1058,34 @@ void NeuralCellularMatrix::learn(float modulator) {
                 forEachLearnedBlock(v, [&](float* block, size_t) {
                     if (float* sb = slowOf(block)) scaleRows(sb, slowFactor);
                 });
+            // Cascade (version E): the hidden deep part follows the slow part both ways and pulls
+            // an eroded slow part back up; then the deep part's own budget.
+            if (!D3_.empty()) {
+                const float cr = std::clamp(cfg_.learning.cascade_rate, 0.0f, 1.0f);
+                const float pull = std::clamp(cfg_.learning.cascade_pull, 0.0f, 1.0f);
+                float deepTotal[C3] = {};
+                forEachLearnedBlock(v, [&](float* block, size_t) {
+                    float* slow = slowOf(block);
+                    float* deep = slow ? deepOf(slow) : nullptr;
+                    if (!deep) return;
+                    for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                        deep[i] += cr * (slow[i] - deep[i]);
+                        if (slow[i] < deep[i]) slow[i] += pull * (deep[i] - slow[i]);
+                        deepTotal[i / C3] += deep[i];
+                    }
+                });
+                float deepFactor[C3];
+                bool deepScale = false;
+                for (uint32_t a = 0; a < C3; ++a) {
+                    deepFactor[a] = deepTotal[a] > slowBudget ? slowBudget / deepTotal[a] : 1.0f;
+                    deepScale = deepScale || deepFactor[a] < 1.0f;
+                }
+                if (deepScale)
+                    forEachLearnedBlock(v, [&](float* block, size_t) {
+                        float* slow = slowOf(block);
+                        if (float* deep = slow ? deepOf(slow) : nullptr) scaleRows(deep, deepFactor);
+                    });
+            }
         }
     }
     // Assembly inhibition: for every voxel (silent ones too) and long-range partner: a partner

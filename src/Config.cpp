@@ -121,6 +121,9 @@ const std::vector<std::string>& evolvedRule() {
         // of the cue's own echo. Checks 70/70 on dev 3000-3009; 128 words truly recalled 72% vs 61%
         // (fresh dev brains 3004-3007), 67% vs 59% (3000-3003); 64 words about the same.
         "silence_gate=0.6",
+        // Version E: links with many speeds (a hidden deep part under the slow part).
+        "cascade_rate=0.0014",
+        "cascade_pull=0.0014",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};
@@ -174,6 +177,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"presynaptic_bound", &c.learning.presynaptic_bound},
         {"consolidation_rate", &c.learning.consolidation_rate},
         {"consolidated_budget", &c.learning.consolidated_budget},
+        {"cascade_rate", &c.learning.cascade_rate},
+        {"cascade_pull", &c.learning.cascade_pull},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
         {"fatigue_divisive2", &c.fatigue_divisive2},

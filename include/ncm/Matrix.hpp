@@ -209,6 +209,17 @@ private:
     // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when
     // consolidation is off. Transmission uses fast + slow.
     AVec<float> S3_, SL_, SH_;
+    // Deep parts (version E, cascade): same layout as S3_, SL_ and SH_; empty when off.
+    AVec<float> D3_, DL_, DH_;
+    float* deepOf(float* slowBlock) {
+        auto map = [&](AVec<float>& slow, AVec<float>& deep) -> float* {
+            if (deep.empty() || slowBlock < slow.data() || slowBlock >= slow.data() + slow.size()) return nullptr;
+            return deep.data() + (slowBlock - slow.data());
+        };
+        if (float* s = map(S3_, D3_)) return s;
+        if (float* s = map(SL_, DL_)) return s;
+        return map(SH_, DH_);
+    }
     float* slowOf(float* fastBlock) {
         auto map = [&](AVec<float>& fast, AVec<float>& slow) -> float* {
             if (slow.empty() || fastBlock < fast.data() || fastBlock >= fast.data() + fast.size()) return nullptr;
