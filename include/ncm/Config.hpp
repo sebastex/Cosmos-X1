@@ -135,6 +135,13 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Context cells (version D, after the sequence memory of Hawkins & Ahmad 2016): which
+    // channels of a voxel answer the current input depends on what the voxel's learned links
+    // predict from the previous step (the letters before). The input of each channel is scaled
+    // by 1 + context_select * (its predicted share), before the channels compete, so the same
+    // letter after different letters uses different channels. Multiplicative: no input, no
+    // effect, so it cannot hold activity by itself. 0 = off.
+    float context_select = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

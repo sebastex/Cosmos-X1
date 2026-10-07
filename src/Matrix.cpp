@@ -651,6 +651,7 @@ void NeuralCellularMatrix::step3D() {
 
         float in[C3] = {};
         float pl[C3] = {};  // learned recurrent part of the input (within the field)
+        float plRaw[C3] = {}; // the same at full (recall) strength: what memory predicts (version D)
         float pl4[C3] = {}; // learned part of the 4D link (between fields)
         auto sumIn = [&]() {
             float t = 0.0f;
@@ -675,8 +676,8 @@ void NeuralCellularMatrix::step3D() {
                         addScaled(src, in, C3, inh * r.voxel_neighbour); // inhibitory: fixed scaffold only
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                 // scaffold
-                        matvecAdd(w + size_t(o) * C3 * C3, src, pl, C3, C3, rec); // plastic memory part
-                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, pl, C3, C3, rec);
+                        matvecAdd(w + size_t(o) * C3 * C3, src, plRaw, C3, C3, 1.0f); // plastic memory part
+                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, plRaw, C3, C3, 1.0f);
                     }
                 }
 
@@ -696,11 +697,12 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
                 addScaled(src, in, C3, r.long_range);
-                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
-                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
+                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, plRaw, C3, C3, 1.0f);
+                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, plRaw, C3, C3, 1.0f);
             }
         }
 
+        for (uint32_t c = 0; c < C3; ++c) pl[c] = rec * plRaw[c];
         const float cLong = sumIn();
         // The 4D link is the path input takes between fields, so encoding mode does not
         // suppress it: acetylcholine turns down a region's internal loops, not its input.
@@ -826,6 +828,14 @@ void NeuralCellularMatrix::step3D() {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
             const float* u = usage3_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
+        }
+        // Context cells (version D): predicted channels are favoured when the channels compete.
+        if (cfg_.learning.context_select > 0.0f) {
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, plRaw[c]);
+            if (strongest > 0.0f)
+                for (uint32_t c = 0; c < C3; ++c)
+                    if (in[c] > 0.0f) in[c] *= 1.0f + cfg_.learning.context_select * std::max(0.0f, plRaw[c]) / strongest;
         }
         drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v], cfg_.channel_winners3);
     }
