@@ -135,6 +135,15 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Growth (version I, after growth of new connections and cells where the brain stores more):
+    // each voxel starts with link_growth long-range links (of the long_range_links it has room
+    // for). Every growth_every learning steps, a firing voxel whose firing channels are loaded
+    // beyond growth_load (share of their learned-input budget in use) grows one new link, to the
+    // most active of 32 random voxels of its field (one firing together with it). The new link
+    // starts empty and learns like the others. 0 = off (all links from the start).
+    float link_growth = 0.0f;
+    float growth_load = 0.7f;
+    float growth_every = 25.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

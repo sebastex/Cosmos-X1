@@ -241,6 +241,8 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
     fatigue3_.assign(V_, 0.0f);
+    if (cfg.learning.link_growth > 0.0f)
+        linkCount_.assign(V_, uint16_t(std::min<uint32_t>(uint32_t(cfg.learning.link_growth), cfg.long_range_links)));
     average3_.assign(V_, cfg.target_activity);
     orderTrace3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
@@ -681,7 +683,7 @@ void NeuralCellularMatrix::step3D() {
                 }
 
         const float cLocal = sumIn();
-        for (uint32_t l = 0; l < K; ++l) {
+        for (uint32_t l = 0, nl = linksOf(v); l < nl; ++l) {
             const size_t t = lrTarget_[v * K + l];
             const float* src = s3 + t * C3;
             if (isSilent(src, C3)) continue;
@@ -915,7 +917,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn) {
                 const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 if (!inhib3_[vn]) fn(w + size_t(o) * C3 * C3, vn);
             }
-    for (uint32_t l = 0; l < K; ++l) {
+    for (uint32_t l = 0, nl = linksOf(v); l < nl; ++l) {
         const size_t t = lrTarget_[v * K + l];
         if (!inhib3_[t]) fn(WL_.data() + (v * K + l) * C3 * C3, t);
     }
@@ -1070,7 +1072,7 @@ void NeuralCellularMatrix::learn(float modulator) {
         for (int64_t vi = 0; vi < voxels; ++vi) {
             const size_t v = size_t(vi);
             const float self = strongestOf(v);
-            for (uint32_t l = 0; l < KL; ++l) {
+            for (uint32_t l = 0, nl = linksOf(v); l < nl; ++l) {
                 const size_t t = lrTarget_[v * KL + l];
                 if (inhib3_[t]) continue;
                 const float pre = strongestOf(t);
@@ -1081,6 +1083,8 @@ void NeuralCellularMatrix::learn(float modulator) {
         }
     }
     learnStats_.calls += 1;
+    if (!linkCount_.empty() && learnStats_.calls % uint64_t(std::max(1.0f, cfg_.learning.growth_every)) == 0)
+        growLinks(post);
     learnStats_.learners += learners;
     learnStats_.change += change;
     learnStats_.scaled += scaled;
@@ -1122,6 +1126,51 @@ void NeuralCellularMatrix::learn(float modulator) {
                     for (uint32_t b = 0; b < C2; ++b) row[b] *= budget / total;
             }
         }
+    }
+}
+
+// Growth (version I): a firing voxel whose memory channels are filling up grows one new long-range
+// link toward a voxel of its field that fires together with it (found by sampling a few voxels).
+void NeuralCellularMatrix::growLinks(const float* post) {
+    const uint32_t K = cfg_.long_range_links;
+    if (usage3_.empty()) return;
+    const float* recent = orderTrace3_.data();
+    const uint64_t call = learnStats_.calls;
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < int64_t(V_); ++vi) {
+        const size_t v = size_t(vi);
+        if (inhib3_[v] || linkCount_[v] >= K || isSilent(post + v * C3, C3)) continue;
+        float load = 0.0f;
+        uint32_t firing = 0;
+        for (uint32_t c = 0; c < C3; ++c)
+            if (post[v * C3 + c] > 0.0f) {
+                load += usage3_[v * C3 + c];
+                ++firing;
+            }
+        if (firing == 0 || load / float(firing) < cfg_.learning.growth_load) continue;
+        const size_t fieldBase = (v / Vf_) * Vf_;
+        size_t best = v;
+        float bestActivity = 0.0f;
+        for (uint32_t k = 0; k < 32; ++k) {
+            const double u = hashUniform(cfg_.seed, kStreamLongRange, (uint64_t(v) * 1000003ull + call) * 64 + k + (1ull << 40));
+            const size_t t = fieldBase + std::min(size_t(u * double(Vf_)), Vf_ - 1);
+            if (t == v || inhib3_[t]) continue;
+            float a = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) a += recent[t * C3 + c];
+            if (a <= bestActivity) continue;
+            bool partner = false;
+            for (uint32_t l = 0; l < linkCount_[v] && !partner; ++l) partner = lrTarget_[v * K + l] == t;
+            if (partner) continue;
+            best = t;
+            bestActivity = a;
+        }
+        if (best == v) continue;
+        const size_t link = v * K + linkCount_[v];
+        lrTarget_[link] = uint32_t(best);
+        std::fill(WL_.begin() + link * C3 * C3, WL_.begin() + (link + 1) * C3 * C3, 0.0f);
+        if (!SL_.empty()) std::fill(SL_.begin() + link * C3 * C3, SL_.begin() + (link + 1) * C3 * C3, 0.0f);
+        if (!asmInh_.empty()) asmInh_[link] = 0.0f;
+        ++linkCount_[v];
     }
 }
 

@@ -61,7 +61,7 @@ const std::vector<std::string>& evolvedRule() {
         // down learned input, learned 4D links muted while encoding (no capture of new words onto
         // old cells) and full muting of learned links in silence. (Learned inhibition was part of
         // version B; evolution 2 switched it off and it was removed from the code.)
-        "long_range_links=64", "presynaptic_bound=0.89812",
+        "long_range_links=128", "presynaptic_bound=0.89812",
         "agc_input_only=1", "agc_plastic=1", "encoding_suppression_4d=1",
         // Rhythm restart (adopted 2026-10-01): the 2D and 3D clocks restart their cycle after a word
         // gap and when input begins after a pause, so a word is cut into the same chunks every
@@ -121,6 +121,8 @@ const std::vector<std::string>& evolvedRule() {
         // of the cue's own echo. Checks 70/70 on dev 3000-3009; 128 words truly recalled 72% vs 61%
         // (fresh dev brains 3004-3007), 67% vs 59% (3000-3003); 64 words about the same.
         "silence_gate=0.6",
+        // Version I: growth (start with 64 long-range links, grow up to 128 where memory fills up).
+        "link_growth=64",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};
@@ -176,6 +178,9 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
+        {"link_growth", &c.learning.link_growth},
+        {"growth_load", &c.learning.growth_load},
+        {"growth_every", &c.learning.growth_every},
         {"fatigue_divisive2", &c.fatigue_divisive2},
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
         {"agc_relax_field", &c.agc_relax_field},

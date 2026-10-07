@@ -183,6 +183,10 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
+    // Growth (version I): long-range links in use per voxel (empty = all long_range_links).
+    std::vector<uint16_t> linkCount_;
+    uint32_t linksOf(size_t v) const { return linkCount_.empty() ? cfg_.long_range_links : linkCount_[v]; }
+    void growLinks(const float* post);
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
