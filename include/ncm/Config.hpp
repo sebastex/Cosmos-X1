@@ -172,6 +172,12 @@ struct Config {
     // together. Measured: with radius 1, ~15% of voxels were active and learning lost specificity.
     uint32_t inhibition_radius3 = 2;
     uint32_t winners3 = 3;
+    // Word competition (version G, after lexical competition in spoken-word recognition and
+    // lateral inhibition in the naming game): in recall mode the voxel competition is stricter,
+    // winners3_recall winners within radius inhibition_radius3_recall, so the strongest recalled
+    // memory wins clean and partly matching ones are pushed out. 0 = same as while encoding.
+    uint32_t winners3_recall = 0;
+    uint32_t inhibition_radius3_recall = 0;
     // Competition inside a cell: a cell is a small group of neurons (its channels), and only
     // its most strongly driven channels stay active, so *which* channels fire depends on the
     // content. Without it the same cells win for every input and patterns overlap heavily.

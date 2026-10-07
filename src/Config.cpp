@@ -121,6 +121,9 @@ const std::vector<std::string>& evolvedRule() {
         // of the cue's own echo. Checks 70/70 on dev 3000-3009; 128 words truly recalled 72% vs 61%
         // (fresh dev brains 3004-3007), 67% vs 59% (3000-3003); 64 words about the same.
         "silence_gate=0.6",
+        // Version G: word competition (in recall 2 winners within radius 3).
+        "winners3_recall=2",
+        "inhibition_radius3_recall=3",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};
@@ -209,6 +212,8 @@ std::map<std::string, uint32_t*> countTable(Config& c) {
         {"input_depth_spread", &c.input_depth_spread},
         {"winners2", &c.winners2},
         {"winners3", &c.winners3},
+        {"winners3_recall", &c.winners3_recall},
+        {"inhibition_radius3_recall", &c.inhibition_radius3_recall},
         {"inhibition_radius3", &c.inhibition_radius3},
         {"channel_winners2", &c.channel_winners2},
         {"channel_winners3", &c.channel_winners3},

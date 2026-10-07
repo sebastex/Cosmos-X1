@@ -637,7 +637,11 @@ void NeuralCellularMatrix::step3D() {
     // the later ones within the same step. Otherwise one pass over all fields.
     const bool sweep = cfg_.field_sweep > 0.5f;
     const float* drive = drive3_.data();
-    const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
+    // Word competition (version G): stricter competition in recall mode.
+    const bool recallMode = modulator_ < 0.5f;
+    const int R = int(std::min<uint32_t>(recallMode && cfg_.inhibition_radius3_recall ? cfg_.inhibition_radius3_recall
+                                                                                      : cfg_.inhibition_radius3, 3));
+    const uint32_t winners = recallMode && cfg_.winners3_recall ? cfg_.winners3_recall : cfg_.winners3;
     for (uint32_t fs = 0; fs < (sweep ? kFields : 1u); ++fs) {
     const int64_t vBegin = sweep ? int64_t(fs) * int64_t(Vf_) : 0;
     const int64_t vEnd = sweep ? int64_t(fs + 1) * int64_t(Vf_) : voxels;
@@ -849,7 +853,7 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
+        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, winners,
                                             cfg_.fire_threshold3, cfg_.fire_gain3);
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
