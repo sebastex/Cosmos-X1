@@ -849,7 +849,15 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
+        // Softer competition (version H): fire when the drive reaches a share of the strongest
+        // rival's drive (deep fields), instead of being among the top winners3.
+        uint32_t winners = cfg_.winners3;
+        if (cfg_.soft_compete > 0.0f && f > 0) {
+            float strongest = 0.0f;
+            for (uint32_t r = 0; r < n; ++r) strongest = std::max(strongest, drive[rivals[r]]);
+            winners = drive[v] >= cfg_.soft_compete * strongest ? n + 1 : 0;
+        }
+        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, winners,
                                             cfg_.fire_threshold3, cfg_.fire_gain3);
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));

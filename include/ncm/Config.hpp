@@ -172,6 +172,12 @@ struct Config {
     // together. Measured: with radius 1, ~15% of voxels were active and learning lost specificity.
     uint32_t inhibition_radius3 = 2;
     uint32_t winners3 = 3;
+    // Softer competition (version H, after Kafraj, Krotov & Latham 2026: threshold units instead
+    // of winner-take-all give distributed memory codes with far larger capacity): in the Memory,
+    // Reasoning and Output fields a voxel fires when its drive reaches soft_compete times the
+    // strongest drive around it (any number may fire), instead of only the top winners3.
+    // 0 = off (top winners3).
+    float soft_compete = 0.0f;
     // Competition inside a cell: a cell is a small group of neurons (its channels), and only
     // its most strongly driven channels stay active, so *which* channels fire depends on the
     // content. Without it the same cells win for every input and patterns overlap heavily.
