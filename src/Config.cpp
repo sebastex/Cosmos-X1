@@ -121,6 +121,8 @@ const std::vector<std::string>& evolvedRule() {
         // of the cue's own echo. Checks 70/70 on dev 3000-3009; 128 words truly recalled 72% vs 61%
         // (fresh dev brains 3004-3007), 67% vs 59% (3000-3003); 64 words about the same.
         "silence_gate=0.6",
+        // Version C: cells with branches (64 branches x 16 synapses per deep voxel).
+        "branches=0.3",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
         "voxel_self=0.0165"};
@@ -176,6 +178,11 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
+        {"branches", &c.learning.branches},
+        {"branch_threshold", &c.learning.branch_threshold},
+        {"branch_grow", &c.learning.branch_grow},
+        {"branch_inc", &c.learning.branch_inc},
+        {"branch_dec", &c.learning.branch_dec},
         {"fatigue_divisive2", &c.fatigue_divisive2},
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
         {"agc_relax_field", &c.agc_relax_field},

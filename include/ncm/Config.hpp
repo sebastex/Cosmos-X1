@@ -135,6 +135,22 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Cells with branches (version C, after Hawkins & Ahmad 2016: a neuron recognises hundreds of
+    // patterns on separate dendritic branches). Every voxel of the Memory, Reasoning and Output
+    // fields has as many branches as its sheet has cells (64), each with as many synapse slots as
+    // a line has cells (16). A branch belongs to one channel and fires when at least
+    // branch_threshold of its connected synapses (permanence >= 0.5) see recently active cells;
+    // then its channel gets `branches` extra input (muted while encoding, like learned links).
+    // Learning: when a channel fires, its branches that recognised what came just before are
+    // reinforced (active synapses +branch_inc, others -branch_dec); if none did, its best
+    // matching branch is reinforced and grows synapses to recently active cells (or a free or
+    // weakest branch starts afresh with branch_grow of them). Sources are the cell's own
+    // neighbours and partners. 0 = off.
+    float branches = 0.0f;
+    float branch_threshold = 6.0f;
+    float branch_grow = 12.0f;
+    float branch_inc = 0.1f;
+    float branch_dec = 0.02f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

@@ -241,6 +241,16 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
     fatigue3_.assign(V_, 0.0f);
+    if (cfg.learning.branches > 0.0f) {
+        SEG_ = uint32_t(SS_);
+        MS_ = L_;
+        segSrc_.assign(V_ * SEG_ * MS_, kNoSynapse);
+        segPerm_.assign(V_ * SEG_ * MS_, 0.0f);
+        segChan_.assign(V_ * SEG_, 255);
+        segConn_.assign(V_ * SEG_, 0);
+        segPot_.assign(V_ * SEG_, 0);
+        recent3_.assign(V_ * C3, 0);
+    }
     average3_.assign(V_, cfg.target_activity);
     orderTrace3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
@@ -633,6 +643,12 @@ void NeuralCellularMatrix::step3D() {
     const size_t SS = SS_;
 
     const int64_t voxels = int64_t(V_);
+    // Cells with branches (version C): which cells fired in the recent window, before this step.
+    if (SEG_) {
+#pragma omp parallel for schedule(static)
+        for (int64_t i = 0; i < int64_t(V_ * C3); ++i)
+            recent3_[size_t(i)] = orderTrace3_[size_t(i)] > 0.1f && !inhib3_[size_t(i) / C3] ? 1 : 0;
+    }
     // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
     // the later ones within the same step. Otherwise one pass over all fields.
     const bool sweep = cfg_.field_sweep > 0.5f;
@@ -820,6 +836,31 @@ void NeuralCellularMatrix::step3D() {
             }
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
+        }
+        // Cells with branches (version C): branches that recognise what came just before add input
+        // to their channel (muted while encoding, like learned links).
+        if (SEG_ && f > 0) {
+            const uint32_t thr = uint32_t(std::max(1.0f, cfg_.learning.branch_threshold));
+            float branchIn[C3] = {};
+            for (uint32_t s = 0; s < SEG_; ++s) {
+                const size_t b = v * SEG_ + s;
+                if (segChan_[b] == 255) {
+                    segConn_[b] = segPot_[b] = 0;
+                    continue;
+                }
+                uint32_t conn = 0, pot = 0;
+                const uint32_t* src = segSrc_.data() + b * MS_;
+                const float* perm = segPerm_.data() + b * MS_;
+                for (uint32_t k = 0; k < MS_; ++k) {
+                    if (src[k] == kNoSynapse || !recent3_[src[k]]) continue;
+                    ++pot;
+                    conn += perm[k] >= 0.5f;
+                }
+                segConn_[b] = uint8_t(conn);
+                segPot_[b] = uint8_t(pot);
+                if (conn >= thr) branchIn[segChan_[b]] = 1.0f;
+            }
+            for (uint32_t c = 0; c < C3; ++c) in[c] += cfg_.learning.branches * rec * branchIn[c];
         }
         // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
         if (!usage3_.empty() && f > 0 && modulator_ > 0.0f) {
@@ -1080,6 +1121,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             }
         }
     }
+    if (SEG_) learnBranches(std::clamp(modulator, 0.0f, 1.0f));
     learnStats_.calls += 1;
     learnStats_.learners += learners;
     learnStats_.change += change;
@@ -1120,6 +1162,111 @@ void NeuralCellularMatrix::learn(float modulator) {
                 for (uint32_t b = 0; b < C2; ++b) total += row[b];
                 if (total > budget)
                     for (uint32_t b = 0; b < C2; ++b) row[b] *= budget / total;
+            }
+        }
+    }
+}
+
+// Cells with branches (version C): each firing channel of a deep voxel reinforces the branches that
+// recognised the recent activity, or grows a branch for it from its own neighbours and partners.
+void NeuralCellularMatrix::learnBranches(float rate) {
+    if (rate <= 0.0f) return;
+    const float* post = s3_.cur.data();
+    const uint32_t thr = uint32_t(std::max(1.0f, cfg_.learning.branch_threshold));
+    const uint32_t grow = std::min<uint32_t>(MS_, uint32_t(std::max(1.0f, cfg_.learning.branch_grow)));
+    const float inc = cfg_.learning.branch_inc * rate, dec = cfg_.learning.branch_dec * rate;
+    const uint32_t N = N_, K = cfg_.long_range_links;
+    const uint64_t call = learnStats_.calls;
+    auto reinforce = [&](size_t b) {
+        uint32_t* src = segSrc_.data() + b * MS_;
+        float* perm = segPerm_.data() + b * MS_;
+        for (uint32_t k = 0; k < MS_; ++k) {
+            if (src[k] == kNoSynapse) continue;
+            perm[k] = std::clamp(perm[k] + (recent3_[src[k]] ? inc : -dec), 0.0f, 1.0f);
+            if (perm[k] <= 0.0f) src[k] = kNoSynapse;
+        }
+    };
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = int64_t(Vf_); vi < int64_t(V_); ++vi) {
+        const size_t v = size_t(vi);
+        if (inhib3_[v] || isSilent(post + v * C3, C3)) continue;
+        // Recently active excitatory source channels among this voxel's own connections.
+        uint32_t cand[1600];
+        uint32_t nc = 0;
+        auto addSource = [&](size_t u) {
+            for (uint32_t c = 0; c < C3 && nc < 1600; ++c)
+                if (recent3_[u * C3 + c]) cand[nc++] = uint32_t(u * C3 + c);
+        };
+        const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
+        const uint32_t f = uint32_t(v / Vf_);
+        for (int dz = -1; dz <= 1; ++dz)
+            for (int dy = -1; dy <= 1; ++dy)
+                for (int dx = -1; dx <= 1; ++dx) {
+                    const int nx = int(x) + dx, ny = int(y) + dy, nz = int(z) + dz;
+                    if ((dx | dy | dz) == 0 || nx < 0 || ny < 0 || nz < 0 || nx >= int(N) || ny >= int(N) || nz >= int(N)) continue;
+                    addSource(voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz)));
+                }
+        for (uint32_t l = 0; l < K; ++l) addSource(lrTarget_[v * K + l]);
+        for (uint32_t g = 0; g < kFields; ++g)
+            if (g != f) addSource(voxelIndex(g, x, y, z));
+        for (uint32_t a = 0; a < C3; ++a) {
+            if (post[v * C3 + a] <= 0.0f) continue;
+            bool recognised = false;
+            size_t best = SIZE_MAX, freeB = SIZE_MAX, weakest = SIZE_MAX;
+            float weakestSum = 1e30f;
+            uint32_t bestPot = 0;
+            for (uint32_t s = 0; s < SEG_; ++s) {
+                const size_t b = v * SEG_ + s;
+                if (segChan_[b] == 255) {
+                    if (freeB == SIZE_MAX) freeB = b;
+                    continue;
+                }
+                if (segChan_[b] == a) {
+                    if (segConn_[b] >= thr) {
+                        reinforce(b);
+                        recognised = true;
+                    } else if (segPot_[b] > bestPot) {
+                        bestPot = segPot_[b];
+                        best = b;
+                    }
+                }
+                float sum = 0.0f;
+                for (uint32_t k = 0; k < MS_; ++k) sum += segPerm_[b * MS_ + k];
+                if (sum < weakestSum) {
+                    weakestSum = sum;
+                    weakest = b;
+                }
+            }
+            if (recognised || nc == 0) continue;
+            size_t b = best;
+            if (b != SIZE_MAX && bestPot >= std::max<uint32_t>(1, thr / 2)) {
+                reinforce(b);
+            } else {
+                b = freeB != SIZE_MAX ? freeB : weakest;
+                if (b == SIZE_MAX) continue;
+                segChan_[b] = uint8_t(a);
+                std::fill(segSrc_.begin() + b * MS_, segSrc_.begin() + (b + 1) * MS_, kNoSynapse);
+                std::fill(segPerm_.begin() + b * MS_, segPerm_.begin() + (b + 1) * MS_, 0.0f);
+            }
+            // Grow synapses into empty slots, to recently active sources not yet on this branch.
+            uint32_t* src = segSrc_.data() + b * MS_;
+            float* perm = segPerm_.data() + b * MS_;
+            uint32_t have = 0;
+            for (uint32_t k = 0; k < MS_; ++k) have += src[k] != kNoSynapse;
+            for (uint32_t tries = 0, k = 0; have < grow && tries < 4 * grow && k < MS_; ++tries) {
+                uint64_t h = (uint64_t(v) * 64 + a) * 0x9E3779B97F4A7C15ull ^ (call * 131 + tries) * 0xC2B2AE3D27D4EB4Full;
+                h ^= h >> 29;
+                h *= 0xBF58476D1CE4E5B9ull;
+                h ^= h >> 32;
+                const uint32_t pick = cand[h % nc];
+                bool dup = false;
+                for (uint32_t j = 0; j < MS_ && !dup; ++j) dup = src[j] == pick;
+                if (dup) continue;
+                while (k < MS_ && src[k] != kNoSynapse) ++k;
+                if (k >= MS_) break;
+                src[k] = pick;
+                perm[k] = 0.45f;
+                ++have;
             }
         }
     }

@@ -183,6 +183,15 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
+    // Cells with branches (version C): per voxel SEG_ branches x MS_ synapse slots.
+    static constexpr uint32_t kNoSynapse = 0xFFFFFFFFu;
+    uint32_t SEG_ = 0, MS_ = 0;
+    std::vector<uint32_t> segSrc_;  // source voxel channel (voxel * C3 + channel) per slot, kNoSynapse = empty
+    AVec<float> segPerm_;           // permanence per slot (connected at >= 0.5)
+    std::vector<uint8_t> segChan_;  // channel each branch belongs to, 255 = free
+    std::vector<uint8_t> segConn_, segPot_; // per branch on the last step: connected / any synapses seeing recent activity
+    std::vector<uint8_t> recent3_;  // per voxel channel: active in the recent window (order trace), set each 3D step
+    void learnBranches(float rate);
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
