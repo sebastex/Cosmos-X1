@@ -1824,6 +1824,10 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     // Big runs (NCM_PAIR_FAST set): learning matrix only, no link readouts, tested from 16 pairs on.
     const bool fast = std::getenv("NCM_PAIR_FAST") != nullptr;
     const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
+    // Repetition (diagnostic): times each pair is said when learned (default 10), and spaced review.
+    const int repeats = std::getenv("NCM_PAIR_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_PAIR_REPEATS"))) : 10;
+    const int review = std::getenv("NCM_REVIEW") ? std::max(0, std::atoi(std::getenv("NCM_REVIEW"))) : 0;
+    const int reviewRepeats = std::getenv("NCM_REVIEW_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_REVIEW_REPEATS"))) : 3;
     // Reference shapes free of the cue: every partner word heard alone by a fresh untrained matrix
     // with the same wiring. An echo of the cue word has nothing in common with them.
     Patterns alone;
@@ -1846,7 +1850,6 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             // stream "apple river apple river" also teaches "river then apple", and an order rule
             // that strengthens "earlier -> later" and weakens "later -> earlier" cancels itself.
             std::vector<double> shape, cueShape;
-            const int repeats = 10;
             for (int r = 0; r < repeats; ++r) {
                 for (size_t pos = 0; pos < pair.size(); ++pos) {
                     s.present(std::string(1, pair[pos]), 1, 1.0f, true, UINT64_MAX);
@@ -1857,6 +1860,17 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             partner.push_back(shape);
             cueInPair.push_back(cueShape);
             s.silence(kGap, true);
+            // Spaced review (NCM_REVIEW = older pairs per new pair, NCM_REVIEW_REPEATS times each):
+            // after each new pair, older pairs are said again a few times, as when learning words.
+            for (int j = 0; j < review && p > 0; ++j) {
+                const size_t q = size_t((uint64_t(p) * 2654435761ull + uint64_t(j) * 40503ull) % uint64_t(p));
+                const std::string old = words[2 * q] + " " + words[2 * q + 1] + " ";
+                for (int r = 0; r < reviewRepeats; ++r) {
+                    for (size_t pos = 0; pos < old.size(); ++pos) s.present(std::string(1, old[pos]), 1, 1.0f, true, UINT64_MAX);
+                    s.silence(T(30), true);
+                }
+                s.silence(kGap, true);
+            }
             if (p + 1 == next || p + 1 == total) {
                 size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0;
                 std::vector<bool> recalledOwn(p + 1, false);
