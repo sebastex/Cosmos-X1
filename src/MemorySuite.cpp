@@ -1816,6 +1816,11 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // with the shape every pair's SECOND word had while it was being learned. Right = the own
 // partner is the best match. The cue contains nothing of the partner, so an untrained twin is
 // at chance (1 / number of pairs). Tested after 4, 8, 16 and 32 pairs.
+// The moment of recall in the pair test: ticks 7-13 after a cue ends (1D ticks). Measured: the
+// cue's own echo dominates the first 5 ticks, the recalled partner leads from tick 7 and fades by
+// tick 17-19 (dev brains 3004-3007, 128 words).
+constexpr uint64_t kMomentFrom = 6, kMomentTo = 13;
+
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     const std::vector<std::string>& words = pairWords();
     const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
@@ -1897,7 +1902,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             if ((firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes)) {
                 if (!firstPass) std::printf("  after %d passes over all %zu pairs:\n", passes, total);
                 oracleRight = 0;
-                size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0;
+                size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0, rightMoment = 0;
                 std::vector<bool> recalledOwn(p + 1, false);
                 double margin = 0.0, marginOwn = 0.0;
                 std::string mistakes, mistakesOwn;
@@ -2012,7 +2017,21 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     // Recall moment by moment (NCM_TIMECOURSE, last stage): the same 40 ticks of silence,
                     // ticked one at a time; at every tick the activity is compared with the own partner,
                     // the best other partner and the cue itself (as learned).
-                    std::vector<double> after;
+                    std::vector<double> after, moment;
+                    if (!(timecourse && learning && p + 1 == total)) {
+                        // Ticked one at a time (same dynamics as one call); the recall moment is kept.
+                        for (uint64_t t = 0; t < T(40); ++t) {
+                            s.silence(1, false);
+                            std::vector<double> snap;
+                            s.accumulate(snap);
+                            if (after.size() != snap.size()) after.assign(snap.size(), 0.0);
+                            if (moment.size() != snap.size()) moment.assign(snap.size(), 0.0);
+                            for (size_t i2 = 0; i2 < snap.size(); ++i2) {
+                                after[i2] += snap[i2];
+                                if (t >= kMomentFrom && t < kMomentTo) moment[i2] += snap[i2];
+                            }
+                        }
+                    }
                     if (timecourse && learning && p + 1 == total) {
                         bool ever = false;
                         for (uint64_t t = 0; t < T(40); ++t) {
@@ -2020,7 +2039,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                             std::vector<double> snap;
                             s.accumulate(snap);
                             if (after.size() != snap.size()) after.assign(snap.size(), 0.0);
-                            for (size_t i2 = 0; i2 < snap.size(); ++i2) after[i2] += snap[i2];
+                            if (moment.size() != snap.size()) moment.assign(snap.size(), 0.0);
+                            for (size_t i2 = 0; i2 < snap.size(); ++i2) {
+                                after[i2] += snap[i2];
+                                if (t >= kMomentFrom && t < kMomentTo) moment[i2] += snap[i2];
+                            }
                             if (t >= tcOwn.size()) continue;
                             const double own = lab::cosine(snap, ownAlone[k]);
                             double other = -1.0;
@@ -2034,8 +2057,15 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         }
                         tcEver += ever ? 1.0 : 0.0;
                         tcN += 1.0;
-                    } else {
-                        after = s.silence(T(40), false, 0);
+                    }
+                    // Recall at the moment of recall: the same comparison on ticks 7-13 after the cue only
+                    // (after the cue's own echo has faded, before the recalled word fades), for every pair.
+                    {
+                        const double ownM = lab::cosine(moment, ownAlone[k]);
+                        double bestM = -1.0;
+                        for (size_t j = 0; j <= p; ++j)
+                            if (j != k) bestM = std::max(bestM, lab::cosine(moment, ownAlone[j]));
+                        rightMoment += ownM > bestM;
                     }
                     s.silence(kGap, false);
                     const double own = lab::cosine(after, partner[k]);
@@ -2118,6 +2148,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::printf("     TRUE RECALL (partner heard alone by this same matrix): %zu of %zu right (%.0f%%), margin %+.3f\n",
                             rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
                 finalRecall[learning] = double(rightOwn) / double(p + 1);
+                std::printf("     RECALL AT THE MOMENT (ticks %llu-%llu after the cue, partner heard alone by this same matrix): %zu of %zu right (%.0f%%)\n",
+                            (unsigned long long)kMomentFrom + 1, (unsigned long long)kMomentTo, rightMoment, p + 1,
+                            100.0 * double(rightMoment) / double(p + 1));
                 if (timecourse && learning && p + 1 == total && tcN > 0.0) {
                     std::printf("     RECALL MOMENT BY MOMENT (ticks after the cue ends; similarity to the own partner, the best other partner, the cue itself; share right at that tick):\n");
                     for (size_t t = 0; t < tcOwn.size(); t += 2)
