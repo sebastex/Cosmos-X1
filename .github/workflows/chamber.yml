@@ -1,0 +1,73 @@
+# Time chamber: one brain learns the word-pair list pass after pass, one pass per run. Each run
+# restores the brain saved by the run before, teaches the whole list once more, grades it, saves it
+# and starts the next run, until the last pass. Exactly the same as one long uninterrupted run.
+# Start:  gh workflow run chamber.yml -f seed=3004 -f passes=6
+name: chamber
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Brain (seed)
+        default: "3004"
+      passes:
+        description: Passes in total
+        default: "6"
+      words:
+        description: Word pairs in the list (300 words = 150)
+        default: "150"
+      pass:
+        description: This run's pass (1 = a new brain)
+        default: "1"
+      prev_run:
+        description: Run that saved the brain to continue (empty for pass 1)
+        default: ""
+permissions:
+  contents: read
+  actions: write
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh
+      - name: Restore the brain
+        if: inputs.prev_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: brain-${{ inputs.seed }}
+          run-id: ${{ inputs.prev_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Learn one pass and grade
+        env:
+          NCM_PAIR_FAST: "1"
+          NCM_PASS_TESTS: "1"
+          NCM_PASSES: "1"
+          NCM_PASS_START: ${{ inputs.pass }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          if [ -f brain.bin.zst ]; then zstd -d -q --rm brain.bin.zst && export NCM_STATE_IN=brain.bin; fi
+          NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset dev --seed ${{ inputs.seed }} | tee result_pass${{ inputs.pass }}.txt
+          rm -f brain.bin
+          mv brain-next.bin brain.bin
+          zstd -3 -T0 -q --rm brain.bin
+          ls -la brain.bin.zst
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brain-${{ inputs.seed }}
+          path: brain.bin.zst
+          compression-level: 0
+          retention-days: 5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: result-seed-${{ inputs.seed }}-pass${{ inputs.pass }}
+          path: result_pass${{ inputs.pass }}.txt
+      - name: Start the next pass
+        if: fromJSON(inputs.pass) < fromJSON(inputs.passes)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run chamber.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
+            -f seed=${{ inputs.seed }} -f passes=${{ inputs.passes }} -f words=${{ inputs.words }} \
+            -f pass=$(( ${{ inputs.pass }} + 1 )) -f prev_run=${{ github.run_id }}

@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "ncm/Config.hpp"
+#include "ncm/State.hpp"
 
 namespace ncm {
 
@@ -36,6 +37,15 @@ public:
     void resetPhase() {
         acc2_ = 0.0;
         acc3_ = 0.0;
+    }
+
+    // Save or restore the clocks (continuing one brain across runs).
+    void state(StateFile& s) {
+        s.value(acc2_);
+        s.value(acc3_);
+        s.value(ticks1_);
+        s.value(ticks2_);
+        s.value(ticks3_);
     }
 
     uint64_t ticks1D() const { return ticks1_; }

@@ -1961,6 +1961,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
     const bool timecourse = std::getenv("NCM_TIMECOURSE") != nullptr;
     const bool passTests = std::getenv("NCM_PASS_TESTS") != nullptr;
+    const char* stateIn = std::getenv("NCM_STATE_IN");   // continue a saved brain
+    const char* stateOut = std::getenv("NCM_STATE_OUT"); // save the brain at the end
+    const int passStart = std::getenv("NCM_PASS_START") ? std::max(1, std::atoi(std::getenv("NCM_PASS_START"))) : 1;
     const int passes = std::getenv("NCM_PASSES") ? std::max(1, std::atoi(std::getenv("NCM_PASSES"))) : 1;
     // Repetition (diagnostic): times each pair is said when learned (default 10), and spaced review.
     const int repeats = std::getenv("NCM_PAIR_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_PAIR_REPEATS"))) : 10;
@@ -1982,13 +1985,21 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         Patterns cueInPair; // shape of each pair's first word while the pair was learned
         Patterns cueFresh;  // echo check: each cue heard alone right after its pair was learned
         size_t next = fast ? 16 : 4;
+        // One brain across runs (NCM_STATE_IN / NCM_STATE_OUT): restore it with its stored patterns.
+        if (stateIn && learning == 1) {
+            StateFile f(stateIn, false);
+            s.state(f);
+            f.patterns(partner);
+            f.patterns(cueInPair);
+            std::printf("  continuing the brain saved in %s (pass %d onward)\n", stateIn, passStart);
+        }
         size_t oracleRight = 0; // perfect memory: closest stored cue (see below)
         std::vector<double> tcOwn(T(40), 0.0), tcOther(T(40), 0.0), tcCue(T(40), 0.0), tcRight(T(40), 0.0);
         double tcEver = 0.0, tcN = 0.0;
         for (size_t it = 0; it < total * passes; ++it) {
             // NCM_PASSES: the whole list is taught again (second pass), then tested once more.
             const size_t p = it % total;
-            const bool firstPass = it < total;
+            const bool firstPass = it < total && passStart == 1; // the brain's very first pass
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
             const std::string pair = a + bw;
             // The pair is said, then a pause, then said again (10 times). Without the pause the
@@ -2034,7 +2045,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             const bool stageTest = passTests ? p + 1 == total
                                              : (firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes);
             if (stageTest) {
-                if (passTests) std::printf("  after pass %zu of %d over all %zu pairs:\n", it / total + 1, passes, total);
+                if (passTests) std::printf("  after pass %zu over all %zu pairs:\n", size_t(passStart) + it / total, total);
                 else if (!firstPass) std::printf("  after %d passes over all %zu pairs:\n", passes, total);
                 oracleRight = 0;
                 std::fill(tcOwn.begin(), tcOwn.end(), 0.0); // moment-by-moment readout: this test only
@@ -2356,6 +2367,13 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::fflush(stdout);
                 next *= 2;
             }
+        }
+        if (stateOut && learning == 1) {
+            StateFile f(stateOut, true);
+            s.state(f);
+            f.patterns(partner);
+            f.patterns(cueInPair);
+            std::printf("  brain saved in %s\n", stateOut);
         }
     }
     // Pass: the learning matrix truly recalls at least 75% of the partners at the last stage, and

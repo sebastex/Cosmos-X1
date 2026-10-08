@@ -1228,6 +1228,61 @@ MatrixStats NeuralCellularMatrix::computeStats() const {
     return st;
 }
 
+void NeuralCellularMatrix::state(StateFile& st) {
+    // Layout and fixed wiring must match: sizes, seed and a fingerprint of the random weights.
+    uint64_t layout[6] = {V_, Q_, P_, cfg_.seed, cfg_.long_range_links, SS_};
+    uint64_t saved[6] = {layout[0], layout[1], layout[2], layout[3], layout[4], layout[5]};
+    st.value(saved);
+    double fp = 0.0;
+    for (float x : U2_) fp += double(x);
+    for (uint32_t t : lrTarget_) fp += double(t) * 1e-9;
+    double savedFp = fp;
+    st.value(savedFp);
+    if (!st.writing) {
+        for (int i = 0; i < 6; ++i)
+            if (saved[i] != layout[i]) throw std::runtime_error("state file: brain layout or seed differs");
+        if (savedFp != fp) throw std::runtime_error("state file: fixed wiring differs");
+    }
+    for (LevelState* s : {&s1_, &s2_, &s3_}) {
+        st.vec(s->cur, "state");
+        st.vec(s->next, "state");
+        st.vec(s->theta, "thresholds");
+    }
+    st.vec(drive2_, "drive2");
+    st.vec(drive3_, "drive3");
+    st.vec(diagPlastic3_, "diag");
+    st.vec(diagInput3_, "diag");
+    st.vec(asmInh_, "assembly inhibition");
+    st.vec(usage3_, "usage");
+    st.vec(WS_, "cue route");
+    st.vec(diagSource3_, "diag sources");
+    st.vec(fatigue2_, "fatigue2");
+    st.vec(fatigue3_, "fatigue3");
+    st.vec(average3_, "average3");
+    st.vec(lineQuietCur_, "line flags");
+    st.vec(lineQuietNext_, "line flags");
+    st.vec(preRoom_, "presynaptic room");
+    st.vec(sheetQuietCur_, "sheet flags");
+    st.vec(sheetQuietNext_, "sheet flags");
+    st.vec(sheetSkip_, "sheet flags");
+    st.vec(orderTrace3_, "order trace");
+    st.vec(chanTheta3_, "channel thresholds");
+    st.value(learnStats_);
+    st.value(modulator_);
+    st.value(fieldGain_);
+    st.vec(W3_, "W3");
+    st.vec(WL_, "WL");
+    st.vec(H_, "H");
+    st.vec(S3_, "S3");
+    st.vec(SL_, "SL");
+    st.vec(SH_, "SH");
+    st.vec(M2_, "M2");
+    st.vec(sensoryDrive_, "sensory drive");
+    st.vec(motorDrive_, "motor drive");
+    st.value(sensoryOn_);
+    st.value(motorOn_);
+}
+
 size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };

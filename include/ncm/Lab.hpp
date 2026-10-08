@@ -128,6 +128,18 @@ public:
     void setLearning(bool on) { learning_ = on; } // diagnostic: pause learning, keep the mode
     double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
     const NeuralCellularMatrix& matrix() const { return *m_; }
+    // Save or restore this session's brain and clocks (one brain across runs).
+    void state(StateFile& st) {
+        m_->state(st);
+        clock_.state(st);
+        st.value(surpriseSum_);
+        st.value(surpriseCount_);
+        st.value(lastModulator_);
+        st.value(modSum_);
+        st.value(modCount_);
+        st.value(mode_);
+        st.value(wasSilent_);
+    }
     const CharacterCodebook& codebook() const { return codebook_; }
     float lastModulator() const { return lastModulator_; }
     float lastMode() const { return mode_; } // encoding/recall mode applied (1 = learned links suppressed)

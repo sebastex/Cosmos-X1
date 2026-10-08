@@ -6,6 +6,7 @@
 
 #include "ncm/Buffer.hpp"
 #include "ncm/Config.hpp"
+#include "ncm/State.hpp"
 
 namespace ncm {
 
@@ -116,6 +117,9 @@ public:
     const AVec<float>& voxelState() const { return s3_.cur; }
     const AVec<float>& voxelThresholds() const { return s3_.theta; }
     size_t memoryBytes() const;
+    // Save or restore everything that changes while the brain runs (one brain across runs).
+    // Restoring needs a brain built with the same configuration and seed.
+    void state(StateFile& s);
 
     size_t voxelIndex(uint32_t field, uint32_t x, uint32_t y, uint32_t z) const {
         return ((size_t(field) * N_ + z) * N_ + y) * N_ + x;
