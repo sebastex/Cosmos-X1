@@ -1824,6 +1824,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     // Big runs (NCM_PAIR_FAST set): learning matrix only, no link readouts, tested from 16 pairs on.
     const bool fast = std::getenv("NCM_PAIR_FAST") != nullptr;
     const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
+    const int passes = std::getenv("NCM_PASSES") ? std::max(1, std::atoi(std::getenv("NCM_PASSES"))) : 1;
     // Repetition (diagnostic): times each pair is said when learned (default 10), and spaced review.
     const int repeats = std::getenv("NCM_PAIR_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_PAIR_REPEATS"))) : 10;
     const int review = std::getenv("NCM_REVIEW") ? std::max(0, std::atoi(std::getenv("NCM_REVIEW"))) : 0;
@@ -1844,7 +1845,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         Patterns cueInPair; // shape of each pair's first word while the pair was learned
         Patterns cueFresh;  // echo check: each cue heard alone right after its pair was learned
         size_t next = fast ? 16 : 4;
-        for (size_t p = 0; p < total; ++p) {
+        size_t oracleRight = 0; // perfect memory: closest stored cue (see below)
+        for (size_t it = 0; it < total * passes; ++it) {
+            // NCM_PASSES: the whole list is taught again (second pass), then tested once more.
+            const size_t p = it % total;
+            const bool firstPass = it < total;
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
             const std::string pair = a + bw;
             // The pair is said, then a pause, then said again (10 times). Without the pause the
@@ -1858,12 +1863,14 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 }
                 s.silence(T(30), true);
             }
-            partner.push_back(shape);
-            cueInPair.push_back(cueShape);
+            if (firstPass) {
+                partner.push_back(shape);
+                cueInPair.push_back(cueShape);
+            }
             s.silence(kGap, true);
             // Echo check: the cue heard alone right after its pair was learned (listening, no learning),
             // to tell drift over time from the difference between a word in its pair and alone.
-            if (echo && learning == 1) {
+            if (echo && learning == 1 && firstPass) {
                 s.setLearning(false);
                 cueFresh.push_back(s.present(a, 4 * a.size(), 1.0f, true, a.size()));
                 s.silence(kGap, false);
@@ -1871,7 +1878,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             }
             // Spaced review (NCM_REVIEW = older pairs per new pair, NCM_REVIEW_REPEATS times each):
             // after each new pair, older pairs are said again a few times, as when learning words.
-            for (int j = 0; j < review && p > 0; ++j) {
+            for (int j = 0; j < review && p > 0 && firstPass; ++j) {
                 const size_t q = size_t((uint64_t(p) * 2654435761ull + uint64_t(j) * 40503ull) % uint64_t(p));
                 const std::string old = words[2 * q] + " " + words[2 * q + 1] + " ";
                 for (int r = 0; r < reviewRepeats; ++r) {
@@ -1880,7 +1887,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 }
                 s.silence(kGap, true);
             }
-            if (p + 1 == next || p + 1 == total) {
+            if ((firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes)) {
+                if (!firstPass) std::printf("  after %d passes over all %zu pairs:\n", passes, total);
+                oracleRight = 0;
                 size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0;
                 std::vector<bool> recalledOwn(p + 1, false);
                 double margin = 0.0, marginOwn = 0.0;
@@ -1977,7 +1986,22 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 }
                 for (size_t k = 0; k <= p; ++k) {
                     const std::string cue = words[2 * k] + " ";
-                    s.present(cue, cue.size(), 1.0f, false, UINT64_MAX);
+                    const std::vector<double> cueNow = s.present(cue, cue.size(), 1.0f, false, 0);
+                    // Perfect memory (a yardstick, not part of the brain): pick the pair whose cue, as it
+                    // was while the pair was learned, is most like the cue heard now. Right for every
+                    // pair = the brain's own word patterns keep the pairs apart; storage is the limit.
+                    if (learning) {
+                        double bestCue = -2.0;
+                        size_t bestJ = 0;
+                        for (size_t j = 0; j <= p; ++j) {
+                            const double sim = lab::cosine(cueNow, cueInPair[j]);
+                            if (sim > bestCue) {
+                                bestCue = sim;
+                                bestJ = j;
+                            }
+                        }
+                        oracleRight += bestJ == k;
+                    }
                     const std::vector<double> after = s.silence(T(40), false, 0);
                     s.silence(kGap, false);
                     const double own = lab::cosine(after, partner[k]);
@@ -2060,6 +2084,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::printf("     TRUE RECALL (partner heard alone by this same matrix): %zu of %zu right (%.0f%%), margin %+.3f\n",
                             rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
                 finalRecall[learning] = double(rightOwn) / double(p + 1);
+                if (learning)
+                    std::printf("     PERFECT MEMORY (closest stored cue, as learned): %zu of %zu right (%.0f%%)\n", oracleRight, p + 1,
+                                100.0 * double(oracleRight) / double(p + 1));
                 if (!mistakesOwn.empty()) std::printf("       wrong (cue>recalled):%s\n", mistakesOwn.c_str());
                 if (echo && learning) {
                     for (int ok = 1; ok >= 0; --ok) {
