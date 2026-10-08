@@ -2032,6 +2032,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             if ((firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes)) {
                 if (!firstPass) std::printf("  after %d passes over all %zu pairs:\n", passes, total);
                 oracleRight = 0;
+                std::fill(tcOwn.begin(), tcOwn.end(), 0.0); // moment-by-moment readout: this test only
+                std::fill(tcOther.begin(), tcOther.end(), 0.0);
+                std::fill(tcCue.begin(), tcCue.end(), 0.0);
+                std::fill(tcRight.begin(), tcRight.end(), 0.0);
+                tcEver = tcN = 0.0;
                 size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0, rightMoment = 0;
                 std::vector<bool> recalledOwn(p + 1, false);
                 double margin = 0.0, marginOwn = 0.0;
