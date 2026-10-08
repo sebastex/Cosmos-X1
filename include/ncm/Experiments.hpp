@@ -50,6 +50,7 @@ int runOverlapTest(const Config& cfg);
 int runRecallDetailTest(const Config& cfg); // diagnostic: incomplete, contaminated or wrong recall?
 int runWordContextTest(const Config& cfg); // diagnostic: does a word keep its identity across settings?
 int runPairLinksTest(const Config& cfg); // diagnostic: is the order of a word pair stored?
+int runEmergenceTest(const Config& cfg); // chaining, typo tolerance and familiarity, against an untrained twin
 int runWordOverlapTest(const Config& cfg);   // diagnostic: how alike different words are inside the matrix
 int runLookAlikeTest(const Config& cfg);
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs = 0); // word pairs: hear the first, recall the second

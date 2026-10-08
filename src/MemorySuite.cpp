@@ -1816,6 +1816,136 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // with the shape every pair's SECOND word had while it was being learned. Right = the own
 // partner is the best match. The cue contains nothing of the partner, so an untrained twin is
 // at chance (1 / number of pairs). Tested after 4, 8, 16 and 32 pairs.
+// Emergence: behaviour nobody programmed, against an untrained twin.
+//  - Chaining: X -> Y and Y -> Z are taught as separate pairs (never X -> Z). After hearing X, does Z
+//    follow Y a moment later (ticks 14-30 after the cue), ahead of every other word?
+//  - Typos: a cue with one letter changed (lemon -> lemin); is the right partner still recalled at
+//    the moment of recall?
+//  - Familiarity: a learned word and a never-heard word; does the matrix answer them differently on
+//    its own (activity left 7-20 ticks after the word)?
+int runEmergenceTest(const Config& cfg) {
+    const auto& W = pairWords();
+    const size_t chains = 8, plain = 16;
+    std::vector<std::array<std::string, 3>> chain(chains);
+    for (size_t i = 0; i < chains; ++i) chain[i] = {W[3 * i], W[3 * i + 1], W[3 * i + 2]};
+    std::vector<std::pair<std::string, std::string>> pairs; // all taught pairs (chain links + plain)
+    for (const auto& c : chain) pairs.push_back({c[0], c[1]});
+    for (const auto& c : chain) pairs.push_back({c[1], c[2]});
+    for (size_t i = 0; i < plain; ++i) pairs.push_back({W[3 * chains + 2 * i], W[3 * chains + 2 * i + 1]});
+    std::vector<std::string> novel;
+    for (size_t i = 0; i < 12; ++i) novel.push_back(W[260 + i]); // never taught
+    auto typo = [](std::string w) {
+        const size_t at = w.size() / 2;
+        w[at] = char('a' + (w[at] - 'a' + 1) % 26);
+        return w;
+    };
+    std::vector<std::string> vocab; // every word that can be recalled
+    for (const auto& pr : pairs) {
+        if (std::find(vocab.begin(), vocab.end(), pr.first) == vocab.end()) vocab.push_back(pr.first);
+        if (std::find(vocab.begin(), vocab.end(), pr.second) == vocab.end()) vocab.push_back(pr.second);
+    }
+    auto indexOf = [&](const std::string& w) { return size_t(std::find(vocab.begin(), vocab.end(), w) - vocab.begin()); };
+    std::printf("Emergence: %zu chains (X->Y, Y->Z taught apart), %zu plain pairs, %zu never-heard words\n", chains, plain,
+                novel.size());
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        for (const auto& pr : pairs) {
+            const std::string pair = pr.first + " " + pr.second + " ";
+            for (int r = 0; r < 10; ++r) {
+                for (char ch : pair) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
+                s.silence(T(30), true);
+            }
+            s.silence(kGap, true);
+        }
+        // Yardstick: every word heard alone by this same matrix (listening, no learning).
+        s.setLearning(false);
+        Patterns alone;
+        for (const auto& w : vocab) {
+            const std::string ws = w + " ";
+            alone.push_back(s.present(ws, 4 * ws.size(), 1.0f, true, ws.size()));
+            s.silence(kGap, false);
+        }
+        s.setLearning(learning == 1);
+        // Hear a cue once; return the activity summed over ticks [from, to) after it ends.
+        auto hear = [&](const std::string& cue, uint64_t from, uint64_t to, std::vector<double>* total) {
+            s.present(cue + " ", cue.size() + 1, 1.0f, false, UINT64_MAX);
+            std::vector<double> acc;
+            for (uint64_t t = 0; t < T(40); ++t) {
+                s.silence(1, false);
+                std::vector<double> snap;
+                s.accumulate(snap);
+                if (acc.size() != snap.size()) acc.assign(snap.size(), 0.0);
+                if (total && total->size() != snap.size()) total->assign(snap.size(), 0.0);
+                for (size_t i = 0; i < snap.size(); ++i) {
+                    if (t >= from && t < to) acc[i] += snap[i];
+                    if (total && t >= 6 && t < 20) (*total)[i] += snap[i];
+                }
+            }
+            s.silence(kGap, false);
+            return acc;
+        };
+        auto best = [&](const std::vector<double>& a, const std::vector<size_t>& exclude) {
+            double b = -2.0;
+            size_t bi = 0;
+            for (size_t j = 0; j < vocab.size(); ++j) {
+                if (std::find(exclude.begin(), exclude.end(), j) != exclude.end()) continue;
+                const double c = lab::cosine(a, alone[j]);
+                if (c > b) {
+                    b = c;
+                    bi = j;
+                }
+            }
+            return bi;
+        };
+        // Chaining: after X, the next link Y should lead at the recall moment, and Z later on, ahead
+        // of every word other than X and Y.
+        size_t yRight = 0, zRight = 0;
+        for (const auto& c : chain) {
+            const auto early = hear(c[0], 6, 13, nullptr);
+            yRight += best(early, {indexOf(c[0])}) == indexOf(c[1]);
+            const auto late = hear(c[0], 13, 30, nullptr);
+            zRight += best(late, {indexOf(c[0]), indexOf(c[1])}) == indexOf(c[2]);
+        }
+        // Typos: one letter changed in each cue; the right partner at the recall moment.
+        size_t intact = 0, typoRight = 0, cues = 0;
+        for (size_t i = 0; i < pairs.size(); ++i) {
+            if (i >= chains && i < 2 * chains) continue; // second chain links: cue is a recalled word too
+            ++cues;
+            intact += best(hear(pairs[i].first, 6, 13, nullptr), {indexOf(pairs[i].first)}) == indexOf(pairs[i].second);
+            typoRight += best(hear(typo(pairs[i].first), 6, 13, nullptr), {indexOf(pairs[i].first)}) == indexOf(pairs[i].second);
+        }
+        // Familiarity: activity left 7-20 ticks after a learned word vs a never-heard word.
+        std::vector<double> known, unknown;
+        auto amount = [&](const std::string& w) {
+            std::vector<double> total;
+            hear(w, 0, 0, &total);
+            double sum = 0.0;
+            for (double x : total) sum += x;
+            return sum;
+        };
+        for (size_t i = 0; i < novel.size(); ++i) known.push_back(amount(pairs[chains * 2 + i].first));
+        for (const auto& w : novel) unknown.push_back(amount(w));
+        size_t above = 0, comparisons = 0;
+        for (double a : known)
+            for (double b : unknown) {
+                above += a > b;
+                ++comparisons;
+            }
+        double mk = 0.0, mu = 0.0;
+        for (double a : known) mk += a / double(known.size());
+        for (double b : unknown) mu += b / double(unknown.size());
+        const double chance = 1.0 / double(vocab.size() - 2);
+        std::printf("  %s:\n", learning ? "LEARNED" : "UNTRAINED TWIN");
+        std::printf("    chaining: Y after X %zu of %zu; Z after X (never taught together) %zu of %zu (chance %.0f%%)\n", yRight,
+                    chains, zRight, chains, 100.0 * chance);
+        std::printf("    typos: right partner %zu of %zu with the real cue, %zu of %zu with one letter changed\n", intact, cues,
+                    typoRight, cues);
+        std::printf("    familiarity: activity after a learned word %.1f vs a never-heard word %.1f; learned above never-heard in %.0f%% of comparisons\n",
+                    mk, mu, 100.0 * double(above) / double(std::max<size_t>(1, comparisons)));
+    }
+    return 0;
+}
+
 // The moment of recall in the pair test: ticks 7-13 after a cue ends (1D ticks). Measured: the
 // cue's own echo dominates the first 5 ticks, the recalled partner leads from tick 7 and fades by
 // tick 17-19 (dev brains 3004-3007, 128 words).
