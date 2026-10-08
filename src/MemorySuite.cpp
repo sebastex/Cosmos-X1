@@ -1824,6 +1824,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     // Big runs (NCM_PAIR_FAST set): learning matrix only, no link readouts, tested from 16 pairs on.
     const bool fast = std::getenv("NCM_PAIR_FAST") != nullptr;
     const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
+    const bool timecourse = std::getenv("NCM_TIMECOURSE") != nullptr;
     const int passes = std::getenv("NCM_PASSES") ? std::max(1, std::atoi(std::getenv("NCM_PASSES"))) : 1;
     // Repetition (diagnostic): times each pair is said when learned (default 10), and spaced review.
     const int repeats = std::getenv("NCM_PAIR_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_PAIR_REPEATS"))) : 10;
@@ -1846,6 +1847,8 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         Patterns cueFresh;  // echo check: each cue heard alone right after its pair was learned
         size_t next = fast ? 16 : 4;
         size_t oracleRight = 0; // perfect memory: closest stored cue (see below)
+        std::vector<double> tcOwn(T(40), 0.0), tcOther(T(40), 0.0), tcCue(T(40), 0.0), tcRight(T(40), 0.0);
+        double tcEver = 0.0, tcN = 0.0;
         for (size_t it = 0; it < total * passes; ++it) {
             // NCM_PASSES: the whole list is taught again (second pass), then tested once more.
             const size_t p = it % total;
@@ -2002,7 +2005,34 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         }
                         oracleRight += bestJ == k;
                     }
-                    const std::vector<double> after = s.silence(T(40), false, 0);
+                    // Recall moment by moment (NCM_TIMECOURSE, last stage): the same 40 ticks of silence,
+                    // ticked one at a time; at every tick the activity is compared with the own partner,
+                    // the best other partner and the cue itself (as learned).
+                    std::vector<double> after;
+                    if (timecourse && learning && p + 1 == total) {
+                        bool ever = false;
+                        for (uint64_t t = 0; t < T(40); ++t) {
+                            s.silence(1, false);
+                            std::vector<double> snap;
+                            s.accumulate(snap);
+                            if (after.size() != snap.size()) after.assign(snap.size(), 0.0);
+                            for (size_t i2 = 0; i2 < snap.size(); ++i2) after[i2] += snap[i2];
+                            if (t >= tcOwn.size()) continue;
+                            const double own = lab::cosine(snap, ownAlone[k]);
+                            double other = -1.0;
+                            for (size_t j = 0; j <= p; ++j)
+                                if (j != k) other = std::max(other, lab::cosine(snap, ownAlone[j]));
+                            tcOwn[t] += own;
+                            tcOther[t] += other;
+                            tcCue[t] += lab::cosine(snap, cueInPair[k]);
+                            tcRight[t] += own > other ? 1.0 : 0.0;
+                            ever = ever || own > other;
+                        }
+                        tcEver += ever ? 1.0 : 0.0;
+                        tcN += 1.0;
+                    } else {
+                        after = s.silence(T(40), false, 0);
+                    }
                     s.silence(kGap, false);
                     const double own = lab::cosine(after, partner[k]);
                     double best = -1.0;
@@ -2084,6 +2114,13 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::printf("     TRUE RECALL (partner heard alone by this same matrix): %zu of %zu right (%.0f%%), margin %+.3f\n",
                             rightOwn, p + 1, 100.0 * double(rightOwn) / double(p + 1), marginOwn);
                 finalRecall[learning] = double(rightOwn) / double(p + 1);
+                if (timecourse && learning && p + 1 == total && tcN > 0.0) {
+                    std::printf("     RECALL MOMENT BY MOMENT (ticks after the cue ends; similarity to the own partner, the best other partner, the cue itself; share right at that tick):\n");
+                    for (size_t t = 0; t < tcOwn.size(); t += 2)
+                        std::printf("       tick %2zu: own %.3f  best other %.3f  cue %.3f  right %3.0f%%\n", t + 1, tcOwn[t] / tcN,
+                                    tcOther[t] / tcN, tcCue[t] / tcN, 100.0 * tcRight[t] / tcN);
+                    std::printf("       right at some moment: %.0f%% of pairs\n", 100.0 * tcEver / tcN);
+                }
                 if (learning)
                     std::printf("     PERFECT MEMORY (closest stored cue, as learned): %zu of %zu right (%.0f%%)\n", oracleRight, p + 1,
                                 100.0 * double(oracleRight) / double(p + 1));
