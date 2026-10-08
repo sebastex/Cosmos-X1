@@ -1842,6 +1842,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
         Session s(cfg, learning == 1);
         Patterns partner; // shape of each pair's second word while the pair was learned
         Patterns cueInPair; // shape of each pair's first word while the pair was learned
+        Patterns cueFresh;  // echo check: each cue heard alone right after its pair was learned
         size_t next = fast ? 16 : 4;
         for (size_t p = 0; p < total; ++p) {
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
@@ -1860,6 +1861,14 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             partner.push_back(shape);
             cueInPair.push_back(cueShape);
             s.silence(kGap, true);
+            // Echo check: the cue heard alone right after its pair was learned (listening, no learning),
+            // to tell drift over time from the difference between a word in its pair and alone.
+            if (echo && learning == 1) {
+                s.setLearning(false);
+                cueFresh.push_back(s.present(a, 4 * a.size(), 1.0f, true, a.size()));
+                s.silence(kGap, false);
+                s.setLearning(true);
+            }
             // Spaced review (NCM_REVIEW = older pairs per new pair, NCM_REVIEW_REPEATS times each):
             // after each new pair, older pairs are said again a few times, as when learning words.
             for (int j = 0; j < review && p > 0; ++j) {
@@ -1897,6 +1906,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         s.silence(kGap, false);
                     }
                 double echoSum[2][4] = {}; // [wrong, right] x {after~cue, after~own, after~taken, cue~taken}
+                // Drift (with the echo check): how alike a word heard alone now is to the same word as it
+                // was while its pair was learned (1 = unchanged), for right and wrong pairs.
+                double drift[2][3] = {}; // [wrong, right] x {cue now vs in pair, cue now vs just after learning, just after vs in pair}
                 size_t echoN[2] = {0, 0}, rightNoEcho = 0;
                 std::string stillWrong;
                 s.setLearning(learning == 1);
@@ -2009,6 +2021,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         echoSum[ok][1] += ownO;
                         echoSum[ok][2] += ok ? 0.0 : bestO;
                         echoSum[ok][3] += ok ? 0.0 : lab::cosine(cueOwn[k], ownAlone[bestOJ]);
+                        drift[ok][0] += lab::cosine(cueOwn[k], cueInPair[k]);
+                        if (k < cueFresh.size()) {
+                            drift[ok][1] += lab::cosine(cueOwn[k], cueFresh[k]);
+                            drift[ok][2] += lab::cosine(cueFresh[k], cueInPair[k]);
+                        }
                         ++echoN[ok];
                         // The same choice with the cue's own echo taken out of the activity.
                         std::vector<double> rest = after;
@@ -2057,6 +2074,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     std::printf("       echo check: right with the cue's echo taken out %zu of %zu (%.0f%%)\n", rightNoEcho, p + 1,
                                 100.0 * double(rightNoEcho) / double(p + 1));
                     if (!stillWrong.empty()) std::printf("       echo check: still wrong (cue>taken):%s\n", stillWrong.c_str());
+                    for (int ok = 1; ok >= 0; --ok) {
+                        const double n = double(std::max<size_t>(1, echoN[ok]));
+                        std::printf("       drift, %s pairs: cue alone now vs in its pair %.3f; cue alone now vs alone just after learning %.3f (drift over time); alone just after vs in its pair %.3f (context)\n",
+                                    ok ? "right" : "wrong", drift[ok][0] / n, drift[ok][1] / n, drift[ok][2] / n);
+                    }
                 }
                 // Per pair (learning matrix): the stored link measured on the words as they were
                 // heard together (cue -> own partner vs the strongest cue -> other partner), and
