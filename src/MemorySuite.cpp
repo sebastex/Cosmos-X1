@@ -1960,6 +1960,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     const bool fast = std::getenv("NCM_PAIR_FAST") != nullptr;
     const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
     const bool timecourse = std::getenv("NCM_TIMECOURSE") != nullptr;
+    const bool passTests = std::getenv("NCM_PASS_TESTS") != nullptr;
     const int passes = std::getenv("NCM_PASSES") ? std::max(1, std::atoi(std::getenv("NCM_PASSES"))) : 1;
     // Repetition (diagnostic): times each pair is said when learned (default 10), and spaced review.
     const int repeats = std::getenv("NCM_PAIR_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_PAIR_REPEATS"))) : 10;
@@ -2029,8 +2030,12 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 }
                 s.silence(kGap, true);
             }
-            if ((firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes)) {
-                if (!firstPass) std::printf("  after %d passes over all %zu pairs:\n", passes, total);
+            // NCM_PASS_TESTS: graded only at the end of every pass (a learning curve over passes).
+            const bool stageTest = passTests ? p + 1 == total
+                                             : (firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes);
+            if (stageTest) {
+                if (passTests) std::printf("  after pass %zu of %d over all %zu pairs:\n", it / total + 1, passes, total);
+                else if (!firstPass) std::printf("  after %d passes over all %zu pairs:\n", passes, total);
                 oracleRight = 0;
                 std::fill(tcOwn.begin(), tcOwn.end(), 0.0); // moment-by-moment readout: this test only
                 std::fill(tcOther.begin(), tcOther.end(), 0.0);
