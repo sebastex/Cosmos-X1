@@ -1882,7 +1882,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             // Spaced review (NCM_REVIEW = older pairs per new pair, NCM_REVIEW_REPEATS times each):
             // after each new pair, older pairs are said again a few times, as when learning words.
             for (int j = 0; j < review && p > 0 && firstPass; ++j) {
-                const size_t q = size_t((uint64_t(p) * 2654435761ull + uint64_t(j) * 40503ull) % uint64_t(p));
+                uint64_t h = (uint64_t(p) + 1) * 0x9E3779B97F4A7C15ull ^ (uint64_t(j) + 1) * 0xC2B2AE3D27D4EB4Full;
+                h ^= h >> 29;
+                h *= 0xBF58476D1CE4E5B9ull;
+                h ^= h >> 32;
+                const size_t q = size_t(h % uint64_t(p)); // an older pair, spread over all of them
                 const std::string old = words[2 * q] + " " + words[2 * q + 1] + " ";
                 for (int r = 0; r < reviewRepeats; ++r) {
                     for (size_t pos = 0; pos < old.size(); ++pos) s.present(std::string(1, old[pos]), 1, 1.0f, true, UINT64_MAX);
