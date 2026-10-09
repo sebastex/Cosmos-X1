@@ -145,8 +145,10 @@ public:
     float lastMode() const { return mode_; } // encoding/recall mode applied (1 = learned links suppressed)
     ~Session() {
         if (std::getenv("NCM_PROFILE") && m_)
-            std::fprintf(stderr, "profile: lines %.1fs, sheets %.1fs, voxels %.1fs, learning %.1fs\n", m_->time1D, m_->time2D,
-                         m_->time3D, m_->timeLearn);
+            std::fprintf(stderr, "profile: lines %.1fs, sheets %.1fs, voxels %.1fs, learning %.1fs; learning steps %llu, cells learning per step %.0f of %zu\n",
+                         m_->time1D, m_->time2D, m_->time3D, m_->timeLearn, (unsigned long long)m_->learningStats().calls,
+                         m_->learningStats().calls ? double(m_->learningStats().learners) / double(m_->learningStats().calls) : 0.0,
+                         m_->voxelState().size() / C3);
     }
     // Mean learning signal over the learning steps since the last reset (diagnostic).
     double meanModulator() const { return modCount_ ? modSum_ / double(modCount_) : 0.0; }
