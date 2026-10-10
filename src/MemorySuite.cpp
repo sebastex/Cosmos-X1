@@ -2054,6 +2054,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::fill(tcRight.begin(), tcRight.end(), 0.0);
                 tcEver = tcN = 0.0;
                 size_t right = 0, rightOld = 0, rightNew = 0, rightAlone = 0, rightOwn = 0, rightMoment = 0;
+                std::string momentPairs; // per pair in list order: 1 = recalled at the moment
                 std::vector<bool> recalledOwn(p + 1, false);
                 double margin = 0.0, marginOwn = 0.0;
                 std::string mistakes, mistakesOwn;
@@ -2217,6 +2218,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         for (size_t j = 0; j <= p; ++j)
                             if (j != k) bestM = std::max(bestM, lab::cosine(moment, ownAlone[j]));
                         rightMoment += ownM > bestM;
+                        momentPairs += ownM > bestM ? '1' : '0';
                     }
                     s.silence(kGap, false);
                     const double own = lab::cosine(after, partner[k]);
@@ -2302,6 +2304,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 std::printf("     RECALL AT THE MOMENT (ticks %llu-%llu after the cue, partner heard alone by this same matrix): %zu of %zu right (%.0f%%)\n",
                             (unsigned long long)kMomentFrom + 1, (unsigned long long)kMomentTo, rightMoment, p + 1,
                             100.0 * double(rightMoment) / double(p + 1));
+                if (learning) std::printf("     recalled at the moment, pair by pair in list order: %s\n", momentPairs.c_str());
                 if (timecourse && learning && p + 1 == total && tcN > 0.0) {
                     std::printf("     RECALL MOMENT BY MOMENT (ticks after the cue ends; similarity to the own partner, the best other partner, the cue itself; share right at that tick):\n");
                     for (size_t t = 0; t < tcOwn.size(); t += 2)
