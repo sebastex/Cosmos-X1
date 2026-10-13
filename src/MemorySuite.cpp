@@ -1823,6 +1823,10 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 //     times each, with pauses); hearing a letter, the next one must lead at the moment of recall
 //     (ticks 7-13 after it), against every letter heard alone.
 // Passes when the learned brain gets all 26 letters and all 25 steps.
+// Moment of recall for single letters (1D ticks after the cue ends): a letter's partner follows it
+// two ticks later while learning, so it comes back much sooner than a word's partner.
+constexpr uint64_t kLetterFrom = 0, kLetterTo = 6;
+
 int runAlphabetTest(const Config& cfg) {
     std::vector<std::string> letters;
     for (char c = 'a'; c <= 'z'; ++c) letters.push_back(std::string(1, c));
@@ -1864,6 +1868,7 @@ int runAlphabetTest(const Config& cfg) {
                 s.silence(kGap, false);
             }
             s.setLearning(learning == 1);
+            std::vector<double> tickRight(20, 0.0), tickActive(20, 0.0);
             for (size_t k = 0; k + 1 < letters.size(); ++k) {
                 s.present(letters[k] + " ", 2, 1.0f, false, UINT64_MAX);
                 std::vector<double> moment;
@@ -1872,8 +1877,18 @@ int runAlphabetTest(const Config& cfg) {
                     std::vector<double> snap;
                     s.accumulate(snap);
                     if (moment.size() != snap.size()) moment.assign(snap.size(), 0.0);
-                    if (t >= 6 && t < 13)
+                    if (t >= kLetterFrom && t < kLetterTo)
                         for (size_t i = 0; i < snap.size(); ++i) moment[i] += snap[i];
+                    // Tick by tick (diagnostic): is the next letter the most alike now?
+                    if (learning && t < tickRight.size()) {
+                        double tot = 0.0;
+                        for (double x : snap) tot += x;
+                        tickActive[t] += tot > 0.0 ? 1.0 : 0.0;
+                        double own = lab::cosine(snap, alone[k + 1]), other = -2.0;
+                        for (size_t j = 0; j < letters.size(); ++j)
+                            if (j != k && j != k + 1) other = std::max(other, lab::cosine(snap, alone[j]));
+                        tickRight[t] += tot > 0.0 && own > other ? 1.0 : 0.0;
+                    }
                 }
                 s.silence(kGap, false);
                 size_t best = k == 0 ? 1 : 0;
@@ -1886,8 +1901,15 @@ int runAlphabetTest(const Config& cfg) {
                         best = j;
                     }
                 }
-                right[learning][1] += best == k + 1;
-                if (learning && best != k + 1) missedSteps += " " + letters[k] + ">" + letters[best];
+                right[learning][1] += best == k + 1 && bestSim > 0.0;
+                if (learning && !(best == k + 1 && bestSim > 0.0))
+                    missedSteps += " " + letters[k] + ">" + (bestSim > 0.0 ? letters[best] : std::string("(nothing)"));
+            }
+            if (learning) {
+                std::printf("  next letter tick by tick after the cue (share of steps right / share with any activity):");
+                for (size_t t = 0; t < tickRight.size(); ++t)
+                    std::printf(" %zu:%.0f/%.0f", t + 1, 100.0 * tickRight[t] / 25.0, 100.0 * tickActive[t] / 25.0);
+                std::printf("\n");
             }
         }
     }
