@@ -1816,6 +1816,90 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // with the shape every pair's SECOND word had while it was being learned. Right = the own
 // partner is the best match. The cue contains nothing of the partner, so an untrained twin is
 // at chance (1 / number of pairs). Tested after 4, 8, 16 and 32 pairs.
+// Alphabet (stage 1 of letters -> words -> sentences), against an untrained twin.
+//  1. Every letter: the 26 letters are stored one after another; each is recalled from a 40% cue
+//     and must be most like its own stored pattern.
+//  2. The alphabet in order: the 25 steps "a b", "b c", ... "y z" are taught like word pairs (10
+//     times each, with pauses); hearing a letter, the next one must lead at the moment of recall
+//     (ticks 7-13 after it), against every letter heard alone.
+// Passes when the learned brain gets all 26 letters and all 25 steps.
+int runAlphabetTest(const Config& cfg) {
+    std::vector<std::string> letters;
+    for (char c = 'a'; c <= 'z'; ++c) letters.push_back(std::string(1, c));
+    std::printf("Alphabet: 26 letters recognised from a %.0f%% cue, and 25 steps of the alphabet in order\n",
+                100.0 * kCueFraction);
+    size_t right[2][2] = {};
+    std::string missedLetters, missedSteps;
+    for (int learning = 1; learning >= 0; --learning) {
+        // 1. Every letter.
+        {
+            Session s(cfg, learning == 1);
+            const Patterns stored = storeAll(s, letters, kStore);
+            const Patterns recalled = recallAll(s, letters);
+            const auto sims = lab::similarityMatrix(recalled, stored);
+            for (size_t k = 0; k < letters.size(); ++k) {
+                size_t best = 0;
+                for (size_t j = 1; j < letters.size(); ++j)
+                    if (sims[k][j] > sims[k][best]) best = j;
+                right[learning][0] += best == k;
+                if (learning && best != k) missedLetters += " " + letters[k] + ">" + letters[best];
+            }
+        }
+        // 2. The alphabet in order.
+        {
+            Session s(cfg, learning == 1);
+            for (size_t k = 0; k + 1 < letters.size(); ++k) {
+                const std::string pair = letters[k] + " " + letters[k + 1] + " ";
+                for (int r = 0; r < 10; ++r) {
+                    for (char ch : pair) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
+                    s.silence(T(30), true);
+                }
+                s.silence(kGap, true);
+            }
+            s.setLearning(false);
+            Patterns alone;
+            for (const auto& l : letters) {
+                const std::string ls = l + " ";
+                alone.push_back(s.present(ls, 4 * ls.size(), 1.0f, true, ls.size()));
+                s.silence(kGap, false);
+            }
+            s.setLearning(learning == 1);
+            for (size_t k = 0; k + 1 < letters.size(); ++k) {
+                s.present(letters[k] + " ", 2, 1.0f, false, UINT64_MAX);
+                std::vector<double> moment;
+                for (uint64_t t = 0; t < T(40); ++t) {
+                    s.silence(1, false);
+                    std::vector<double> snap;
+                    s.accumulate(snap);
+                    if (moment.size() != snap.size()) moment.assign(snap.size(), 0.0);
+                    if (t >= 6 && t < 13)
+                        for (size_t i = 0; i < snap.size(); ++i) moment[i] += snap[i];
+                }
+                s.silence(kGap, false);
+                size_t best = k == 0 ? 1 : 0;
+                double bestSim = -2.0;
+                for (size_t j = 0; j < letters.size(); ++j) {
+                    if (j == k) continue; // the letter just heard
+                    const double c = lab::cosine(moment, alone[j]);
+                    if (c > bestSim) {
+                        bestSim = c;
+                        best = j;
+                    }
+                }
+                right[learning][1] += best == k + 1;
+                if (learning && best != k + 1) missedSteps += " " + letters[k] + ">" + letters[best];
+            }
+        }
+    }
+    std::printf("  every letter:          learned %zu of 26 (untrained twin %zu of 26)%s%s\n", right[1][0], right[0][0],
+                missedLetters.empty() ? "" : ", mixed up:", missedLetters.c_str());
+    std::printf("  alphabet in order:     learned %zu of 25 (untrained twin %zu of 25)%s%s\n", right[1][1], right[0][1],
+                missedSteps.empty() ? "" : ", wrong next letter:", missedSteps.c_str());
+    const bool pass = right[1][0] == 26 && right[1][1] == 25;
+    std::printf("  alphabet: %s\n", pass ? "PASS (every letter, every step)" : "FAIL");
+    return pass ? 0 : 3;
+}
+
 // Emergence: behaviour nobody programmed, against an untrained twin.
 //  - Chaining: X -> Y and Y -> Z are taught as separate pairs (never X -> Z). After hearing X, does Z
 //    follow Y a moment later (ticks 14-30 after the cue), ahead of every other word?
