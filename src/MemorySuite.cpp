@@ -1840,11 +1840,16 @@ int runAlphabetTest(const Config& cfg) {
                 100.0 * kLetterCue, (unsigned long long)kLetterHold);
     size_t right[2][2] = {};
     std::string missedLetters, missedSteps;
+    const int alphaPasses = std::getenv("NCM_ALPHABET_PASSES") ? std::max(1, std::atoi(std::getenv("NCM_ALPHABET_PASSES"))) : 1;
+    if (alphaPasses > 1) std::printf("  practised in %d passes\n", alphaPasses);
     for (int learning = 1; learning >= 0; --learning) {
         // 1. Every letter.
         {
             Session s(cfg, learning == 1);
-            const Patterns stored = storeAll(s, letters, kStore);
+            // NCM_ALPHABET_PASSES: the letters are practised again in every pass (the last pass's
+            // patterns are the stored ones).
+            Patterns stored;
+            for (int pass = 0; pass < alphaPasses; ++pass) stored = storeAll(s, letters, kStore);
             const Patterns recalled = recallAll(s, letters, kLetterCue);
             const auto sims = lab::similarityMatrix(recalled, stored);
             for (size_t k = 0; k < letters.size(); ++k) {
@@ -1858,6 +1863,7 @@ int runAlphabetTest(const Config& cfg) {
         // 2. The alphabet in order.
         {
             Session s(cfg, learning == 1);
+            for (int pass = 0; pass < alphaPasses; ++pass)
             for (size_t k = 0; k + 1 < letters.size(); ++k) {
                 for (int r = 0; r < 10; ++r) {
                     s.present(letters[k], kLetterHold, 1.0f, true, UINT64_MAX);
