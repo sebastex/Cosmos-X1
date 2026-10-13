@@ -29,6 +29,7 @@ CHECKS = {
     "order": ["--test", "order"],
     "monitor": ["--test", "recalldetail"],  # diagnostics only, not scored
     "load64": ["--test", "pairload", "--store-ticks", "32"],  # big-load probe (32 pairs = 64 words), not scored
+    "alphabet": ["--test", "alphabet"],  # every letter from a weak glimpse, and the alphabet in order
 }
 UNSCORED = {"monitor", "load64"}
 
@@ -77,6 +78,9 @@ def parse(check, out):
             d["stored_recalled"] = sum(1 for a, b in rows if a == "yes" and b == "yes")
             d["stored_not_recalled"] = sum(1 for a, b in rows if a == "yes" and b == "NO")
             d["not_stored"] = sum(1 for a, b in rows if a == "NO")
+    elif check == "alphabet":
+        d["letters"] = num(r"every letter:\s+learned ([0-9]+) of 26", out)
+        d["steps"] = num(r"alphabet in order:\s+learned ([0-9]+) of 25", out)
     elif check == "load64":
         stages = re.findall(r"TRUE RECALL \(partner heard alone by this same matrix\): ([0-9]+) of ([0-9]+) right", out)
         d["stages"] = {int(n) * 2: round(100.0 * int(r) / int(n), 1) for r, n in stages}  # words -> % recalled

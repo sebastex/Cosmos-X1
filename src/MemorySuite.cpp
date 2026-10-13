@@ -1825,7 +1825,7 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // Passes when the learned brain gets all 26 letters and all 25 steps.
 // Moment of recall for single letters (1D ticks after the cue ends): a letter's partner follows it
 // two ticks later while learning, so it comes back much sooner than a word's partner.
-constexpr uint64_t kLetterFrom = 2, kLetterTo = 10; // ticks 3-10 (measured: next letter leads from tick 3)
+constexpr uint64_t kLetterFrom = 4, kLetterTo = 12; // ticks 5-12 (measured on dev brains 3004-3007: the next letter is fully up from tick 5)
 // Letters in the alphabet are held kLetterHold ticks each, like saying a letter's name: a letter
 // followed by a space every 2 ticks never reaches the 3D level, whose clock restarts at every space
 // and steps only every ~2.6 ticks. Every letter is recalled from a kLetterCue glimpse.

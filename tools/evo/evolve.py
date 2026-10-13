@@ -26,11 +26,23 @@ EVO = ROOT / "evolution"
 STATE = EVO / "state.json"
 SPACE = json.loads((ROOT / "tools" / "evo" / "space.json").read_text())
 SPACE.pop("_comment", None)
-CHECKS = ["recall", "capacity", "efficiency", "wordpairs", "continual", "retention", "order", "monitor"]
+# Stage (evolution/settings.json "stage"): "memory" (the Stage 1 checks) or "alphabet" (every letter
+# from a weak glimpse and the alphabet in order, with the word-pair check as a guard; stops by itself
+# once one version gets every letter and every step on 4 fresh brains).
+_SETTINGS = ROOT / "evolution" / "settings.json"
+STAGE = (json.loads(_SETTINGS.read_text()).get("stage") if _SETTINGS.exists() else None) or "memory"
+if STAGE == "alphabet":
+    CHECKS = ["alphabet", "wordpairs"]
+    POP = 8
+    SEED_BASE = 5000
+else:
+    CHECKS = ["recall", "capacity", "efficiency", "wordpairs", "continual", "retention", "order", "monitor"]
+    POP = 12      # candidates per generation (Prime + leaders + mutants)
+    SEED_BASE = 2000
 SCORED = [c for c in CHECKS if c != "monitor"]
-POP = 12          # candidates per generation (Prime + leaders + mutants)
 LEADERS = 3       # best candidates re-tested on new brains each generation
 SEEDS_PER_GEN = 2
+FINISH_BRAINS = 4  # alphabet stage: brains a version must get fully right to finish
 
 
 def prime():
@@ -109,21 +121,28 @@ def propose(hours, restart):
         state["next_id"] += 1
         state["candidates"][cid] = {"params": child, "parent": parent, "born": gen, "evals": [], "fitness": 0.0}
         current[cid] = child
-    seeds = [2000 + SEEDS_PER_GEN * gen + i for i in range(SEEDS_PER_GEN)]
+    seeds = [SEED_BASE + SEEDS_PER_GEN * gen + i for i in range(SEEDS_PER_GEN)]
     state["current"] = list(current)
     state["seeds"] = seeds
     save(state)
     matrix = [{"cand": cid, "seed": s, "check": ch, "args": args_of(p)}
               for cid, p in current.items() for s in seeds for ch in CHECKS]
     # Big-load probe (64 words) for Prime and the re-tested leaders: where does memory break?
-    matrix += [{"cand": cid, "seed": s, "check": "load64", "args": args_of(current[cid])}
-               for cid in ["prime"] + leaders for s in seeds]
+    if STAGE != "alphabet":
+        matrix += [{"cand": cid, "seed": s, "check": "load64", "args": args_of(current[cid])}
+                   for cid in ["prime"] + leaders for s in seeds]
     print(json.dumps(matrix))
 
 
 def score(results):
     """results: {check: result dict} for one candidate on one brain."""
     passes = sum(1 for c in SCORED if results.get(c, {}).get("pass"))
+    if STAGE == "alphabet":
+        a = results.get("alphabet", {}).get("data", {})
+        letters = (a.get("letters") or 0.0) / 26.0
+        steps = (a.get("steps") or 0.0) / 25.0
+        tr = (results.get("wordpairs", {}).get("data", {}).get("true_recall") or 0.0) / 100.0
+        return 4.0 * (letters + steps) + passes + tr, passes
     tr = (results.get("wordpairs", {}).get("data", {}).get("true_recall") or 0.0) / 100.0
     mon = results.get("monitor", {}).get("data", {})
     reach = (mon.get("cue_reaches") or 0.0) / 100.0
@@ -172,6 +191,14 @@ def collect(results_dir):
                                                 "evals": len(best[1]["evals"]), "params": best[1]["params"]}, indent=1))
     state["generation"] = gen + 1
     save(state)
+    if STAGE == "alphabet":
+        # Finish line: a version with every letter and every step (and the guard passed) on 4 brains.
+        for cid, v in ranked(state):
+            ok = [e for e in v["evals"] if e["checks"].get("alphabet") and e["checks"].get("wordpairs")]
+            if len(ok) >= FINISH_BRAINS and len(ok) == len(v["evals"]):
+                (EVO / "finished.json").write_text(json.dumps({"cand": cid, "brains": len(ok), "params": v["params"]}, indent=1))
+                print("stop")
+                return
     settings = EVO / "settings.json"
     if settings.exists():
         h = json.loads(settings.read_text()).get("hours")
