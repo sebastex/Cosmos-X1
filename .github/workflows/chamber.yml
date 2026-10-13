@@ -1,7 +1,9 @@
-# Time chamber: one brain learns the word-pair list pass after pass, one pass per run. Each run
-# restores the brain saved by the run before, teaches the whole list once more, grades it, saves it
-# and starts the next run, until the last pass. Exactly the same as one long uninterrupted run.
-# Start:  gh workflow run chamber.yml -f seed=3004 -f passes=6
+# Time chamber: one brain follows a learning plan, one step per run. Each run restores the brain
+# saved by the run before, does its step, grades it, saves the brain and starts the next step.
+# Exactly the same as one long uninterrupted run (checked).
+# Plan: space-separated steps; "A3" = word list A, 3 passes (one run each); "tA" = only test list A
+# (does the brain still remember it?). Example: "A3 B3 tA" learns list A, then list B, then tests A.
+# Start:  gh workflow run chamber.yml -f seed=3004 -f plan="A3 B3 tA"
 name: chamber
 on:
   workflow_dispatch:
@@ -9,23 +11,23 @@ on:
       seed:
         description: Brain (seed)
         default: "3004"
-      passes:
-        description: Passes in total
-        default: "6"
+      plan:
+        description: Learning plan (e.g. "A3 B3 tA")
+        default: "A6"
       words:
-        description: Word pairs in the list (300 words = 150)
+        description: Word pairs per list (300 words = 150)
         default: "150"
-      pass:
-        description: This run's pass (1 = a new brain)
+      step:
+        description: This run's step (1 = a new brain)
         default: "1"
       prev_run:
-        description: Run that saved the brain to continue (empty for pass 1)
+        description: Run that saved the brain to continue (empty for step 1)
         default: ""
 permissions:
   contents: read
   actions: write
 jobs:
-  pass:
+  step:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -39,16 +41,29 @@ jobs:
           name: brain-${{ inputs.seed }}
           run-id: ${{ inputs.prev_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Learn one pass and grade
+      - name: Do this step and grade
+        id: s
         env:
           NCM_PAIR_FAST: "1"
           NCM_PASS_TESTS: "1"
           NCM_PASSES: "1"
-          NCM_PASS_START: ${{ inputs.pass }}
+          PLAN: ${{ inputs.plan }}
+          STEP: ${{ inputs.step }}
         run: |
           export OMP_NUM_THREADS=$(nproc)
+          steps=()
+          for tok in $PLAN; do
+            if [[ $tok == t* ]]; then steps+=("$tok")
+            else L=${tok:0:1}; n=${tok:1}; for k in $(seq 1 $n); do steps+=("$L$k"); done; fi
+          done
+          cur=${steps[$((STEP-1))]}
+          echo "total=${#steps[@]}" >> "$GITHUB_OUTPUT"
+          echo "cur=$cur" >> "$GITHUB_OUTPUT"
+          if [[ $cur == t* ]]; then export NCM_WORDLIST=${cur:1} NCM_TEST_ONLY=1
+          else export NCM_WORDLIST=${cur:0:1} NCM_PASS_START=${cur:1}; fi
+          echo "step $STEP of ${#steps[@]}: $cur"
           if [ -f brain.bin.zst ]; then zstd -d -q --rm brain.bin.zst && export NCM_STATE_IN=brain.bin; fi
-          NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset dev --seed ${{ inputs.seed }} | tee result_pass${{ inputs.pass }}.txt
+          NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset dev --seed ${{ inputs.seed }} | tee result_step${STEP}_${cur}.txt
           rm -f brain.bin
           mv brain-next.bin brain.bin
           zstd -3 -T0 -q --rm brain.bin
@@ -61,13 +76,13 @@ jobs:
           retention-days: 5
       - uses: actions/upload-artifact@v4
         with:
-          name: result-seed-${{ inputs.seed }}-pass${{ inputs.pass }}
-          path: result_pass${{ inputs.pass }}.txt
-      - name: Start the next pass
-        if: fromJSON(inputs.pass) < fromJSON(inputs.passes)
+          name: result-seed-${{ inputs.seed }}-step${{ inputs.step }}
+          path: result_step*.txt
+      - name: Start the next step
+        if: fromJSON(inputs.step) < fromJSON(steps.s.outputs.total)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh workflow run chamber.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
-            -f seed=${{ inputs.seed }} -f passes=${{ inputs.passes }} -f words=${{ inputs.words }} \
-            -f pass=$(( ${{ inputs.pass }} + 1 )) -f prev_run=${{ github.run_id }}
+            -f seed=${{ inputs.seed }} -f plan="${{ inputs.plan }}" -f words=${{ inputs.words }} \
+            -f step=$(( ${{ inputs.step }} + 1 )) -f prev_run=${{ github.run_id }}

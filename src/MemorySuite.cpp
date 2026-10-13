@@ -14,6 +14,7 @@
 
 #include "ncm/Experiments.hpp"
 #include "ncm/Lab.hpp"
+#include "ncm/WordLists.hpp"
 
 namespace ncm {
 namespace {
@@ -1926,6 +1927,137 @@ int runAlphabetTest(const Config& cfg) {
     return pass ? 0 : 3;
 }
 
+// Sentences (stage 3), against an untrained twin. 32 sentences "the <animal> <verb> the <animal>"
+// (8 animals x 4 verbs; each animal does each verb once, to a different animal), taught in passes
+// (every sentence twice per pass, NCM_SENTENCE_PASSES passes, default 5).
+//  - Grammar: after "the <animal>", is the word that comes back one of the verbs?
+//  - Sentence memory: after "the <animal> <verb> the", is it that sentence's own object?
+//  - Word invariance: how alike one word is in different sentences, against different words.
+// Recall is read at the moment of recall (ticks 7-13 after the prefix ends) against every word
+// heard alone by the same matrix.
+int runSentenceTest(const Config& cfg) {
+    const std::vector<std::string> animals = {"cat", "dog", "bird", "fish", "horse", "mouse", "frog", "duck"};
+    const std::vector<std::string> verbs = {"sees", "likes", "chases", "finds"};
+    std::vector<std::array<std::string, 3>> sentences; // subject, verb, object
+    for (size_t a = 0; a < animals.size(); ++a)
+        for (size_t v = 0; v < verbs.size(); ++v)
+            sentences.push_back({animals[a], verbs[v], animals[(a + 1 + v * 2 + v / 2) % animals.size()]});
+    for (auto& t : sentences)
+        if (t[2] == t[0]) t[2] = animals[(std::find(animals.begin(), animals.end(), t[0]) - animals.begin() + 3) % animals.size()];
+    std::vector<std::string> vocab = animals;
+    vocab.insert(vocab.end(), verbs.begin(), verbs.end());
+    vocab.push_back("the");
+    auto text = [](const std::array<std::string, 3>& t) { return "the " + t[0] + " " + t[1] + " the " + t[2] + " "; };
+    const int passes = std::getenv("NCM_SENTENCE_PASSES") ? std::max(1, std::atoi(std::getenv("NCM_SENTENCE_PASSES"))) : 5;
+    std::printf("Sentences: %zu sentences like \"%s\" (%zu words), %d passes\n", sentences.size(), text(sentences[0]).c_str(),
+                vocab.size(), passes);
+    auto indexOf = [&](const std::string& w) { return size_t(std::find(vocab.begin(), vocab.end(), w) - vocab.begin()); };
+    for (int learning = 1; learning >= 0; --learning) {
+        Session s(cfg, learning == 1);
+        // Word invariance, measured before and after learning: every sentence heard once (listening),
+        // each word's shape taken while that word is heard.
+        auto invariance = [&]() {
+            s.setLearning(false);
+            std::vector<std::pair<size_t, std::vector<double>>> occ; // (word, shape)
+            for (const auto& t : sentences) {
+                const std::string str = text(t);
+                size_t start = 0;
+                for (size_t i = 0; i <= str.size(); ++i) {
+                    if (i < str.size() && str[i] != ' ') continue;
+                    const std::string w = str.substr(start, i - start);
+                    std::vector<double> shape;
+                    for (size_t j = start; j <= i && j < str.size(); ++j) {
+                        s.present(std::string(1, str[j]), 1, 1.0f, true, UINT64_MAX);
+                        s.accumulate(shape);
+                    }
+                    if (w != "the") occ.push_back({indexOf(w), shape});
+                    start = i + 1;
+                }
+                s.silence(kGap, false);
+            }
+            s.setLearning(learning == 1);
+            double same = 0.0, other = 0.0;
+            size_t ns = 0, no = 0;
+            for (size_t i = 0; i < occ.size(); ++i)
+                for (size_t j = i + 1; j < occ.size(); ++j) {
+                    const double c = lab::cosine(occ[i].second, occ[j].second);
+                    if (occ[i].first == occ[j].first) {
+                        same += c;
+                        ++ns;
+                    } else {
+                        other += c;
+                        ++no;
+                    }
+                }
+            return std::array<double, 2>{same / double(std::max<size_t>(1, ns)), other / double(std::max<size_t>(1, no))};
+        };
+        const auto before = invariance();
+        for (int pass = 0; pass < passes; ++pass)
+            for (const auto& t : sentences) {
+                const std::string str = text(t);
+                for (int r = 0; r < 2; ++r) {
+                    for (char ch : str) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
+                    s.silence(T(30), true);
+                }
+                s.silence(kGap, true);
+            }
+        const auto after = invariance();
+        // Yardstick: every word heard alone by this same matrix (listening, no learning).
+        s.setLearning(false);
+        Patterns alone;
+        for (const auto& w : vocab) {
+            const std::string ws = w + " ";
+            alone.push_back(s.present(ws, 4 * ws.size(), 1.0f, true, ws.size()));
+            s.silence(kGap, false);
+        }
+        s.setLearning(learning == 1);
+        auto next = [&](const std::string& prefix, size_t lastWord) {
+            for (char ch : prefix) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            std::vector<double> moment;
+            for (uint64_t t = 0; t < T(40); ++t) {
+                s.silence(1, false);
+                std::vector<double> snap;
+                s.accumulate(snap);
+                if (moment.size() != snap.size()) moment.assign(snap.size(), 0.0);
+                if (t >= 6 && t < 13)
+                    for (size_t i = 0; i < snap.size(); ++i) moment[i] += snap[i];
+            }
+            s.silence(kGap, false);
+            size_t best = SIZE_MAX;
+            double bestSim = 0.0;
+            for (size_t j = 0; j < vocab.size(); ++j) {
+                if (j == lastWord) continue;
+                const double c = lab::cosine(moment, alone[j]);
+                if (c > bestSim) {
+                    bestSim = c;
+                    best = j;
+                }
+            }
+            return best;
+        };
+        size_t grammar = 0, memory = 0;
+        for (const auto& a : animals) {
+            const size_t got = next("the " + a + " ", indexOf(a));
+            grammar += got != SIZE_MAX && std::find(verbs.begin(), verbs.end(), vocab[got]) != verbs.end();
+        }
+        std::string wrong;
+        for (const auto& t : sentences) {
+            const size_t got = next("the " + t[0] + " " + t[1] + " the ", indexOf("the"));
+            memory += got == indexOf(t[2]);
+            if (learning && got != indexOf(t[2]))
+                wrong += " " + t[0] + "-" + t[1] + ">" + (got == SIZE_MAX ? std::string("(nothing)") : vocab[got]);
+        }
+        std::printf("  %s:\n", learning ? "LEARNED" : "UNTRAINED TWIN");
+        std::printf("    grammar: a verb after \"the <animal>\" %zu of %zu (chance %.0f%%)\n", grammar, animals.size(),
+                    100.0 * double(verbs.size()) / double(vocab.size() - 1));
+        std::printf("    sentence memory: the right object after \"the <animal> <verb> the\" %zu of %zu (chance %.0f%%)%s%s\n", memory,
+                    sentences.size(), 100.0 / double(vocab.size() - 1), wrong.empty() ? "" : "; wrong:", wrong.c_str());
+        std::printf("    word invariance: same word in different sentences %.3f vs different words %.3f before learning; %.3f vs %.3f after\n",
+                    before[0], before[1], after[0], after[1]);
+    }
+    return 0;
+}
+
 // Emergence: behaviour nobody programmed, against an untrained twin.
 //  - Chaining: X -> Y and Y -> Z are taught as separate pairs (never X -> Z). After hearing X, does Z
 //    follow Y a moment later (ticks 14-30 after the cue), ahead of every other word?
@@ -2062,7 +2194,15 @@ int runEmergenceTest(const Config& cfg) {
 constexpr uint64_t kMomentFrom = 6, kMomentTo = 13;
 
 int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
-    const std::vector<std::string>& words = pairWords();
+    // NCM_WORDLIST: A (default, the list above) or B, C, ... (stage 2, unique words in every list).
+    const char* listName = std::getenv("NCM_WORDLIST");
+    const int listIndex = listName && listName[0] >= 'B' && listName[0] <= 'Z' ? listName[0] - 'B' : -1;
+    if (listIndex >= int(extraWordLists().size())) {
+        std::fprintf(stderr, "error: word list %s does not exist (A to %c)\n", listName, char('A' + extraWordLists().size()));
+        return 2;
+    }
+    const std::vector<std::string>& words = listIndex < 0 ? pairWords() : extraWordLists()[size_t(listIndex)];
+    std::printf("word list %c (%zu words)\n", listIndex < 0 ? 'A' : char('B' + listIndex), words.size());
     const size_t total = std::min<size_t>(maxPairs ? maxPairs : words.size() / 2, words.size() / 2);
     std::printf("Pair load: pairs learned one after another; hear the first word, is the second one recalled?\n");
     double finalRecall[2] = {0.0, 0.0}; // [untrained, learned] true-recall share at the last stage
@@ -2071,6 +2211,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
     const bool echo = std::getenv("NCM_ECHO") != nullptr; // echo check (diagnostic)
     const bool timecourse = std::getenv("NCM_TIMECOURSE") != nullptr;
     const bool passTests = std::getenv("NCM_PASS_TESTS") != nullptr;
+    const bool testOnly = std::getenv("NCM_TEST_ONLY") != nullptr;
     const char* stateIn = std::getenv("NCM_STATE_IN");   // continue a saved brain
     const char* stateOut = std::getenv("NCM_STATE_OUT"); // save the brain at the end
     const int passStart = std::getenv("NCM_PASS_START") ? std::max(1, std::atoi(std::getenv("NCM_PASS_START"))) : 1;
@@ -2102,6 +2243,10 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             f.patterns(partner);
             f.patterns(cueInPair);
             std::printf("  continuing the brain saved in %s (pass %d onward)\n", stateIn, passStart);
+            if (passStart == 1 || testOnly) { // a new list (or only a test): this list's own patterns start empty
+                partner.clear();
+                cueInPair.clear();
+            }
         }
         size_t oracleRight = 0; // perfect memory: closest stored cue (see below)
         std::vector<double> tcOwn(T(40), 0.0), tcOther(T(40), 0.0), tcCue(T(40), 0.0), tcRight(T(40), 0.0);
@@ -2110,6 +2255,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
             // NCM_PASSES: the whole list is taught again (second pass), then tested once more.
             const size_t p = it % total;
             const bool firstPass = it < total && passStart == 1; // the brain's very first pass
+            // NCM_TEST_ONLY: a saved brain is only graded on this list (does it still remember it?).
+            if (testOnly && p + 1 < total) continue;
+            if (!testOnly) {
             const std::string a = words[2 * p] + " ", bw = words[2 * p + 1] + " ";
             const std::string pair = a + bw;
             // The pair is said, then a pause, then said again (10 times). Without the pause the
@@ -2151,8 +2299,9 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                 }
                 s.silence(kGap, true);
             }
+            } // teaching
             // NCM_PASS_TESTS: graded only at the end of every pass (a learning curve over passes).
-            const bool stageTest = passTests ? p + 1 == total
+            const bool stageTest = testOnly ? p + 1 == total : passTests ? p + 1 == total
                                              : (firstPass && (p + 1 == next || p + 1 == total)) || (!firstPass && it + 1 == total * passes);
             if (stageTest) {
                 if (passTests) std::printf("  after pass %zu over all %zu pairs:\n", size_t(passStart) + it / total, total);
@@ -2264,7 +2413,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                     // Perfect memory (a yardstick, not part of the brain): pick the pair whose cue, as it
                     // was while the pair was learned, is most like the cue heard now. Right for every
                     // pair = the brain's own word patterns keep the pairs apart; storage is the limit.
-                    if (learning) {
+                    if (learning && cueInPair.size() > p) {
                         double bestCue = -2.0;
                         size_t bestJ = 0;
                         for (size_t j = 0; j <= p; ++j) {
@@ -2313,7 +2462,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                                 if (j != k) other = std::max(other, lab::cosine(snap, ownAlone[j]));
                             tcOwn[t] += own;
                             tcOther[t] += other;
-                            tcCue[t] += lab::cosine(snap, cueInPair[k]);
+                            tcCue[t] += cueInPair.size() > k ? lab::cosine(snap, cueInPair[k]) : 0.0;
                             tcRight[t] += own > other ? 1.0 : 0.0;
                             ever = ever || own > other;
                         }
@@ -2331,10 +2480,11 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                         momentPairs += ownM > bestM ? '1' : '0';
                     }
                     s.silence(kGap, false);
-                    const double own = lab::cosine(after, partner[k]);
+                    const bool havePatterns = partner.size() > p && cueInPair.size() > p; // absent when only testing
+                    const double own = havePatterns ? lab::cosine(after, partner[k]) : 0.0;
                     double best = -1.0;
                     size_t bestJ = k;
-                    for (size_t j = 0; j <= p; ++j) {
+                    for (size_t j = 0; j <= p && havePatterns; ++j) {
                         if (j == k) continue;
                         const double sim = lab::cosine(after, partner[j]);
                         if (sim > best) {
@@ -2342,7 +2492,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                             bestJ = j;
                         }
                     }
-                    const bool ok = own > best;
+                    const bool ok = havePatterns && own > best;
                     right += ok;
                     (k < (p + 1) / 2 ? rightOld : rightNew) += ok;
                     margin += (own - best) / double(p + 1);
@@ -2422,7 +2572,7 @@ int runPairLoadTest(const Config& cfg, uint64_t maxPairs) {
                                     tcOther[t] / tcN, tcCue[t] / tcN, 100.0 * tcRight[t] / tcN);
                     std::printf("       right at some moment: %.0f%% of pairs\n", 100.0 * tcEver / tcN);
                 }
-                if (learning)
+                if (learning && cueInPair.size() > p)
                     std::printf("     PERFECT MEMORY (closest stored cue, as learned): %zu of %zu right (%.0f%%)\n", oracleRight, p + 1,
                                 100.0 * double(oracleRight) / double(p + 1));
                 if (!mistakesOwn.empty()) std::printf("       wrong (cue>recalled):%s\n", mistakesOwn.c_str());
