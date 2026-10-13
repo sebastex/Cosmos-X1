@@ -1825,13 +1825,18 @@ int runWordLoadTest(const Config& cfg, uint64_t maxWords) {
 // Passes when the learned brain gets all 26 letters and all 25 steps.
 // Moment of recall for single letters (1D ticks after the cue ends): a letter's partner follows it
 // two ticks later while learning, so it comes back much sooner than a word's partner.
-constexpr uint64_t kLetterFrom = 0, kLetterTo = 6;
+constexpr uint64_t kLetterFrom = 2, kLetterTo = 10; // ticks 3-10 (measured: next letter leads from tick 3)
+// Letters in the alphabet are held kLetterHold ticks each, like saying a letter's name: a letter
+// followed by a space every 2 ticks never reaches the 3D level, whose clock restarts at every space
+// and steps only every ~2.6 ticks. Every letter is recalled from a kLetterCue glimpse.
+constexpr uint64_t kLetterHold = 3;
+constexpr float kLetterCue = 0.2f;
 
 int runAlphabetTest(const Config& cfg) {
     std::vector<std::string> letters;
     for (char c = 'a'; c <= 'z'; ++c) letters.push_back(std::string(1, c));
-    std::printf("Alphabet: 26 letters recognised from a %.0f%% cue, and 25 steps of the alphabet in order\n",
-                100.0 * kCueFraction);
+    std::printf("Alphabet: 26 letters recognised from a %.0f%% cue, and 25 steps of the alphabet in order (letters held %llu ticks)\n",
+                100.0 * kLetterCue, (unsigned long long)kLetterHold);
     size_t right[2][2] = {};
     std::string missedLetters, missedSteps;
     for (int learning = 1; learning >= 0; --learning) {
@@ -1839,7 +1844,7 @@ int runAlphabetTest(const Config& cfg) {
         {
             Session s(cfg, learning == 1);
             const Patterns stored = storeAll(s, letters, kStore);
-            const Patterns recalled = recallAll(s, letters);
+            const Patterns recalled = recallAll(s, letters, kLetterCue);
             const auto sims = lab::similarityMatrix(recalled, stored);
             for (size_t k = 0; k < letters.size(); ++k) {
                 size_t best = 0;
@@ -1853,9 +1858,9 @@ int runAlphabetTest(const Config& cfg) {
         {
             Session s(cfg, learning == 1);
             for (size_t k = 0; k + 1 < letters.size(); ++k) {
-                const std::string pair = letters[k] + " " + letters[k + 1] + " ";
                 for (int r = 0; r < 10; ++r) {
-                    for (char ch : pair) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
+                    s.present(letters[k], kLetterHold, 1.0f, true, UINT64_MAX);
+                    s.present(letters[k + 1], kLetterHold, 1.0f, true, UINT64_MAX);
                     s.silence(T(30), true);
                 }
                 s.silence(kGap, true);
@@ -1863,14 +1868,13 @@ int runAlphabetTest(const Config& cfg) {
             s.setLearning(false);
             Patterns alone;
             for (const auto& l : letters) {
-                const std::string ls = l + " ";
-                alone.push_back(s.present(ls, 4 * ls.size(), 1.0f, true, ls.size()));
+                alone.push_back(s.present(l, 4 * kLetterHold, 1.0f, true, kLetterHold));
                 s.silence(kGap, false);
             }
             s.setLearning(learning == 1);
             std::vector<double> tickRight(20, 0.0), tickActive(20, 0.0);
             for (size_t k = 0; k + 1 < letters.size(); ++k) {
-                s.present(letters[k] + " ", 2, 1.0f, false, UINT64_MAX);
+                s.present(letters[k], kLetterHold, 1.0f, false, UINT64_MAX);
                 std::vector<double> moment;
                 for (uint64_t t = 0; t < T(40); ++t) {
                     s.silence(1, false);
