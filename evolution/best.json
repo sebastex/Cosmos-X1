@@ -1,12 +1,12 @@
 {
- "cand": "c1",
- "fitness": 9.94225,
- "evals": 4,
+ "cand": "prime",
+ "fitness": 9.7265,
+ "evals": 6,
  "params": {
   "learning_rate": 0.02222,
   "plastic_budget": 5.67831,
-  "presynaptic_bound": 0.78512,
-  "hetero_ltd": 1.0,
+  "presynaptic_bound": 0.89812,
+  "hetero_ltd": 0.9733,
   "covariance": 0.58435,
   "encoding_suppression": 1.0,
   "consolidation_rate": 0.0056,
@@ -14,8 +14,8 @@
   "assembly_inhibition": 0.00321,
   "order_gain": 6.23347,
   "order_tau": 2.90192,
-  "mode_tau": 13.11295,
-  "fatigue_gain3": 0.07187,
+  "mode_tau": 13.44333,
+  "fatigue_gain3": 0.04569,
   "fire_threshold3": 0.02107,
   "line_recency": 0.48403,
   "winners3": 5,
@@ -24,6 +24,6 @@
   "separation": 4.94742,
   "spread_plastic": 0.45398,
   "link_bound": 0.3,
-  "silence_gate": 0.29702
+  "silence_gate": 0.6
  }
 }
