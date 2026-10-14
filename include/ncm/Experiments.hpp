@@ -50,6 +50,7 @@ int runOverlapTest(const Config& cfg);
 int runRecallDetailTest(const Config& cfg); // diagnostic: incomplete, contaminated or wrong recall?
 int runWordContextTest(const Config& cfg); // diagnostic: does a word keep its identity across settings?
 int runPairLinksTest(const Config& cfg); // diagnostic: is the order of a word pair stored?
+int runVocabularyTest(const Config& cfg); // stage 2: words on their own - completion, recognition, identity
 int runSentenceTest(const Config& cfg);  // stage 3: grammar, sentence memory and word invariance
 int runAlphabetTest(const Config& cfg);  // every letter from a partial cue, and the alphabet in order
 int runEmergenceTest(const Config& cfg); // chaining, typo tolerance and familiarity, against an untrained twin

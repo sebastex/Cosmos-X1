@@ -1933,6 +1933,150 @@ int runAlphabetTest(const Config& cfg) {
     return pass ? 0 : 3;
 }
 
+// Completion moment in the vocabulary test: ticks 5-10 after a word's first half ends.
+constexpr uint64_t kVocabFrom = 4, kVocabTo = 10; // ticks 5-10 (measured: completion peaks at ticks 5-7)
+
+// Vocabulary (stage 2): every word is taught on its own (heard 10 times with pauses, as in the
+// pair test), never linked to another word. Then, against an untrained twin (first 60 words):
+//  - Completion: hear the first half of a known word; the activity just after must be most like the
+//    word's own missing second half (heard alone), among the second halves of all known words.
+//    The cue contains nothing of the second half, so only memory can bring it.
+//  - Recognition: the activity left after a known word against a never-heard word (list F).
+//  - Identity: a whole known word heard now is most like its own shape, among all known words.
+// NCM_VOCAB_LISTS: the lists learned one after another (default "A" = 300 words; "AB" = 600, ...).
+int runVocabularyTest(const Config& cfg) {
+    const char* listsEnv = std::getenv("NCM_VOCAB_LISTS");
+    const std::string lists = listsEnv && *listsEnv ? listsEnv : "A";
+    std::vector<std::string> words;
+    for (char L : lists) {
+        const std::vector<std::string>& w = L == 'A' ? pairWords() : extraWordLists().at(size_t(L - 'B'));
+        words.insert(words.end(), w.begin(), w.end());
+    }
+    if (const char* mx = std::getenv("NCM_VOCAB_MAX")) words.resize(std::min<size_t>(words.size(), size_t(std::max(1, std::atoi(mx)))));
+    const std::vector<std::string>& novelList = extraWordLists().back(); // list F: never taught here
+    if (lists.find('F') != std::string::npos) {
+        std::fprintf(stderr, "error: list F is kept for never-heard words\n");
+        return 2;
+    }
+    std::printf("Vocabulary: %zu words (lists %s), each taught on its own; completion from the first half\n", words.size(),
+                lists.c_str());
+    auto half = [](const std::string& w) { return (w.size() + 1) / 2; };
+    for (int learning = 1; learning >= 0; --learning) {
+        const size_t n = learning ? words.size() : std::min<size_t>(60, words.size());
+        Session s(cfg, learning == 1);
+        for (size_t k = 0; k < n; ++k) {
+            const std::string ws = words[k] + " ";
+            for (int r = 0; r < 10; ++r) {
+                for (char ch : ws) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
+                s.silence(T(30), true);
+            }
+            s.silence(kGap, true);
+        }
+        // Yardsticks (listening, no learning): every word's second half alone, and every whole word.
+        s.setLearning(false);
+        Patterns tail, whole;
+        for (size_t k = 0; k < n; ++k) {
+            const std::string t = words[k].substr(half(words[k])) + " ";
+            tail.push_back(s.present(t, 4 * t.size(), 1.0f, true, t.size()));
+            s.silence(kGap, false);
+        }
+        for (size_t k = 0; k < n; ++k) {
+            const std::string ws = words[k] + " ";
+            whole.push_back(s.present(ws, ws.size(), 1.0f, true, 0));
+            s.silence(kGap, false);
+        }
+        s.setLearning(learning == 1);
+        // Completion, tick by tick and at the moment (ticks 5-10 after the first half ends).
+        std::vector<double> tickRight(12, 0.0);
+        size_t completed = 0;
+        std::string missed;
+        for (size_t k = 0; k < n; ++k) {
+            const std::string head = words[k].substr(0, half(words[k]));
+            for (char ch : head) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            std::vector<double> moment;
+            for (uint64_t t = 0; t < T(30); ++t) {
+                s.silence(1, false);
+                std::vector<double> snap;
+                s.accumulate(snap);
+                if (moment.size() != snap.size()) moment.assign(snap.size(), 0.0);
+                if (t >= kVocabFrom && t < kVocabTo)
+                    for (size_t i = 0; i < snap.size(); ++i) moment[i] += snap[i];
+                if (t < tickRight.size()) {
+                    const double own = lab::cosine(snap, tail[k]);
+                    double other = -2.0;
+                    for (size_t j = 0; j < n; ++j)
+                        if (j != k) other = std::max(other, lab::cosine(snap, tail[j]));
+                    tickRight[t] += own > other && own > 0.0 ? 1.0 : 0.0;
+                }
+            }
+            s.silence(kGap, false);
+            const double own = lab::cosine(moment, tail[k]);
+            double other = -2.0;
+            size_t taken = k;
+            for (size_t j = 0; j < n; ++j)
+                if (j != k) {
+                    const double c = lab::cosine(moment, tail[j]);
+                    if (c > other) {
+                        other = c;
+                        taken = j;
+                    }
+                }
+            const bool ok = own > other && own > 0.0;
+            completed += ok;
+            if (learning && !ok && missed.size() < 600) missed += " " + head + ">" + words[taken];
+        }
+        // Identity: a whole word heard now, against every word's shape heard before.
+        size_t identity = 0;
+        for (size_t k = 0; k < n; ++k) {
+            const std::string ws = words[k] + " ";
+            const std::vector<double> now = s.present(ws, ws.size(), 1.0f, false, 0);
+            s.silence(kGap, false);
+            size_t best = 0;
+            double bestSim = -2.0;
+            for (size_t j = 0; j < n; ++j) {
+                const double c = lab::cosine(now, whole[j]);
+                if (c > bestSim) {
+                    bestSim = c;
+                    best = j;
+                }
+            }
+            identity += best == k;
+        }
+        // Recognition: activity left 7-20 ticks after a known word against a never-heard word.
+        auto amount = [&](const std::string& w) {
+            const std::string ws = w + " ";
+            for (char ch : ws) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            double sum = 0.0;
+            for (uint64_t t = 0; t < 20; ++t) {
+                s.silence(1, false);
+                if (t < 6) continue;
+                std::vector<double> snap;
+                s.accumulate(snap);
+                for (double x : snap) sum += x;
+            }
+            s.silence(kGap, false);
+            return sum;
+        };
+        std::vector<double> known, unknown;
+        for (size_t k = 0; k < std::min<size_t>(40, n); ++k) known.push_back(amount(words[(k * 7) % n]));
+        for (size_t k = 0; k < 40; ++k) unknown.push_back(amount(novelList[k]));
+        size_t above = 0;
+        for (double a : known)
+            for (double b : unknown) above += a > b;
+        std::printf("  %s (%zu words):\n", learning ? "LEARNED" : "UNTRAINED TWIN", n);
+        std::printf("    completion from the first half: %zu of %zu (%.0f%%, chance %.1f%%)%s%s\n", completed, n,
+                    100.0 * double(completed) / double(n), 100.0 / double(n), missed.empty() ? "" : "; wrong:", missed.c_str());
+        std::printf("    completion tick by tick (share right):");
+        for (size_t t = 0; t < tickRight.size(); ++t) std::printf(" %zu:%.0f", t + 1, 100.0 * tickRight[t] / double(n));
+        std::printf("\n");
+        std::printf("    identity: a known word heard again is most like its own shape %zu of %zu (%.0f%%)\n", identity, n,
+                    100.0 * double(identity) / double(n));
+        std::printf("    recognition: known word above never-heard word in %.0f%% of comparisons\n",
+                    100.0 * double(above) / double(known.size() * unknown.size()));
+    }
+    return 0;
+}
+
 // Sentences (stage 3), against an untrained twin. 32 sentences "the <animal> <verb> the <animal>"
 // (8 animals x 4 verbs; each animal does each verb once, to a different animal), taught in passes
 // (every sentence twice per pass, NCM_SENTENCE_PASSES passes, default 5).
