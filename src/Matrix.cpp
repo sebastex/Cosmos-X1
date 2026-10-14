@@ -852,7 +852,10 @@ void NeuralCellularMatrix::step3D() {
         }
         const float c4D = sumIn();
         // Input-field depth: interior voxels hear random voxels of the sensory face (feedforward).
-        if (!lattice_ && f == 0 && x > 0 && cfg_.input_depth_spread > 0) {
+        // Pharmakon: the senses' face of the 4D lattice is the whole w = 0 slice (a 3D face of the
+        // 4D lattice); the sensory input spreads over it the same way (wordoverlap: without this
+        // spread words overlap 0.13-0.14 instead of 0.09, in Prime too).
+        if (f == 0 && x > 0 && cfg_.input_depth_spread > 0) {
             const uint32_t KD = cfg_.input_depth_spread;
             const float each = r.input_depth_gain;
             for (uint32_t l = 0; l < KD; ++l) {
