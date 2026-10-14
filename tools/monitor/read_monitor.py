@@ -61,6 +61,122 @@ def cell_name(g, A):
     return f'({x},{y},{z},{w})'
 
 
+def expressions(head, r):
+    # 4D expression of every tick: for each 4D cell, the share of its voxels, sheet cells and line
+    # cells that are active (each level scaled to the same weight, so the many line cells do not
+    # drown the voxels).
+    P, Q, V = head['cells']
+    G = head['G']
+    g = r['g']
+    blocks = []
+    for k, cells in ((3, V), (2, Q), (1, P)):
+        b = g[f'a{k}'].astype(np.float32) / (cells / G)
+        norm = np.linalg.norm(b, axis=1, keepdims=True)
+        blocks.append(np.divide(b, norm, out=np.zeros_like(b), where=norm > 0))
+    return np.concatenate(blocks, axis=1)
+
+
+def cos(a, b):
+    na, nb = np.linalg.norm(a), np.linalg.norm(b)
+    return float(a @ b / (na * nb)) if na > 0 and nb > 0 else 0.0
+
+
+class Sparse:
+    # A whole-content pattern: every active voxel channel (index v * C3 + c) with its value.
+    def __init__(self, idx, val):
+        self.idx, self.val = idx, val
+        self.norm = float(np.linalg.norm(val)) if len(val) else 0.0
+
+    @staticmethod
+    def of(items, C3):
+        if items is None or len(items) == 0:
+            return Sparse(np.zeros(0, np.int64), np.zeros(0, np.float32))
+        idx = (items['v'].astype(np.int64)[:, None] * C3 + np.arange(C3)[None, :]).ravel()
+        val = items['ch'].astype(np.float32).ravel() / 255.0
+        keep = val > 0
+        return Sparse(idx[keep], val[keep])
+
+    @staticmethod
+    def total(parts):
+        parts = [p for p in parts if len(p.idx)]
+        if not parts:
+            return Sparse(np.zeros(0, np.int64), np.zeros(0, np.float32))
+        idx = np.concatenate([p.idx for p in parts])
+        val = np.concatenate([p.val for p in parts])
+        u, inv = np.unique(idx, return_inverse=True)
+        return Sparse(u, np.bincount(inv, weights=val).astype(np.float32))
+
+    def cos(self, o):
+        if self.norm == 0 or o.norm == 0:
+            return 0.0
+        _, ia, ib = np.intersect1d(self.idx, o.idx, assume_unique=True, return_indices=True)
+        return float(self.val[ia] @ o.val[ib]) / (self.norm * o.norm)
+
+
+def coherence(head, r, vox=None):
+    # Coherence, not predictability: patterns hold together across levels, the same idea comes back
+    # in a similar (never identical) shape, different ideas take different shapes, the silence after
+    # a cue is built from known shapes, and activity flows smoothly from step to step.
+    n = len(r)
+    heard = r['heard']
+    sound = (r['flags'] & 8) != 0
+    print('  coherence (not predictability):')
+    if head['version'] >= 2:
+        a2, a1 = r['a2'].sum(), r['a1'].sum()
+        print(f"    holds together across levels: {r['r2'].sum() / max(a2, 1) * 100:.0f}% of active sheet cells sit in an "
+              f"active voxel, {r['r1'].sum() / max(a1, 1) * 100:.0f}% of active line cells in an active sheet cell of an active voxel")
+    if vox is None:
+        print('    (shapes need the voxel record: run with NCM_MONITOR_VOXELS=1; only the level check above)')
+    # Words: letters heard in a row up to a space or a pause; shape = its ticks plus 3 (shapes show late).
+    if vox is None:
+        return
+    x = [Sparse.of(v, head['C'][2]) for v in vox]
+    words, i = [], 0
+    while i < n:
+        if sound[i] and heard[i] not in (0, 32):
+            j, w = i, ''
+            while j < n and sound[j] and heard[j] not in (0, 32):
+                w += chr(heard[j])
+                j += 1
+            end = min(n, j + 3)
+            words.append((w, Sparse.total(x[i:end])))
+            i = j
+        else:
+            i += 1
+    byword = {}
+    for w, e in words:
+        byword.setdefault(w, []).append(e)
+    rep = [w for w, es in byword.items() if len(es) >= 2]
+    if rep:
+        same = []
+        for w in rep:
+            es = byword[w]
+            same += [es[a].cos(es[a + 1]) for a in range(len(es) - 1)]
+        means = {w: Sparse.total(es) for w, es in byword.items()}
+        keys = list(means)[:150]
+        other = [means[keys[a]].cos(means[keys[b]]) for a in range(len(keys)) for b in range(a + 1, len(keys))]
+        s, o = float(np.mean(same)), float(np.mean(other)) if other else 0.0
+        print(f'    same idea, similar shape: {s:.2f} (two hearings of the same word, {len(rep)} words)')
+        print(f'    different ideas, different shapes: {o:.2f} (between different words; lower = more distinct)')
+        print(f'    coherence = {s - o:+.2f}   variation (not a copy) = {1 - s:.2f}')
+        # Silence after input: is what happens built from known shapes?
+        after, since = [], 99
+        for t in range(n):
+            since = 0 if sound[t] else since + 1
+            if 1 <= since <= 20 and x[t].norm > 0 and len(after) < 3000:
+                after.append(max(means[k].cos(x[t]) for k in keys))
+        if after:
+            print(f'    built from what it knows: silence after input is {np.mean(after):.2f} alike its closest known word '
+                  f'shape ({len(after)} ticks; compare with the untrained twin)')
+    else:
+        print('    (no word heard twice: no shape comparison)')
+    steps = np.where((r['flags'] & 2) != 0)[0]
+    flow = [x[steps[k]].cos(x[steps[k + 1]]) for k in range(min(len(steps) - 1, 20000))
+            if x[steps[k]].norm > 0 and x[steps[k + 1]].norm > 0]
+    if flow:
+        print(f'    flows smoothly: successive 3D steps {np.mean(flow):.2f} alike (1 = frozen, 0 = random jumps)')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('file')
@@ -124,6 +240,7 @@ def main():
     if vox is not None:
         counts = np.array([len(x) for x in vox])
         print(f'  voxel record: {counts.mean():.0f} voxels with activity per tick (max {counts.max()})')
+    coherence(head, r, vox)
     if args.csv:
         with open(args.csv, 'w') as f:
             f.write('tick,sound,heard,step2d,step3d,step4d,modulator,active1d,sum1d,active2d,sum2d,active3d,sum3d,cells4d_active\n')
