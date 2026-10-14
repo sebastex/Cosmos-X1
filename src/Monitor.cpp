@@ -64,11 +64,7 @@ Monitor::Monitor(const Config& cfg, const std::string& file, uint64_t every, uin
 
     // Header (little-endian): magic, version, geometry, levels, options.
     std::fwrite("NCMMON01", 1, 8, f_);
-<<<<<<< HEAD
-    const uint32_t head[] = {1u, N_, SS_, L_, C1, C2, C3, kFields, A_, B_, G_, 0u /* Prime: four fields, no 4D lattice */,
-=======
     const uint32_t head[] = {2u, N_, SS_, L_, C1, C2, C3, kFields, A_, B_, G_, 0u /* Prime: four fields, no 4D lattice */,
->>>>>>> f9285b7 (Monitor: roots of an idea (active cells hanging from active cells one level up, per level; cut roots))
                              voxels_ ? 1u : 0u, uint32_t(std::min<uint64_t>(every_, UINT32_MAX))};
     std::fwrite(head, sizeof(uint32_t), sizeof(head) / sizeof(uint32_t), f_);
     const float levels[] = {level1_, level2_, level3_};
