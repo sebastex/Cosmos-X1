@@ -77,6 +77,10 @@ public:
     // mode: high M = encoding (learned connections turned down), low M = recall.
     void setModulator(float modulator) { modulator_ = modulator; }
 
+    // Field roles: a word ends here. The Memory field forgets its order window and pauses learning
+    // for a few 3D steps, so it never links one word to the next.
+    void wordBoundary();
+
     // Share of a fingerprint's motor-surface lines whose exit cells are active:
     // how strongly the matrix is "about to say" that character (spec Section 5A).
     double motorOverlap(const std::vector<uint32_t>& fingerprint) const;
@@ -189,6 +193,7 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
+    uint32_t memoryPause_ = 0; // field roles: 3D steps left in which the Memory field does not learn
 
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};

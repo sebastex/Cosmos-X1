@@ -947,6 +947,12 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn) {
     }
 }
 
+void NeuralCellularMatrix::wordBoundary() {
+    if (cfg_.learning.field_roles <= 0.0f) return;
+    std::fill(orderTrace3_.begin() + Vf_ * C3, orderTrace3_.begin() + 2 * Vf_ * C3, 0.0f);
+    memoryPause_ = uint32_t(cfg_.learning.field_roles);
+}
+
 void NeuralCellularMatrix::learn(float modulator) {
     ScopeTimer timer_(timeLearn);
     const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f);
@@ -997,6 +1003,7 @@ void NeuralCellularMatrix::learn(float modulator) {
         const float* pi = post + v * C3;
         const float* qi = useOrderTrace ? orderTrace3_.data() + v * C3 : prev + v * C3;
         if (!anyActive(pi, qi, C3)) continue; // only active cells change their incoming connections
+        if (memoryPause_ && v / Vf_ == 1) continue; // field roles: the Memory field pauses across a word boundary
         ++learners;
 
         // Each output channel's memory load (share of its learned-input budget in use), for
@@ -1092,6 +1099,7 @@ void NeuralCellularMatrix::learn(float modulator) {
         }
     }
     learnStats_.calls += 1;
+    if (memoryPause_) --memoryPause_;
     learnStats_.learners += learners;
     learnStats_.change += change;
     learnStats_.scaled += scaled;

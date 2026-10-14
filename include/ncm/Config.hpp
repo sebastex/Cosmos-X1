@@ -135,6 +135,12 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Field roles: the Memory field holds vocabulary (each word on its own), the other fields hold
+    // what happens between words. At every word boundary (a space, or input after a pause) the
+    // Memory field's order window is cleared and its learning pauses for field_roles 3D steps, so
+    // the end of one word is never tied to the start of the next there. 0 = off (every field learns
+    // across words).
+    float field_roles = 0.0f;
     // Channel balance: homeostasis for each channel of a voxel, not only for the voxel as a whole.
     // A channel's own threshold offset rises by channel_balance x (its output - the voxel's mean
     // channel output) whenever the voxel fires, so channels that win for every input (because

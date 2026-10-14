@@ -53,6 +53,7 @@ public:
         // Onset after a pause: the slower clocks start a fresh cycle, so a word is cut into the
         // same chunks whether it follows a pause or another word.
         if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f) clock_.resetPhase();
+        if (fingerprint && wasSilent_) m_->wordBoundary();
         wasSilent_ = fingerprint == nullptr;
         if (fingerprint) {
             // Surprise (spec Section 5A): read the matrix's guess before the character
@@ -103,6 +104,7 @@ public:
                 tick(&cue, &full, allowLearning);
             }
             if (cfg_.clock_reset > 0.5f && c == ' ') clock_.resetPhase();
+            if (c == ' ') m_->wordBoundary();
             if (t >= recordFrom) accumulate(acc);
         }
         return acc;
