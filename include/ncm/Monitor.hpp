@@ -11,6 +11,11 @@
 //   NCM_MONITOR_VOXELS=1     also record every active voxel with its 16 channels
 // Read with tools/monitor/read_monitor.py.
 //
+// Roots of an idea: an active 4D cell is the stem; the active voxels inside it, the active sheet
+// cells inside those voxels and the active line cells inside those sheet cells are its roots,
+// one level deeper each. Recorded per tick: stems, and the active cells that hang from an active
+// cell one level up (or hang from a silent one: cut roots).
+//
 // Groups: the voxels are grouped into 4D cells (4 x 4 x 4 blocks of the voxel space in each of
 // the 4 w-slices, i.e. Pharmakon's 4D cells; in Prime the same blocks of each field), so both
 // versions are recorded the same way.
@@ -60,6 +65,10 @@ private:
     std::vector<uint32_t> groupOf_; // 4D cell of each voxel
     // Per voxel scratch: active cells and summed activity at each level.
     std::vector<uint32_t> a1_, a2_, a3_;
+    // Roots of an idea (per voxel): active sheet cells inside an active voxel / inside a silent
+    // one, and active line cells inside an active sheet cell of an active voxel / inside a silent
+    // sheet cell.
+    std::vector<uint32_t> r2_, o2_, r1_, o1_;
     std::vector<float> s1_, s2_, s3_, d4_;
 };
 

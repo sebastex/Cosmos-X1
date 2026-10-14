@@ -59,12 +59,12 @@ Monitor::Monitor(const Config& cfg, const std::string& file, uint64_t every, uin
         const uint32_t w = uint32_t(v / Vf_);
         groupOf_[v] = ((w * A_ + z / B_) * A_ + y / B_) * A_ + x / B_;
     }
-    for (auto* a : {&a1_, &a2_, &a3_}) a->assign(V_, 0);
+    for (auto* a : {&a1_, &a2_, &a3_, &r2_, &o2_, &r1_, &o1_}) a->assign(V_, 0);
     for (auto* s : {&s1_, &s2_, &s3_, &d4_}) s->assign(V_, 0.0f);
 
     // Header (little-endian): magic, version, geometry, levels, options.
     std::fwrite("NCMMON01", 1, 8, f_);
-    const uint32_t head[] = {1u, N_, SS_, L_, C1, C2, C3, kFields, A_, B_, G_, cfg.lattice4d > 0.5f ? 1u : 0u,
+    const uint32_t head[] = {2u, N_, SS_, L_, C1, C2, C3, kFields, A_, B_, G_, cfg.lattice4d > 0.5f ? 1u : 0u,
                              voxels_ ? 1u : 0u, uint32_t(std::min<uint64_t>(every_, UINT32_MAX))};
     std::fwrite(head, sizeof(uint32_t), sizeof(head) / sizeof(uint32_t), f_);
     const float levels[] = {level1_, level2_, level3_};
@@ -105,12 +105,20 @@ void Monitor::record(const NeuralCellularMatrix& m, const Event& e) {
         uint32_t a1 = 0, a2 = 0, a3 = 0;
         float s1 = 0.0f, s2 = 0.0f, s3 = 0.0f;
         cellStats(vox + v * C3, C3, level3_, a3, s3);
+        const bool voxelOn = a3 > 0;
+        uint32_t r2 = 0, o2 = 0, r1 = 0, o1 = 0;
         for (size_t cell = 0; cell < SS; ++cell) {
             const size_t q = v * SS + cell;
+            const uint32_t before2 = a2, before1 = a1;
             if (!sheetQuiet[v]) cellStats(sheet + q * C2, C2, level2_, a2, s2);
             if (!lineQuiet[q])
                 for (size_t k = 0; k < L; ++k) cellStats(line + (q * L + k) * C1, C1, level1_, a1, s1);
+            const bool sheetOn = a2 > before2;
+            (voxelOn ? r2 : o2) += a2 - before2;
+            if (!sheetOn) o1 += a1 - before1;
+            else if (voxelOn) r1 += a1 - before1;
         }
+        r2_[v] = r2, o2_[v] = o2, r1_[v] = r1, o1_[v] = o1;
         float d = 0.0f;
         if (!drive4f.empty())
             for (uint32_t c = 0; c < C3; ++c) d += drive4f[v * C3 + c] + drive4l[v * C3 + c];
@@ -140,6 +148,11 @@ void Monitor::record(const NeuralCellularMatrix& m, const Event& e) {
     put(f_, uint16_t(0));
     put(f_, e.modulator);
     put(f_, t1), put(f_, u1), put(f_, t2), put(f_, u2), put(f_, t3), put(f_, u3);
+    // Roots: active 4D cells (stems), then what hangs below them level by level.
+    uint32_t stems = 0, r2 = 0, o2 = 0, r1 = 0, o1 = 0;
+    for (uint32_t g = 0; g < G_; ++g) stems += ga3[g] > 0;
+    for (size_t v = 0; v < V_; ++v) r2 += r2_[v], o2 += o2_[v], r1 += r1_[v], o1 += o1_[v];
+    put(f_, stems), put(f_, r2), put(f_, o2), put(f_, r1), put(f_, o1);
     for (uint32_t g = 0; g < G_; ++g) {
         put(f_, ga1[g]), put(f_, gs1[g]), put(f_, ga2[g]), put(f_, gs2[g]), put(f_, ga3[g]), put(f_, gs3[g]);
         put(f_, gd4[g]);

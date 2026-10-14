@@ -34,6 +34,9 @@ def read(path):
                     ('a1', '<u4'), ('s1', '<f4'), ('a2', '<u4'), ('s2', '<f4'), ('a3', '<u4'), ('s3', '<f4'),
                     ('g', [('a1', '<u4'), ('s1', '<f4'), ('a2', '<u4'), ('s2', '<f4'), ('a3', '<u4'),
                            ('s3', '<f4'), ('d4', '<f4')], (G,))])
+    if version >= 2:  # roots: stems, sheet cells in active / silent voxels, line cells in active / silent sheet cells
+        rec = np.dtype(rec.descr[:11] + [('stems', '<u4'), ('r2', '<u4'), ('o2', '<u4'), ('r1', '<u4'), ('o1', '<u4')] +
+                       rec.descr[11:])
     if not voxels:
         n = (len(data) - o) // rec.itemsize
         recs = np.frombuffer(data, rec, n, o)
@@ -103,6 +106,21 @@ def main():
     if head['lattice']:
         d4 = g['d4']
         print(f"    4D-lattice drive per 4D cell: mean {d4.mean():.4f}, max {d4.max():.4f}")
+    if head['version'] >= 2:
+        st = r['stems'].astype(float)
+        on = st > 0
+        if on.any():
+            v3 = r['a3'][on] / st[on]
+            v2 = r['r2'][on] / np.maximum(r['a3'][on], 1)
+            v1 = r['r1'][on] / np.maximum(r['r2'][on], 1)
+            print('  roots of an idea (ticks with any active 4D cell):')
+            print(f'    stems: {st[on].mean():.1f} active 4D cells; each holds {v3.mean():.1f} active voxels')
+            print(f'    each active voxel holds {v2.mean():.2f} active sheet cells (of {head["SS"]}); '
+                  f'each of those holds {v1.mean():.2f} active line cells (of {head["L"]})')
+            print(f'    whole root per stem: {v3.mean():.1f} voxels -> {(r["r2"][on] / st[on]).mean():.1f} sheet cells '
+                  f'-> {(r["r1"][on] / st[on]).mean():.1f} line cells')
+            print(f'    cut roots: {r["o2"].mean():.0f} active sheet cells in silent voxels, '
+                  f'{r["o1"].mean():.0f} active line cells in silent sheet cells (per tick)')
     if vox is not None:
         counts = np.array([len(x) for x in vox])
         print(f'  voxel record: {counts.mean():.0f} voxels with activity per tick (max {counts.max()})')
