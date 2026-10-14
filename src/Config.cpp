@@ -199,6 +199,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"clock_reset", &c.clock_reset},
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
+        {"lattice_scramble", &c.lattice_scramble},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},

@@ -268,6 +268,12 @@ struct Config {
     // gain control per 4D cell. Senses enter at one face (w = 0, x = 0), the motor exit is the far
     // face (w = 3, x = last). 0 = Cosmos Prime's four fields.
     float lattice4d = 0.0f;
+    // Pharmakon: 1 = each 4D-lattice link joins a voxel to a scrambled counterpart: the place
+    // inside the neighbouring 4D cell goes through a fixed random one-to-one shuffle (one per
+    // direction, the opposite direction uses the reverse shuffle; the same for every 4D cell).
+    // Still whole content to whole content, but a pattern is not copied to the same place in
+    // every neighbour (that made the voxel space a striped grid). 0 = same place.
+    float lattice_scramble = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

@@ -207,6 +207,7 @@ private:
     uint32_t hBlocks_ = 3;     // learned 4D blocks per voxel: 3 other fields (Prime) or 80 lattice neighbours
     bool tick4_ = true;        // the current 3D step is a 4D step
     std::vector<int8_t> lat4_; // 80 x (dx, dy, dz, dw): the 4D neighbourhood
+    std::vector<uint32_t> latPerm_; // lattice_scramble: 80 x B^3 shuffles of the place inside a 4D cell
     AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
     std::vector<float> cellGain_;          // gain control per 4D cell
     size_t cell4Of(size_t v) const {
@@ -217,6 +218,14 @@ private:
     // The counterpart of voxel (x, y, z, w) in the 4D cell at lattice offset k, or SIZE_MAX outside.
     size_t lattice4Partner(uint32_t x, uint32_t y, uint32_t z, uint32_t w, uint32_t k) const {
         const int8_t* o = lat4_.data() + 4 * k;
+        if (!latPerm_.empty()) { // scrambled counterpart: shuffle the place inside the 4D cell
+            const uint32_t B = B_;
+            const uint32_t p = ((z % B) * B + (y % B)) * B + (x % B);
+            const uint32_t q = latPerm_[size_t(k) * B * B * B + p];
+            x = x - x % B + q % B;
+            y = y - y % B + (q / B) % B;
+            z = z - z % B + q / (B * B);
+        }
         const int64_t nx = int64_t(x) + o[0] * int64_t(B_), ny = int64_t(y) + o[1] * int64_t(B_),
                       nz = int64_t(z) + o[2] * int64_t(B_), nw = int64_t(w) + o[3];
         if (nx < 0 || ny < 0 || nz < 0 || nw < 0 || nx >= N_ || ny >= N_ || nz >= N_ || nw >= int64_t(kFields))

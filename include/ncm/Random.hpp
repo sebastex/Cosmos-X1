@@ -50,6 +50,7 @@ enum Stream : uint64_t {
     kStreamCodebook,
     kStreamLink4dSpread,
     kStreamInputDepth,
+    kStreamLattice4d,
 };
 
 } // namespace ncm

@@ -238,6 +238,21 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
                         if (dx || dy || dz || dw)
                             for (int c : {dx, dy, dz, dw}) lat4_.push_back(int8_t(c));
         hBlocks_ = uint32_t(lat4_.size() / 4); // 80
+        if (cfg.lattice_scramble > 0.5f) {
+            const uint32_t inner = B_ * B_ * B_;
+            latPerm_.resize(size_t(hBlocks_) * inner);
+            // Offsets are listed so that k and hBlocks_-1-k are opposite directions.
+            for (uint32_t k = 0; k < hBlocks_ / 2; ++k) {
+                uint32_t* p = latPerm_.data() + size_t(k) * inner;
+                for (uint32_t i = 0; i < inner; ++i) p[i] = i;
+                for (uint32_t i = inner - 1; i > 0; --i) { // Fisher-Yates, fixed by the seed
+                    const uint32_t j = uint32_t(std::min<double>(i, hashUniform(cfg.seed, kStreamLattice4d, uint64_t(k) * inner + i) * double(i + 1)));
+                    std::swap(p[i], p[j]);
+                }
+                uint32_t* back = latPerm_.data() + size_t(hBlocks_ - 1 - k) * inner;
+                for (uint32_t i = 0; i < inner; ++i) back[p[i]] = i;
+            }
+        }
         hold4Fixed_.assign(V_ * C3, 0.0f);
         hold4Learned_.assign(V_ * C3, 0.0f);
         const size_t A = N_ / B_;
