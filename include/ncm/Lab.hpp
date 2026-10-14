@@ -75,6 +75,7 @@ public:
         const LevelScheduler::Tick t = clock_.advance();
         if (t.sheet) m_->step2D();
         if (t.voxel) {
+            m_->setTick4D(t.fourD);
             m_->step3D();
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;

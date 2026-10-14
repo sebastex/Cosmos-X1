@@ -14,6 +14,7 @@ public:
     struct Tick {
         bool sheet; // run a 2D step after this 1D step
         bool voxel; // run a 3D step after this 1D step
+        bool fourD = false; // this 3D step is also a 4D step (every phi 3D steps)
     };
 
     Tick advance() {
@@ -28,6 +29,12 @@ public:
         if (t.voxel) {
             acc3_ -= 1.0;
             ++ticks3_;
+            acc4_ += 1.0 / kPhi;
+            if (acc4_ >= 1.0) {
+                acc4_ -= 1.0;
+                ++ticks4_;
+                t.fourD = true;
+            }
         }
         return t;
     }
@@ -37,6 +44,7 @@ public:
     void resetPhase() {
         acc2_ = 0.0;
         acc3_ = 0.0;
+        acc4_ = 0.0;
     }
 
     // Save or restore the clocks (continuing one brain across runs).
@@ -46,6 +54,8 @@ public:
         s.value(ticks1_);
         s.value(ticks2_);
         s.value(ticks3_);
+        s.value(acc4_);
+        s.value(ticks4_);
     }
 
     uint64_t ticks1D() const { return ticks1_; }
@@ -55,7 +65,8 @@ public:
 private:
     double acc2_ = 0.0;
     double acc3_ = 0.0;
-    uint64_t ticks1_ = 0, ticks2_ = 0, ticks3_ = 0;
+    double acc4_ = 0.0;
+    uint64_t ticks1_ = 0, ticks2_ = 0, ticks3_ = 0, ticks4_ = 0;
 };
 
 } // namespace ncm

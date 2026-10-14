@@ -182,6 +182,22 @@ The 4D level adds content-to-content couplings between neighbouring 4D cells, ab
 today's 4D link per voxel; the inner-level learning (paths 1 and 2 above) adds about 1 GB per 16k
 voxels.
 
+## Cosmos Pharmakon 0 (built 2026-10-14, branch `cosmos-pharmakon`, setting `lattice4d=1`)
+
+The first build of this architecture, a reroll tested against Prime on the same brains and tests.
+
+- The voxels form a 4 x 4 x 4 x 4 lattice of 4D cells; each 4D cell holds a B x B x B graph of
+  voxels (B = field_dim / 4: dev 4, mid 5) with their sheets and lines. Same voxel count as Prime.
+- Inside each w the voxel space is continuous (26 neighbours, competition), across 4D cells too.
+- Every voxel is linked to its counterpart (same place inside) in each of its 4D cell's 80
+  neighbours: fixed scaffold (`lattice_link` each) + learned block (with a slow part). This drive is
+  computed on 4D steps (every phi 3D steps) and held in between; these links learn on 4D steps.
+- Same rules everywhere: no feedforward/feedback difference, no front-to-back sweep, pattern
+  separation and the learned cue route (random sources anywhere) in every voxel, long-range links
+  anywhere, gain control per 4D cell. No Input-field depth sources (a role).
+- Senses enter at one face (w = 0, x = 0), the motor exit is the far face (w = 3, x = last).
+- Inner-level learning (paths 1 and 2) is the next step on top.
+
 ## Way there (each step measured against Prime on fresh brains; Prime stays the safe version)
 
 1. Inner-level learning inside today's structure (paths 1 and 2 above).

@@ -226,6 +226,23 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     SS_ = cfg.sheetCellsPerVoxel();
     Q_ = cfg.sheetCells();
     P_ = cfg.lineCells();
+    lattice_ = cfg.lattice4d > 0.5f;
+    if (lattice_) {
+        if (N_ % kFields != 0 || N_ / kFields < 2)
+            throw std::invalid_argument("the 4D lattice needs field_dim divisible by 4 (at least 8)");
+        B_ = N_ / kFields;
+        for (int dw = -1; dw <= 1; ++dw)
+            for (int dz = -1; dz <= 1; ++dz)
+                for (int dy = -1; dy <= 1; ++dy)
+                    for (int dx = -1; dx <= 1; ++dx)
+                        if (dx || dy || dz || dw)
+                            for (int c : {dx, dy, dz, dw}) lat4_.push_back(int8_t(c));
+        hBlocks_ = uint32_t(lat4_.size() / 4); // 80
+        hold4Fixed_.assign(V_ * C3, 0.0f);
+        hold4Learned_.assign(V_ * C3, 0.0f);
+        const size_t A = N_ / B_;
+        cellGain_.assign(A * A * A * kFields, 1.0f);
+    }
 
     s1_.allocate(P_, C1);
     lineQuietCur_.assign(Q_, 1);
@@ -303,25 +320,27 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.consolidation_rate > 0.0f) {
         S3_.assign(V_ * 27 * C3 * C3, 0.0f);
         SL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
-        SH_.assign(V_ * 3 * C3 * C3, 0.0f);
+        SH_.assign(V_ * hBlocks_ * C3 * C3, 0.0f);
     }
     WL_.assign(V_ * K * C3 * C3, 0.0f);
-    H_.assign(V_ * 3 * C3 * C3, 0.0f);
+    H_.assign(V_ * hBlocks_ * C3 * C3, 0.0f);
     M2_.assign(V_ * C2 * C2, 0.0f);
     lrTarget_.resize(V_ * K);
 
     // Long-range targets: random voxels in the same field, fixed for life (spec Section 3C).
+    // Pharmakon: anywhere in the whole lattice (no fields).
     const int64_t voxels = int64_t(V_);
 #pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
-        const size_t fieldBase = (v / Vf_) * Vf_;
+        const size_t fieldBase = lattice_ ? 0 : (v / Vf_) * Vf_;
+        const size_t range = lattice_ ? V_ : Vf_;
         for (uint32_t l = 0; l < K; ++l) {
             size_t t = v;
             uint64_t attempt = 0;
-            while (t == v && Vf_ > 1) {
+            while (t == v && range > 1) {
                 const double u = hashUniform(cfg_.seed, kStreamLongRange, (uint64_t(v) * K + l) * 64 + attempt++);
-                t = fieldBase + std::min(size_t(u * double(Vf_)), Vf_ - 1);
+                t = fieldBase + std::min(size_t(u * double(range)), range - 1);
             }
             lrTarget_[v * K + l] = uint32_t(t);
         }
@@ -344,6 +363,17 @@ void NeuralCellularMatrix::initVoxelWeights() {
         inputDepthPos_[v] = uint32_t(std::min(size_t(u * double(size_t(N_) * N_)), size_t(N_) * N_ - 1));
     }
     const uint32_t S4 = spreadK_;
+    if (lattice_) {
+        // Pharmakon: every voxel hears spreadK_ random voxels anywhere in the lattice.
+        if (cfg_.spread_plastic > 0.0f && S4 > 0) WS_.assign(V_ * S4 * C3 * C3, 0.0f);
+        spreadPos_.assign(V_ * S4, 0);
+        for (size_t v = 0; v < V_; ++v)
+            for (uint32_t l = 0; l < S4; ++l) {
+                const double u = hashUniform(cfg_.seed, kStreamLink4dSpread, uint64_t(v) * S4 + l);
+                spreadPos_[v * S4 + l] = uint32_t(std::min(size_t(u * double(V_)), V_ - 1));
+            }
+        return;
+    }
     if (cfg_.spread_plastic > 0.0f && S4 > 0) {
         size_t blocks = 0;
         for (uint32_t f = 0; f < kFields; ++f) {
@@ -636,9 +666,36 @@ void NeuralCellularMatrix::step3D() {
     const int64_t voxels = int64_t(V_);
     // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
     // the later ones within the same step. Otherwise one pass over all fields.
-    const bool sweep = cfg_.field_sweep > 0.5f;
+    const bool sweep = !lattice_ && cfg_.field_sweep > 0.5f; // the lattice: all cells at once
     const float* drive = drive3_.data();
     const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
+    // Pharmakon: on a 4D step, every voxel gathers its 80 counterparts in the neighbouring 4D
+    // cells (content to content); the drive is held until the next 4D step.
+    if (lattice_ && tick4_) {
+        const uint32_t KH = hBlocks_;
+#pragma omp parallel for schedule(dynamic, 256)
+        for (int64_t vi = 0; vi < voxels; ++vi) {
+            const size_t v = size_t(vi);
+            const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
+            const uint32_t w = uint32_t(v / Vf_);
+            float fx[C3] = {}, lx[C3] = {};
+            for (uint32_t k = 0; k < KH; ++k) {
+                const size_t vg = lattice4Partner(x, y, z, w, k);
+                if (vg == SIZE_MAX) continue;
+                const float* src = s3 + vg * C3;
+                if (isSilent(src, C3)) continue;
+                if (inhib3_[vg]) {
+                    addScaled(src, fx, C3, inh * r.lattice_link);
+                } else {
+                    addScaled(src, fx, C3, r.lattice_link);
+                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, 1.0f);
+                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, 1.0f);
+                }
+            }
+            std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
+            std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
+        }
+    }
     for (uint32_t fs = 0; fs < (sweep ? kFields : 1u); ++fs) {
     const int64_t vBegin = sweep ? int64_t(fs) * int64_t(Vf_) : 0;
     const int64_t vEnd = sweep ? int64_t(fs + 1) * int64_t(Vf_) : voxels;
@@ -659,7 +716,7 @@ void NeuralCellularMatrix::step3D() {
             return t;
         };
         // Gain control scales incoming signals only (per field).
-        const float afferentGain = fieldGain_[f];
+        const float afferentGain = lattice_ ? cellGain_[cell4Of(v)] : fieldGain_[f];
         const float* w = W3_.data() + v * 27 * C3 * C3;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
@@ -705,8 +762,16 @@ void NeuralCellularMatrix::step3D() {
         const float cLong = sumIn();
         // The 4D link is the path input takes between fields, so encoding mode does not
         // suppress it: acetylcholine turns down a region's internal loops, not its input.
+        if (lattice_) {
+            const float* hf = hold4Fixed_.data() + v * C3;
+            const float* hl = hold4Learned_.data() + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) {
+                in[c] += afferentGain * hf[c];
+                pl4[c] += afferentGain * rec4 * hl[c];
+            }
+        }
         uint32_t gi = 0;
-        for (uint32_t g = 0; g < kFields; ++g) {
+        for (uint32_t g = 0; g < (lattice_ ? 0u : kFields); ++g) {
             if (g == f) continue;
             const size_t vg = voxelIndex(g, x, y, z);
             const float* src = (sweep && g < f ? out : s3) + vg * C3; // sweep: earlier fields' new state
@@ -737,7 +802,7 @@ void NeuralCellularMatrix::step3D() {
         }
         const float c4D = sumIn();
         // Input-field depth: interior voxels hear random voxels of the sensory face (feedforward).
-        if (f == 0 && x > 0 && cfg_.input_depth_spread > 0) {
+        if (!lattice_ && f == 0 && x > 0 && cfg_.input_depth_spread > 0) {
             const uint32_t KD = cfg_.input_depth_spread;
             const float each = r.input_depth_gain;
             for (uint32_t l = 0; l < KD; ++l) {
@@ -750,13 +815,23 @@ void NeuralCellularMatrix::step3D() {
         }
         const float cDepth = sumIn();
         // Pattern-separating feedforward sources (scaffold only), from every earlier field.
-        if (spreadK_ > 0 && f > 0) {
+        if (spreadK_ > 0 && (f > 0 || lattice_)) {
             const uint32_t S4 = spreadK_;
             // Weight per source is set by the reference count, so the expected drive (active
             // sources x weight) is the same at every size when the count is scaled.
             const float each = afferentGain * r.link4d * std::clamp(r.link4d_spread_share, 0.0f, 1.0f) *
                                r.link4d_spread_gain / float(std::max<uint32_t>(1, cfg_.link4d_spread));
-            for (uint32_t g = 0; g < f; ++g)
+            if (lattice_)
+                for (uint32_t l = 0; l < S4; ++l) {
+                    const size_t vs = spreadPos_[v * S4 + l];
+                    const float* src = s3 + vs * C3;
+                    if (isSilent(src, C3)) continue;
+                    addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
+                    if (!WS_.empty() && !inhib3_[vs])
+                        matvecAdd(WS_.data() + (v * S4 + l) * C3 * C3, src, pl4, C3, C3,
+                                  afferentGain * rec4 * cfg_.spread_plastic);
+                }
+            for (uint32_t g = 0; g < (lattice_ ? 0u : f); ++g)
                 // Only the Input field's activity is a thin slab whose active share falls with
                 // size; fields fed by the projection fill their volume at a constant share, so
                 // sources from them use the reference count (keeps density size-invariant).
@@ -823,7 +898,7 @@ void NeuralCellularMatrix::step3D() {
             diagInput3_[v] = inSum;
         }
         // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
-        if (!usage3_.empty() && f > 0 && modulator_ > 0.0f) {
+        if (!usage3_.empty() && (f > 0 || lattice_) && modulator_ > 0.0f) {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
             const float* u = usage3_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
@@ -878,7 +953,32 @@ void NeuralCellularMatrix::step3D() {
     // share of clearly firing voxels (strongest channel at or above the active level;
     // faint traces do not count). Multiplicative and bounded. With no input the field stays
     // silent whatever its gain, because only incoming signals are scaled.
-    if (cfg_.agc_rate > 0.0f) {
+    if (cfg_.agc_rate > 0.0f && lattice_) {
+        // Pharmakon: each 4D cell nudges its own gain (same rule as a Prime field).
+        const float level = lp.active_level;
+        const size_t cells = cellGain_.size();
+        std::vector<uint32_t> active(cells, 0);
+        std::vector<uint8_t> anything(cells, 0);
+        for (size_t v = 0; v < V_; ++v) {
+            const float* cell = out + v * C3;
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, cell[c]);
+            if (strongest <= 0.0f) continue;
+            const size_t k = cell4Of(v);
+            anything[k] = 1;
+            if (strongest >= level) ++active[k];
+        }
+        const float inside = float(size_t(B_) * B_ * B_);
+        for (size_t k = 0; k < cells; ++k) {
+            float& g = cellGain_[k];
+            if (!anything[k] || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
+                g += (1.0f - g) * std::clamp(cfg_.agc_relax_field, 0.0f, 1.0f);
+                continue;
+            }
+            const float error = (target - float(active[k]) / inside) / std::max(target, 1e-6f);
+            g = std::clamp(g * std::exp(cfg_.agc_rate * std::clamp(error, -1.0f, 1.0f)), cfg_.agc_min, cfg_.agc_max);
+        }
+    } else if (cfg_.agc_rate > 0.0f) {
         const float level = lp.active_level;
         for (uint32_t f = 0; f < kFields; ++f) {
             size_t active = 0;
@@ -907,7 +1007,7 @@ void NeuralCellularMatrix::step3D() {
 }
 
 template <class Fn>
-void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn) {
+void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
     const uint32_t x = uint32_t(v % N);
@@ -929,6 +1029,19 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn) {
     for (uint32_t l = 0; l < K; ++l) {
         const size_t t = lrTarget_[v * K + l];
         if (!inhib3_[t]) fn(WL_.data() + (v * K + l) * C3 * C3, t);
+    }
+    if (lattice_) {
+        if (with4D)
+            for (uint32_t k = 0; k < hBlocks_; ++k) {
+                const size_t vg = lattice4Partner(x, y, z, f, k);
+                if (vg != SIZE_MAX && !inhib3_[vg]) fn(H_.data() + (v * hBlocks_ + k) * C3 * C3, vg);
+            }
+        if (!WS_.empty())
+            for (uint32_t l = 0; l < spreadK_; ++l) {
+                const size_t vs = spreadPos_[v * spreadK_ + l];
+                if (!inhib3_[vs]) fn(WS_.data() + (v * spreadK_ + l) * C3 * C3, vs);
+            }
+        return;
     }
     uint32_t gi = 0;
     for (uint32_t g = 0; g < kFields; ++g) {
@@ -1026,7 +1139,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
                                         preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
-        });
+        }, !lattice_ || tick4_); // the 4D-lattice links learn on 4D steps
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
         // Oja's term alone cannot bound a cell whose output saturates and competes.
@@ -1278,6 +1391,10 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.value(learnStats_);
     st.value(modulator_);
     st.value(fieldGain_);
+    st.vec(cellGain_, "4D cell gains");
+    st.vec(hold4Fixed_, "4D drive");
+    st.vec(hold4Learned_, "4D drive");
+    st.value(tick4_);
     st.vec(W3_, "W3");
     st.vec(WL_, "WL");
     st.vec(H_, "H");

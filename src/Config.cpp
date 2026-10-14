@@ -128,7 +128,10 @@ const std::vector<std::string>& evolvedRule() {
         "silence_gate=0.6",
         "upward_gain=1.5216",
         "voxel_neighbour=0.0191",
-        "voxel_self=0.0165"};
+        "voxel_self=0.0165",
+        // Cosmos Pharmakon (branch cosmos-pharmakon): one homogeneous 4D lattice of 4D cells in
+        // place of four fields with roles (see lattice4d in Config.hpp).
+        "lattice4d=1"};
     return rule;
 }
 
@@ -162,6 +165,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"link4d_spread_share", &c.rule.link4d_spread_share},
         {"link4d_spread_gain", &c.rule.link4d_spread_gain},
         {"input_depth_gain", &c.rule.input_depth_gain},
+        {"lattice_link", &c.rule.lattice_link},
         {"learning_rate", &c.learning.rate},
         {"order_gain", &c.learning.order_gain},
         {"oja", &c.learning.oja},
@@ -190,6 +194,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"agc_input_only", &c.agc_input_only},
         {"clock_reset", &c.clock_reset},
         {"field_sweep", &c.field_sweep},
+        {"lattice4d", &c.lattice4d},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},

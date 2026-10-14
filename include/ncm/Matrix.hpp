@@ -77,6 +77,10 @@ public:
     // mode: high M = encoding (learned connections turned down), low M = recall.
     void setModulator(float modulator) { modulator_ = modulator; }
 
+    // Pharmakon: whether the coming 3D step is also a 4D step (the 4D-lattice coupling updates
+    // and learns only then; in between its drive is held).
+    void setTick4D(bool fourD) { tick4_ = fourD; }
+
     // Field roles: a word ends here. The Memory field forgets its order window and pauses learning
     // for a few 3D steps, so it never links one word to the next.
     void wordBoundary();
@@ -139,8 +143,9 @@ private:
 
     // Calls fn(block) for every learned C3 x C3 block entering voxel v: neighbourhood
     // (except self-persistence), long-range and 4D, from excitatory sources only.
+    // with4D = false skips the 4D-lattice blocks (Pharmakon: they learn only on 4D steps).
     template <class Fn>
-    void forEachLearnedBlock(size_t v, Fn&& fn);
+    void forEachLearnedBlock(size_t v, Fn&& fn, bool with4D = true);
 
     Config cfg_;
     uint32_t N_, S_, L_;
@@ -171,6 +176,7 @@ private:
     std::array<size_t, kFields> spreadBase_{};    // first block of each field in WS_
     uint32_t spreadCount(uint32_t g) const { return g == 0 ? spreadK_ : std::min<uint32_t>(spreadK_, cfg_.link4d_spread); }
     size_t spreadBlock(size_t v, uint32_t g, uint32_t l) const {
+        if (lattice_) return v * spreadK_ + l; // Pharmakon: every voxel has spreadK_ sources
         const uint32_t f = uint32_t(v / Vf_);
         size_t off = 0;
         for (uint32_t h = 0; h < g; ++h) off += spreadCount(h);
@@ -195,6 +201,29 @@ private:
     float modulator_ = 0.0f;
     uint32_t memoryPause_ = 0; // field roles: 3D steps left in which the Memory field does not learn
 
+    // Cosmos Pharmakon (lattice4d): the 4D lattice.
+    bool lattice_ = false;
+    uint32_t B_ = 0;           // voxels per 4D cell along each inner axis
+    uint32_t hBlocks_ = 3;     // learned 4D blocks per voxel: 3 other fields (Prime) or 80 lattice neighbours
+    bool tick4_ = true;        // the current 3D step is a 4D step
+    std::vector<int8_t> lat4_; // 80 x (dx, dy, dz, dw): the 4D neighbourhood
+    AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
+    std::vector<float> cellGain_;          // gain control per 4D cell
+    size_t cell4Of(size_t v) const {
+        const uint32_t x = uint32_t(v % N_), y = uint32_t((v / N_) % N_), z = uint32_t((v / (size_t(N_) * N_)) % N_);
+        const uint32_t A = N_ / B_;
+        return ((size_t(v / Vf_) * A + z / B_) * A + y / B_) * A + x / B_;
+    }
+    // The counterpart of voxel (x, y, z, w) in the 4D cell at lattice offset k, or SIZE_MAX outside.
+    size_t lattice4Partner(uint32_t x, uint32_t y, uint32_t z, uint32_t w, uint32_t k) const {
+        const int8_t* o = lat4_.data() + 4 * k;
+        const int64_t nx = int64_t(x) + o[0] * int64_t(B_), ny = int64_t(y) + o[1] * int64_t(B_),
+                      nz = int64_t(z) + o[2] * int64_t(B_), nw = int64_t(w) + o[3];
+        if (nx < 0 || ny < 0 || nz < 0 || nw < 0 || nx >= N_ || ny >= N_ || nz >= N_ || nw >= int64_t(kFields))
+            return SIZE_MAX;
+        return voxelIndex(uint32_t(nw), uint32_t(nx), uint32_t(ny), uint32_t(nz));
+    }
+
     // Per-field gain on incoming signals (gain control), adapted toward the target activity.
     std::array<float, kFields> fieldGain_{1.0f, 1.0f, 1.0f, 1.0f};
 
@@ -216,7 +245,7 @@ private:
     uint32_t spreadK_ = 0;                // random 4D sources per voxel (link4d_spread, scaled with size if set)
     std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)
     AVec<float> WL_;               // per voxel: long-range links x C3 x C3
-    AVec<float> H_;                // per voxel: 3 other fields x C3 x C3 (4D link)
+    AVec<float> H_;                // per voxel: hBlocks_ x C3 x C3 (4D link: 3 other fields, or 80 lattice neighbours)
     // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when
     // consolidation is off. Transmission uses fast + slow.
     AVec<float> S3_, SL_, SH_;

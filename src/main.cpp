@@ -290,6 +290,7 @@ int main(int argc, char** argv) {
         }
         if (tick.voxel) {
             const auto a = Clock::now();
+            m.setTick4D(tick.fourD);
             m.step3D();
             seconds[2] += std::chrono::duration<double>(Clock::now() - a).count();
         }

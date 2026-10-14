@@ -59,6 +59,10 @@ struct StartingRule {
     // target can fire from one or two active sources and competition keeps the strongest).
     float link4d_spread_gain = 1.0f;
     float input_depth_gain = 0.2f; // strength of each Input-field depth source
+    // Pharmakon (lattice4d): fixed scaffold strength of each of a voxel's 80 4D-lattice links
+    // (one per neighbouring 4D cell). About link4d / 9: a voxel near the sensory face then gets
+    // about the drive Prime's feedforward 4D link gives it (about 9 active counterparts at once).
+    float lattice_link = 0.0276f;
 };
 
 // Hebbian learning (spec Section 5A).
@@ -239,6 +243,17 @@ struct Config {
     // states, which delays every field by one more step (the Output field hears a word when the
     // next one is already arriving). Feedback from later fields still comes from the previous step.
     float field_sweep = 0.0f;
+    // Cosmos Pharmakon: 1 = the voxels form one homogeneous 4D lattice instead of four fields
+    // with roles. The brain is a 4 x 4 x 4 x 4 lattice of 4D cells (coordinates x, y, z, w); each
+    // 4D cell contains a whole 3D graph of B x B x B voxels (B = field_dim / 4) with their sheets
+    // and lines. Voxel space is continuous inside each w (a voxel's 26 neighbours may sit in the
+    // next 4D cell). Every 4D cell is coupled content to content with its 80 neighbours: each voxel
+    // to its counterpart (same place inside) in every neighbouring 4D cell, fixed scaffold +
+    // learned part, on the 4D clock (every phi 3D steps). The same rules hold everywhere: no
+    // feedforward/feedback difference, separation, cue route and long-range links everywhere,
+    // gain control per 4D cell. Senses enter at one face (w = 0, x = 0), the motor exit is the far
+    // face (w = 3, x = last). 0 = Cosmos Prime's four fields.
+    float lattice4d = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input
