@@ -274,6 +274,10 @@ struct Config {
     // Still whole content to whole content, but a pattern is not copied to the same place in
     // every neighbour (that made the voxel space a striped grid). 0 = same place.
     float lattice_scramble = 0.0f;
+    // Pharmakon: 1 = a voxel's random spread sources (the learned cue route) are drawn from its
+    // own 4D cell and its 80 neighbours instead of anywhere, so near the senses every voxel hears
+    // a random mix of the input (pattern separation everywhere, by one local rule). 0 = anywhere.
+    float spread_local = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

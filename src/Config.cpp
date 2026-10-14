@@ -200,6 +200,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
         {"lattice_scramble", &c.lattice_scramble},
+        {"spread_local", &c.spread_local},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},

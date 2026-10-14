@@ -385,11 +385,40 @@ void NeuralCellularMatrix::initVoxelWeights() {
         // Pharmakon: every voxel hears spreadK_ random voxels anywhere in the lattice.
         if (cfg_.spread_plastic > 0.0f && S4 > 0) WS_.assign(V_ * S4 * C3 * C3, 0.0f);
         spreadPos_.assign(V_ * S4, 0);
-        for (size_t v = 0; v < V_; ++v)
+        const bool local = cfg_.spread_local > 0.5f;
+        for (size_t v = 0; v < V_; ++v) {
+            const uint32_t x = uint32_t(v % N_), y = uint32_t((v / N_) % N_), z = uint32_t((v / (size_t(N_) * N_)) % N_);
+            const uint32_t w = uint32_t(v / Vf_);
             for (uint32_t l = 0; l < S4; ++l) {
-                const double u = hashUniform(cfg_.seed, kStreamLink4dSpread, uint64_t(v) * S4 + l);
-                spreadPos_[v * S4 + l] = uint32_t(std::min(size_t(u * double(V_)), V_ - 1));
+                const uint64_t key = uint64_t(v) * S4 + l;
+                const double u = hashUniform(cfg_.seed, kStreamLink4dSpread, key);
+                if (!local) {
+                    spreadPos_[v * S4 + l] = uint32_t(std::min(size_t(u * double(V_)), V_ - 1));
+                    continue;
+                }
+                // Local: a random place in a random one of the 4D cells around (own cell included).
+                size_t t = v;
+                for (uint64_t attempt = 0; t == v || t == SIZE_MAX; ++attempt) {
+                    const double a = hashUniform(cfg_.seed, kStreamLink4dSpread, key * 64 + attempt + (uint64_t(1) << 40));
+                    const double b = hashUniform(cfg_.seed, kStreamLattice4d, key * 64 + attempt + (uint64_t(1) << 41));
+                    const uint32_t k = std::min<uint32_t>(uint32_t(a * 81.0), 80u); // 80 = own cell
+                    const uint32_t inner = B_ * B_ * B_;
+                    const uint32_t p = std::min<uint32_t>(uint32_t(b * double(inner)), inner - 1);
+                    const uint32_t px = x - x % B_ + p % B_, py = y - y % B_ + (p / B_) % B_, pz = z - z % B_ + p / (B_ * B_);
+                    if (k == 80) {
+                        t = voxelIndex(w, px, py, pz);
+                    } else {
+                        const int8_t* o = lat4_.data() + 4 * k;
+                        const int64_t nx = int64_t(px) + o[0] * int64_t(B_), ny = int64_t(py) + o[1] * int64_t(B_),
+                                      nz = int64_t(pz) + o[2] * int64_t(B_), nw = int64_t(w) + o[3];
+                        t = (nx < 0 || ny < 0 || nz < 0 || nw < 0 || nx >= N_ || ny >= N_ || nz >= N_ || nw >= int64_t(kFields))
+                                ? SIZE_MAX
+                                : voxelIndex(uint32_t(nw), uint32_t(nx), uint32_t(ny), uint32_t(nz));
+                    }
+                }
+                spreadPos_[v * S4 + l] = uint32_t(t);
             }
+        }
         return;
     }
     if (cfg_.spread_plastic > 0.0f && S4 > 0) {
