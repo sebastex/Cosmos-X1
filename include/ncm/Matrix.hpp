@@ -259,6 +259,9 @@ private:
         return map(H_, SH_);
     }
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
+    // Inner-level learning: per voxel C3 x (SS x C2) learned upward weights (path 1), per sheet
+    // cell C2 x C3 learned downward weights (path 2), and each voxel's learned amount (critical period).
+    AVec<float> UPL_, DNL_, innerLearned_;
 
     // Surfaces: surface line index -> sheet cell index q.
     std::vector<uint32_t> sensoryQ_;

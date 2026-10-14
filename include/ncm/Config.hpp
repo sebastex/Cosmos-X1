@@ -152,6 +152,20 @@ struct LearningParams {
     // The offsets of a voxel sum to zero, so the voxel's own activity is unchanged. Without it
     // the same 2 channels carried about half a voxel's activity over all words. 0 = off.
     float channel_balance = 0.0f;
+    // Inner-level learning (docs/design-inner-level-learning.md). Path 1, learned upward
+    // (sheet -> voxel): each voxel channel learns, competitively, the sheet pattern present when
+    // it fires (w += r * out_c * (x / sum(x) - w), so each channel's weights stay a normalised
+    // pattern summing to at most 1); it adds inner_up x upward_gain x (w . sheet) to the channel.
+    // Path 2, learned downward (voxel -> sheet): each sheet cell learns, per voxel channel, the
+    // state it had when that channel fired (outstar: w += r * voxel_c * (sheet - w)); it adds
+    // inner_down x downward_gain x (w . voxel) to the sheet cell, so a recalled voxel restores
+    // its detail below. Rate r = inner_rate x M, slowed by the critical period: divided by
+    // (1 + learned / inner_period), where learned is the voxel's accumulated firing while
+    // learning (0 = no slowdown). 0 gains = off.
+    float inner_up = 0.0f;
+    float inner_down = 0.0f;
+    float inner_rate = 0.05f;
+    float inner_period = 0.0f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 

@@ -325,6 +325,9 @@ void NeuralCellularMatrix::initVoxelWeights() {
     WL_.assign(V_ * K * C3 * C3, 0.0f);
     H_.assign(V_ * hBlocks_ * C3 * C3, 0.0f);
     M2_.assign(V_ * C2 * C2, 0.0f);
+    if (cfg_.learning.inner_up > 0.0f) UPL_.assign(V_ * C3 * SS_ * C2, 0.0f);
+    if (cfg_.learning.inner_down > 0.0f) DNL_.assign(V_ * SS_ * C2 * C3, 0.0f);
+    if (!UPL_.empty() || !DNL_.empty()) innerLearned_.assign(V_, 0.0f);
     lrTarget_.resize(V_ * K);
 
     // Long-range targets: random voxels in the same field, fixed for life (spec Section 3C).
@@ -591,7 +594,10 @@ void NeuralCellularMatrix::step2D() {
             if (anyActive)
                 for (uint32_t c = 0; c < C2; ++c) in[c] += cfg_.line_upward_gain * up[c];
         }
-        if (!isSilent(s3 + v * C3, C3)) matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
+        if (!isSilent(s3 + v * C3, C3)) {
+            matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
+            if (!DNL_.empty()) matvecAdd(DNL_.data() + q * C2 * C3, s3 + v * C3, in, C2, C3, gd * cfg_.learning.inner_down);
+        }
 
         drive2_[q] = activateCell<C2>(in, out + q * C2,
                                       theta[q] + (divisiveFatigue ? 0.0f : lp.fatigue_gain * fatigue2_[q]),
@@ -862,6 +868,16 @@ void NeuralCellularMatrix::step3D() {
                 if (!active) continue;
                 anyActive = true;
                 matvecAdd(U2_.data() + cell * C3 * C2, sc, up, C3, C2, 1.0f);
+                if (!UPL_.empty()) {
+                    const float* wl = UPL_.data() + v * C3 * SS * C2 + cell * C2;
+                    const float k = cfg_.learning.inner_up;
+                    for (uint32_t c = 0; c < C3; ++c) {
+                        const float* row = wl + size_t(c) * SS * C2;
+                        float dot = 0.0f;
+                        for (uint32_t b = 0; b < C2; ++b) dot += row[b] * sc[b];
+                        up[c] += k * dot;
+                    }
+                }
             }
             if (anyActive)
                 for (uint32_t c = 0; c < C3; ++c) in[c] += gu * up[c];
@@ -1211,6 +1227,41 @@ void NeuralCellularMatrix::learn(float modulator) {
             }
         }
     }
+    // Inner-level learning (paths 1 and 2), in every voxel that fires.
+    if (!innerLearned_.empty()) {
+        const float* s2 = s2_.cur.data();
+        const size_t SS = SS_, J = SS * C2;
+        const float baseRate = std::max(0.0f, cfg_.learning.inner_rate) * std::clamp(modulator, 0.0f, 1.0f);
+        const float period = cfg_.learning.inner_period;
+#pragma omp parallel for schedule(dynamic, 64)
+        for (int64_t vi = 0; vi < voxels; ++vi) {
+            const size_t v = size_t(vi);
+            const float* a = post + v * C3;
+            if (isSilent(a, C3) || baseRate <= 0.0f) continue;
+            const float r = period > 0.0f ? baseRate / (1.0f + innerLearned_[v] / period) : baseRate;
+            const float* x = s2 + v * J;
+            float firing = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) firing += a[c];
+            innerLearned_[v] += firing;
+            if (!UPL_.empty()) {
+                float xs = 0.0f;
+                for (size_t j = 0; j < J; ++j) xs += x[j];
+                if (xs > 0.0f)
+                    for (uint32_t c = 0; c < C3; ++c) {
+                        if (a[c] <= 0.0f) continue;
+                        float* w = UPL_.data() + (v * C3 + c) * J;
+                        const float k = r * a[c];
+                        for (size_t j = 0; j < J; ++j) w[j] += k * (x[j] / xs - w[j]);
+                    }
+            }
+            if (!DNL_.empty())
+                for (size_t j = 0; j < J; ++j) { // sheet cell j / C2, channel j % C2
+                    float* w = DNL_.data() + j * C3 + v * J * C3;
+                    for (uint32_t c = 0; c < C3; ++c)
+                        if (a[c] > 0.0f) w[c] += r * a[c] * (x[j] - w[c]);
+                }
+        }
+    }
     learnStats_.calls += 1;
     if (memoryPause_) --memoryPause_;
     learnStats_.learners += learners;
@@ -1402,6 +1453,9 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(SL_, "SL");
     st.vec(SH_, "SH");
     st.vec(M2_, "M2");
+    st.vec(UPL_, "inner up");
+    st.vec(DNL_, "inner down");
+    st.vec(innerLearned_, "inner learned");
     st.vec(sensoryDrive_, "sensory drive");
     st.vec(motorDrive_, "motor drive");
     st.value(sensoryOn_);
