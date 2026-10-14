@@ -1,5 +1,5 @@
 {
- "generation": 20,
+ "generation": 21,
  "deadline": 1792054776.3865402,
  "started": 1791881976.3865402,
  "candidates": {
@@ -1950,9 +1950,105 @@
       "link_bound": 0.3,
       "silence_gate": 0.6
      }
+    },
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.692,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 29.4,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02222,
+      "plastic_budget": 5.67831,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.9733,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.50842,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 6.23347,
+      "order_tau": 2.90192,
+      "mode_tau": 13.44333,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.45398,
+      "link_bound": 0.3,
+      "silence_gate": 0.6
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 10.88,
+     "passes": 2,
+     "checks": {
+      "alphabet": true,
+      "wordpairs": true
+     },
+     "true_recall": 88.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 88.0,
+      "untrained": 0.0,
+      "stored_recalled": 7,
+      "stored_not_recalled": 1,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 34.4,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02222,
+      "plastic_budget": 5.67831,
+      "presynaptic_bound": 0.89812,
+      "hetero_ltd": 0.9733,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.50842,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 6.23347,
+      "order_tau": 2.90192,
+      "mode_tau": 13.44333,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02107,
+      "line_recency": 0.48403,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.45398,
+      "link_bound": 0.3,
+      "silence_gate": 0.6
+     }
     }
    ],
-   "fitness": 9.254875
+   "fitness": 9.30397619047619
   },
   "c1": {
    "params": {
@@ -12939,9 +13035,105 @@
       "link_bound": 0.3,
       "silence_gate": 0.3818
      }
+    },
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 41.8,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 3.0247,
+      "presynaptic_bound": 0.99365,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.55438,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.06977,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 6.23347,
+      "order_tau": 3.95146,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02334,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.25208,
+      "link_bound": 0.3,
+      "silence_gate": 0.3818
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 42.9,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 3.0247,
+      "presynaptic_bound": 0.99365,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.55438,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.06977,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 6.23347,
+      "order_tau": 3.95146,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02334,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.25208,
+      "link_bound": 0.3,
+      "silence_gate": 0.3818
+     }
     }
    ],
-   "fitness": 10.172142857142857
+   "fitness": 10.131375
   },
   "c52": {
    "params": {
@@ -14178,9 +14370,105 @@
       "link_bound": 0.3,
       "silence_gate": 0.37104
      }
+    },
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 38.5,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 2.50465,
+      "presynaptic_bound": 0.80421,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0653,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00038,
+      "order_gain": 6.23347,
+      "order_tau": 3.95146,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.01753,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.18094,
+      "link_bound": 0.3,
+      "silence_gate": 0.37104
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 9.692,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 40.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 2.50465,
+      "presynaptic_bound": 0.80421,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0653,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00038,
+      "order_gain": 6.23347,
+      "order_tau": 3.95146,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.01753,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.18094,
+      "link_bound": 0.3,
+      "silence_gate": 0.37104
+     }
     }
    ],
-   "fitness": 10.026
+   "fitness": 9.940333333333333
   },
   "c61": {
    "params": {
@@ -15228,9 +15516,105 @@
       "link_bound": 0.3,
       "silence_gate": 0.12437
      }
+    },
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 32.7,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01,
+      "plastic_budget": 2.50465,
+      "presynaptic_bound": 0.80421,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0653,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00299,
+      "order_gain": 6.23347,
+      "order_tau": 3.9019,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.01753,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.18094,
+      "link_bound": 0.3,
+      "silence_gate": 0.12437
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 9.692,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 44.9,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01,
+      "plastic_budget": 2.50465,
+      "presynaptic_bound": 0.80421,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0653,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00299,
+      "order_gain": 6.23347,
+      "order_tau": 3.9019,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.01753,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.18094,
+      "link_bound": 0.3,
+      "silence_gate": 0.12437
+     }
     }
    ],
-   "fitness": 10.181750000000001
+   "fitness": 10.0992
   },
   "c67": {
    "params": {
@@ -17994,8 +18378,105 @@
    },
    "parent": "c70xc17",
    "born": 20,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.532,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 30.1,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02412,
+      "plastic_budget": 3.0247,
+      "presynaptic_bound": 0.99365,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.34198,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00607,
+      "order_gain": 6.23347,
+      "order_tau": 2.54467,
+      "mode_tau": 20.34833,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.03121,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.13869,
+      "link_bound": 0.24517,
+      "silence_gate": 0.3818
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 33.8,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.02412,
+      "plastic_budget": 3.0247,
+      "presynaptic_bound": 0.99365,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.34198,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.0056,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00607,
+      "order_gain": 6.23347,
+      "order_tau": 2.54467,
+      "mode_tau": 20.34833,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.03121,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.13869,
+      "link_bound": 0.24517,
+      "silence_gate": 0.3818
+     }
+    }
+   ],
+   "fitness": 9.689
   },
   "c85": {
    "params": {
@@ -18024,8 +18505,105 @@
    },
    "parent": "c51",
    "born": 20,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 11.0,
+     "passes": 2,
+     "checks": {
+      "alphabet": true,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 42.0,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 3.0247,
+      "presynaptic_bound": 1.0,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.55438,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.05401,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00484,
+      "order_gain": 6.23347,
+      "order_tau": 3.95146,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02334,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.25208,
+      "link_bound": 0.3,
+      "silence_gate": 0.49467
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 11.0,
+     "passes": 2,
+     "checks": {
+      "alphabet": true,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 35.0,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 3.0247,
+      "presynaptic_bound": 1.0,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.55438,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.05401,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00484,
+      "order_gain": 6.23347,
+      "order_tau": 3.95146,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.02334,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.25208,
+      "link_bound": 0.3,
+      "silence_gate": 0.49467
+     }
+    }
+   ],
+   "fitness": 11.0
   },
   "c86": {
    "params": {
@@ -18054,8 +18632,105 @@
    },
    "parent": "c60xc17",
    "born": 20,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.692,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 35.6,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01891,
+      "plastic_budget": 7.92854,
+      "presynaptic_bound": 0.8741,
+      "hetero_ltd": 0.9733,
+      "covariance": 0.87893,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.08642,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00038,
+      "order_gain": 8.0,
+      "order_tau": 3.95146,
+      "mode_tau": 19.52666,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.01753,
+      "line_recency": 0.44256,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.18094,
+      "link_bound": 0.12925,
+      "silence_gate": 0.37104
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 11.0,
+     "passes": 2,
+     "checks": {
+      "alphabet": true,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 42.1,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01891,
+      "plastic_budget": 7.92854,
+      "presynaptic_bound": 0.8741,
+      "hetero_ltd": 0.9733,
+      "covariance": 0.87893,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.08642,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00038,
+      "order_gain": 8.0,
+      "order_tau": 3.95146,
+      "mode_tau": 19.52666,
+      "fatigue_gain3": 0.04569,
+      "fire_threshold3": 0.01753,
+      "line_recency": 0.44256,
+      "winners3": 5,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 4.94742,
+      "spread_plastic": 0.18094,
+      "link_bound": 0.12925,
+      "silence_gate": 0.37104
+     }
+    }
+   ],
+   "fitness": 10.346
   },
   "c87": {
    "params": {
@@ -18084,8 +18759,105 @@
    },
    "parent": "c51xc66",
    "born": 20,
-   "evals": [],
-   "fitness": 0.0
+   "evals": [
+    {
+     "gen": 20,
+     "seed": 5040,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 12.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 45.9,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 2.60911,
+      "presynaptic_bound": 0.99365,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.06977,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 6.23347,
+      "order_tau": 3.9019,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.02989,
+      "fire_threshold3": 0.01656,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.27183,
+      "link_bound": 0.3,
+      "silence_gate": 0.07517
+     }
+    },
+    {
+     "gen": 20,
+     "seed": 5041,
+     "fitness": 9.846,
+     "passes": 1,
+     "checks": {
+      "alphabet": false,
+      "wordpairs": true
+     },
+     "true_recall": 100.0,
+     "monitor": {},
+     "continual": {},
+     "retention": {},
+     "pairs": {
+      "true_recall": 100.0,
+      "untrained": 0.0,
+      "stored_recalled": 8,
+      "stored_not_recalled": 0,
+      "not_stored": 0
+     },
+     "load64": null,
+     "minutes": 34.0,
+     "missing": [],
+     "params": {
+      "learning_rate": 0.01569,
+      "plastic_budget": 2.60911,
+      "presynaptic_bound": 0.99365,
+      "hetero_ltd": 0.75833,
+      "covariance": 0.58435,
+      "encoding_suppression": 1.0,
+      "consolidation_rate": 0.06977,
+      "consolidated_budget": 0.5,
+      "assembly_inhibition": 0.00321,
+      "order_gain": 6.23347,
+      "order_tau": 3.9019,
+      "mode_tau": 19.44795,
+      "fatigue_gain3": 0.02989,
+      "fire_threshold3": 0.01656,
+      "line_recency": 0.4,
+      "winners3": 6,
+      "channel_winners3": 2,
+      "inhibition_radius3": 2,
+      "separation": 3.18967,
+      "spread_plastic": 0.27183,
+      "link_bound": 0.3,
+      "silence_gate": 0.07517
+     }
+    }
+   ],
+   "fitness": 9.846
   }
  },
  "next_id": 88,
