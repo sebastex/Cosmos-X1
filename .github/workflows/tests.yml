@@ -41,3 +41,19 @@ jobs:
         with:
           name: result-seed-${{ matrix.seed }}
           path: result_${{ matrix.seed }}.txt
+      # Activity monitor (env NCM_MONITOR=monitor): a report and picture per brain session, and
+      # the raw recordings (zstd).
+      - name: Monitor report
+        if: always() && hashFiles('monitor/*.ncmmon') != ''
+        run: |
+          pip install -q numpy matplotlib
+          for f in monitor/*.ncmmon; do
+            python tools/monitor/read_monitor.py "$f" --csv "${f%.ncmmon}.csv" --png "${f%.ncmmon}.png" | tee -a monitor/report.txt
+          done
+          zstd -q -T0 --rm monitor/*.ncmmon
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('monitor/*') != ''
+        with:
+          name: monitor-seed-${{ matrix.seed }}
+          path: monitor/
+          compression-level: 0

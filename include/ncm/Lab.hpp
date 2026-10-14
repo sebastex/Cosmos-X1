@@ -14,6 +14,7 @@
 
 #include "ncm/CharacterCodebook.hpp"
 #include "ncm/Matrix.hpp"
+#include "ncm/Monitor.hpp"
 #include "ncm/Random.hpp"
 #include "ncm/Scheduler.hpp"
 
@@ -45,7 +46,7 @@ public:
     Session(const Config& cfg, bool learning, bool silenceSuppressed = true)
         : cfg_(cfg), learning_(learning), silenceSuppressed_(silenceSuppressed),
           m_(std::make_unique<NeuralCellularMatrix>(cfg)),
-          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed()) {}
+          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed()), monitor_(Monitor::fromEnv(cfg)) {}
 
     // One 1D tick. `fingerprint` is what enters the sensory surface (nullptr = silence);
     // `actual` is the full fingerprint of the character being heard, for the surprise check.
@@ -74,6 +75,15 @@ public:
         m_->step1D();
         const LevelScheduler::Tick t = clock_.advance();
         if (t.sheet) m_->step2D();
+        if (monitor_) {
+            monitorEvent_ = Monitor::Event{};
+            monitorEvent_.sheet = t.sheet;
+            monitorEvent_.voxel = t.voxel;
+            monitorEvent_.fourD = false; // no 4D clock in Prime
+            monitorEvent_.sensory = fingerprint != nullptr;
+            monitorEvent_.learning = learning_ && allowLearning;
+            monitorEvent_.heard = fingerprint ? heard_ : 0;
+        }
         if (t.voxel) {
             m_->step3D();
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
@@ -86,6 +96,12 @@ public:
                 lastModulator_ = modulator;
             }
         }
+        if (monitor_) {
+            monitorEvent_.tick = clock_.ticks1D();
+            monitorEvent_.modulator = lastModulator_;
+            monitor_->record(*m_, monitorEvent_);
+        }
+        heard_ = 0;
     }
 
     // Presents `text` (cycling through its characters, one per tick) for `ticks` ticks, with
@@ -97,6 +113,7 @@ public:
         for (uint64_t t = 0; t < ticks; ++t) {
             const char c = text[t % text.size()];
             const auto& full = codebook_.fingerprint(char32_t(uint8_t(c)));
+            heard_ = c;
             if (fraction >= 1.0f) {
                 tick(&full, &full, allowLearning);
             } else {
@@ -162,6 +179,9 @@ private:
     bool silenceSuppressed_;
     std::unique_ptr<NeuralCellularMatrix> m_;
     CharacterCodebook codebook_;
+    std::unique_ptr<Monitor> monitor_; // activity monitor (NCM_MONITOR), passive
+    Monitor::Event monitorEvent_;
+    char heard_ = 0; // the character being heard (for the monitor)
     LevelScheduler clock_;
     double surpriseSum_ = 0.0;
     uint64_t surpriseCount_ = 0;

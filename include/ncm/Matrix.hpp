@@ -120,6 +120,12 @@ public:
     const AVec<float>& sheetState() const { return s2_.cur; }
     const AVec<float>& voxelState() const { return s3_.cur; }
     const AVec<float>& voxelThresholds() const { return s3_.theta; }
+    // Read-only views for the activity monitor (Monitor.hpp).
+    const std::vector<uint8_t>& lineQuiet() const { return lineQuietCur_; }   // 1 = the line is silent
+    const std::vector<uint8_t>& sheetQuiet() const { return sheetQuietCur_; } // 1 = the voxel's sheet is silent
+    // Held 4D-lattice drive: only in Cosmos Pharmakon (empty here).
+    const AVec<float>& latticeDriveFixed() const { static const AVec<float> none; return none; }
+    const AVec<float>& latticeDriveLearned() const { return latticeDriveFixed(); }
     size_t memoryBytes() const;
     // Save or restore everything that changes while the brain runs (one brain across runs).
     // Restoring needs a brain built with the same configuration and seed.
