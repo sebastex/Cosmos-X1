@@ -131,7 +131,10 @@ const std::vector<std::string>& evolvedRule() {
         "voxel_self=0.0165",
         // Cosmos Pharmakon (branch cosmos-pharmakon): one homogeneous 4D lattice of 4D cells in
         // place of four fields with roles (see lattice4d in Config.hpp).
-        "lattice4d=1"};
+        "lattice4d=1",
+        // Pharmakon 0.1: scrambled counterparts (no striped grid; word overlap 0.098, the deep
+        // slice nearest the senses 0.053 vs Prime's 0.09).
+        "lattice_scramble=1"};
     return rule;
 }
 
