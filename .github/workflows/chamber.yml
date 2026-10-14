@@ -17,6 +17,9 @@ on:
       words:
         description: Word pairs per list (300 words = 150)
         default: "150"
+      preset:
+        description: Brain size (dev, or mid = about 8 GB)
+        default: "dev"
       step:
         description: This run's step (1 = a new brain)
         default: "1"
@@ -63,7 +66,7 @@ jobs:
           else export NCM_WORDLIST=${cur:0:1} NCM_PASS_START=${cur:1}; fi
           echo "step $STEP of ${#steps[@]}: $cur"
           if [ -f brain.bin.zst ]; then zstd -d -q --rm brain.bin.zst && export NCM_STATE_IN=brain.bin; fi
-          NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset dev --seed ${{ inputs.seed }} | tee result_step${STEP}_${cur}.txt
+          NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset ${{ inputs.preset }} --seed ${{ inputs.seed }} | tee result_step${STEP}_${cur}.txt
           rm -f brain.bin
           mv brain-next.bin brain.bin
           zstd -3 -T0 -q --rm brain.bin
@@ -84,5 +87,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh workflow run chamber.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
-            -f seed=${{ inputs.seed }} -f plan="${{ inputs.plan }}" -f words=${{ inputs.words }} \
+            -f seed=${{ inputs.seed }} -f plan="${{ inputs.plan }}" -f words=${{ inputs.words }} -f preset=${{ inputs.preset }} \
             -f step=$(( ${{ inputs.step }} + 1 )) -f prev_run=${{ github.run_id }}

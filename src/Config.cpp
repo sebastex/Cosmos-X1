@@ -20,12 +20,17 @@ Config makePreset(const std::string& name) {
         cfg.field_dim = 16;
         cfg.sheet_dim = 8;
         cfg.line_len = 16;
+    } else if (name == "mid") {
+        // Middle ground (about 8 GB while learning): twice the voxels of dev, same sheets and lines.
+        cfg.field_dim = 20;
+        cfg.sheet_dim = 8;
+        cfg.line_len = 16;
     } else if (name == "full") {
         cfg.field_dim = 32;
         cfg.sheet_dim = 16;
         cfg.line_len = 16;
     } else {
-        throw std::invalid_argument("unknown preset '" + name + "' (use tiny, small, dev or full)");
+        throw std::invalid_argument("unknown preset '" + name + "' (use tiny, small, dev, mid or full)");
     }
     return cfg;
 }
