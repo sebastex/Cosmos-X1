@@ -134,7 +134,11 @@ const std::vector<std::string>& evolvedRule() {
         "lattice4d=1",
         // Pharmakon 0.1: scrambled counterparts (no striped grid; word overlap 0.098, the deep
         // slice nearest the senses 0.053 vs Prime's 0.09).
-        "lattice_scramble=1"};
+        "lattice_scramble=1",
+        // Pharmakon 0.2: no pattern separation in the slice where the senses arrive (w = 0): it
+        // distorted what the brain hears. Dev 3004, 16/32 pairs: recall at the moment 44%/28% ->
+        // 100%/91% (Prime 100%/94%), coherence +0.61 -> +0.68 (Prime +0.66).
+        "lattice_sep0=0"};
     return rule;
 }
 
