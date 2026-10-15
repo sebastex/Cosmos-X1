@@ -287,6 +287,10 @@ struct Config {
     // Pharmakon: the region whose gain control acts together: 0 = each 4D cell, 1 = each w-slice
     // (Prime's grain: a quiet region raises its gain as a whole), 2 = the whole brain.
     float lattice_agc = 0.0f;
+    // Pharmakon: the scaffold of a 4D-lattice link falls with 4D distance: a link to a 4D cell that
+    // differs in d of its 4 coordinates has strength lattice_link x lattice_falloff^(d - 1), so the
+    // 8 face neighbours couple most. 1 = all 80 links the same.
+    float lattice_falloff = 1.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

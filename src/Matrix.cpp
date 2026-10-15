@@ -238,6 +238,11 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
                         if (dx || dy || dz || dw)
                             for (int c : {dx, dy, dz, dw}) lat4_.push_back(int8_t(c));
         hBlocks_ = uint32_t(lat4_.size() / 4); // 80
+        for (uint32_t k = 0; k < hBlocks_; ++k) {
+            int d = 0;
+            for (int a = 0; a < 4; ++a) d += lat4_[4 * k + a] != 0;
+            latScale_.push_back(std::pow(std::max(0.0f, cfg.lattice_falloff), float(d - 1)));
+        }
         if (cfg.lattice_scramble > 0.5f) {
             const uint32_t inner = B_ * B_ * B_;
             latPerm_.resize(size_t(hBlocks_) * inner);
@@ -741,9 +746,9 @@ void NeuralCellularMatrix::step3D() {
                 const float* src = (sweep && vg / Vf_ < w ? out : s3) + vg * C3; // sweep: earlier slices' new state
                 if (isSilent(src, C3)) continue;
                 if (inhib3_[vg]) {
-                    addScaled(src, fx, C3, inh * r.lattice_link);
+                    addScaled(src, fx, C3, inh * r.lattice_link * latScale_[k]);
                 } else {
-                    addScaled(src, fx, C3, r.lattice_link);
+                    addScaled(src, fx, C3, r.lattice_link * latScale_[k]);
                     matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, 1.0f);
                     if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, 1.0f);
                 }
