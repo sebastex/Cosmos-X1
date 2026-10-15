@@ -278,6 +278,12 @@ struct Config {
     // own 4D cell and its 80 neighbours instead of anywhere, so near the senses every voxel hears
     // a random mix of the input (pattern separation everywhere, by one local rule). 0 = anywhere.
     float spread_local = 0.0f;
+    // Pharmakon: 1 = the 4D-lattice drive is computed on 4D steps and held in between (the 4D
+    // clock); 0 = it is computed on every 3D step.
+    float lattice_hold = 1.0f;
+    // Pharmakon: 1 = on each 3D step the w-slices update in order from the senses (w = 0) on, each
+    // reading the new state of the slices before it (no extra step of lag per slice); 0 = all at once.
+    float lattice_sweep = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

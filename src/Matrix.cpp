@@ -716,15 +716,21 @@ void NeuralCellularMatrix::step3D() {
     const int64_t voxels = int64_t(V_);
     // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
     // the later ones within the same step. Otherwise one pass over all fields.
-    const bool sweep = !lattice_ && cfg_.field_sweep > 0.5f; // the lattice: all cells at once
+    // Pharmakon: lattice_sweep = the w-slices update in order (the input enters at w = 0), each
+    // reading the new state of the slices before it; otherwise all cells at once.
+    const bool sweep = lattice_ ? cfg_.lattice_sweep > 0.5f : cfg_.field_sweep > 0.5f;
+    const bool fourDNow = lattice_ && (tick4_ || cfg_.lattice_hold < 0.5f);
     const float* drive = drive3_.data();
     const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
     // Pharmakon: on a 4D step, every voxel gathers its 80 counterparts in the neighbouring 4D
     // cells (content to content); the drive is held until the next 4D step.
-    if (lattice_ && tick4_) {
+    for (uint32_t fs = 0; fs < (sweep ? kFields : 1u); ++fs) {
+    const int64_t vBegin = sweep ? int64_t(fs) * int64_t(Vf_) : 0;
+    const int64_t vEnd = sweep ? int64_t(fs + 1) * int64_t(Vf_) : voxels;
+    if (fourDNow) {
         const uint32_t KH = hBlocks_;
 #pragma omp parallel for schedule(dynamic, 256)
-        for (int64_t vi = 0; vi < voxels; ++vi) {
+        for (int64_t vi = vBegin; vi < vEnd; ++vi) {
             const size_t v = size_t(vi);
             const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
             const uint32_t w = uint32_t(v / Vf_);
@@ -732,7 +738,7 @@ void NeuralCellularMatrix::step3D() {
             for (uint32_t k = 0; k < KH; ++k) {
                 const size_t vg = lattice4Partner(x, y, z, w, k);
                 if (vg == SIZE_MAX) continue;
-                const float* src = s3 + vg * C3;
+                const float* src = (sweep && vg / Vf_ < w ? out : s3) + vg * C3; // sweep: earlier slices' new state
                 if (isSilent(src, C3)) continue;
                 if (inhib3_[vg]) {
                     addScaled(src, fx, C3, inh * r.lattice_link);
@@ -746,9 +752,6 @@ void NeuralCellularMatrix::step3D() {
             std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
         }
     }
-    for (uint32_t fs = 0; fs < (sweep ? kFields : 1u); ++fs) {
-    const int64_t vBegin = sweep ? int64_t(fs) * int64_t(Vf_) : 0;
-    const int64_t vEnd = sweep ? int64_t(fs + 1) * int64_t(Vf_) : voxels;
 #pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = vBegin; vi < vEnd; ++vi) {
         const size_t v = size_t(vi);
@@ -877,7 +880,7 @@ void NeuralCellularMatrix::step3D() {
             if (lattice_)
                 for (uint32_t l = 0; l < S4; ++l) {
                     const size_t vs = spreadPos_[v * S4 + l];
-                    const float* src = s3 + vs * C3;
+                    const float* src = (sweep && vs / Vf_ < f ? out : s3) + vs * C3;
                     if (isSilent(src, C3)) continue;
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
                     if (!WS_.empty() && !inhib3_[vs])
@@ -1202,7 +1205,7 @@ void NeuralCellularMatrix::learn(float modulator) {
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
             change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
                                         preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
-        }, !lattice_ || tick4_); // the 4D-lattice links learn on 4D steps
+        }, !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f); // the 4D-lattice links learn on 4D steps
 
         // Synaptic scaling: cap each output channel's total learned excitatory input.
         // Oja's term alone cannot bound a cell whose output saturates and competes.
