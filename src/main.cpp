@@ -91,6 +91,7 @@ const std::vector<TestEntry>& tests() {
         {"pairlinks", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runPairLinksTest(cfg); }},
         {"pairload", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runPairLoadTest(cfg, opt.storeTicks); }},
         {"wordoverlap", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runWordOverlapTest(cfg); }},
+        {"script", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runScriptTest(cfg); }},
         {"vocabulary", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runVocabularyTest(cfg); }},
         {"sentences", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runSentenceTest(cfg); }},
         {"alphabet", [](const ncm::Config& cfg, const Options& opt) { (void)opt; return ncm::runAlphabetTest(cfg); }},

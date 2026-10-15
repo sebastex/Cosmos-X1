@@ -48,7 +48,7 @@ jobs:
         run: |
           pip install -q numpy matplotlib
           for f in monitor/*.ncmmon; do
-            python tools/monitor/read_monitor.py "$f" --csv "${f%.ncmmon}.csv" --png "${f%.ncmmon}.png" | tee -a monitor/report.txt
+            python tools/monitor/read_monitor.py "$f" --story --csv "${f%.ncmmon}.csv" --png "${f%.ncmmon}.png" | tee -a monitor/report.txt
           done
           zstd -q -T0 --rm monitor/*.ncmmon
       - uses: actions/upload-artifact@v4

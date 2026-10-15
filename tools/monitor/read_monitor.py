@@ -178,11 +178,93 @@ def coherence(head, r, vox=None):
         print(f'    flows smoothly: successive 3D steps {np.mean(flow):.2f} alike (1 = frozen, 0 = random jumps)')
 
 
+def story(head, r, vox, limit=400):
+    # Observation lab: what every hearing of every word did, in order. Needs the voxel record.
+    if vox is None:
+        print('  (story needs the voxel record: NCM_MONITOR_VOXELS=1)')
+        return
+    n = len(r)
+    heard = r['heard']
+    sound = (r['flags'] & 8) != 0
+    x = [Sparse.of(v, head['C'][2]) for v in vox]
+    if head['version'] >= 3:
+        m = r['mtc'].astype(np.int64)
+        mtc = np.diff(m, prepend=m[0])
+    else:
+        mtc = np.zeros(n, np.int64)
+    stems = r['stems'] if head['version'] >= 2 else np.zeros(n)
+    events, i = [], 0
+    while i < n:
+        if sound[i] and heard[i] not in (0, 32):
+            j, w = i, ''
+            while j < n and sound[j] and heard[j] not in (0, 32):
+                w += chr(heard[j])
+                j += 1
+            nxt = j
+            while nxt < n and not (sound[nxt] and heard[nxt] not in (0, 32)):
+                nxt += 1
+            events.append((w, i, j, nxt))
+            i = j
+        else:
+            i += 1
+    shapes, seen = {}, {}
+    print('  story: every hearing (shape = activity while heard + 3 ticks; after = the silence that follows, up to 30 ticks)')
+    print('    #  tick   word        voxels 4Dcells sheets  MT-during  like-last like-first | after: voxels MT  like-own  closest other')
+    rows = 0
+    for k, (w, a, b, nxt) in enumerate(events):
+        end = min(n, b + 3)
+        shape = Sparse.total(x[a:end])
+        aft = slice(end, min(nxt, end + 30))
+        after = Sparse.total(x[aft])
+        prev = seen.get(w, [])
+        like_last = shape.cos(prev[-1]) if prev else float('nan')
+        like_first = shape.cos(prev[0]) if prev else float('nan')
+        others = [(o, after.cos(e)) for o, e in shapes.items() if o != w]
+        best = max(others, key=lambda t: t[1]) if others else ('-', 0.0)
+        own = after.cos(shape)
+        a3 = r['a3'][a:end]
+        sheets = r['a2'][a:end]
+        if rows < limit:
+            print(f"   {k + 1:3d} {r['tick'][a]:6d} {w[:11]:11s} {a3.max():6d} {stems[a:end].max():6.0f} {sheets.max():6d}  {mtc[a:end].sum():8d}"
+                  f"   {like_last:7.2f}  {like_first:7.2f}  |  {r['a3'][aft].mean() if aft.stop > aft.start else 0:6.1f} {mtc[aft].sum():5d}"
+                  f"   {own:6.2f}   {best[0][:10]} {best[1]:.2f}")
+            rows += 1
+        seen.setdefault(w, []).append(shape)
+        shapes[w] = Sparse.total(seen[w][-3:]) # a word's shape = its last 3 hearings
+    print('  per word: how much each hearing is like the one before (the shape settling over repeats)')
+    for w, es in seen.items():
+        if len(es) < 2:
+            continue
+        curve = ' '.join(f'{es[k].cos(es[k - 1]):.2f}' for k in range(1, len(es)))
+        print(f'    {w[:14]:14s} {len(es):3d} hearings: {curve}')
+    # Long silences: what the brain does on its own (no input for 100+ ticks).
+    run, start = 0, 0
+    for t in range(n + 1):
+        if t < n and not sound[t]:
+            if run == 0:
+                start = t
+            run += 1
+            continue
+        if run >= 100:
+            seg = slice(start, start + run)
+            act = r['a3'][seg]
+            alive = int(np.sum(act > 0))
+            print(f"  silence at tick {r['tick'][start]} ({run} ticks): voxels active in {alive} ticks, last activity "
+                  f"{(np.nonzero(act)[0].max() if alive else 0)} ticks in, MT reductions {mtc[seg].sum()}")
+            if alive and shapes:
+                late = Sparse.total(x[start + 20:start + run])
+                if late.norm > 0:
+                    m = max(shapes.items(), key=lambda kv: late.cos(kv[1]))
+                    print(f'    after 20 ticks it is most like "{m[0]}" ({late.cos(m[1]):.2f})')
+        run = 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('file')
     ap.add_argument('--csv')
     ap.add_argument('--png')
+    ap.add_argument('--story', action='store_true', help='observation lab: what every hearing did')
     args = ap.parse_args()
     head, r, vox = read(args.file)
     P, Q, V = head['cells']
@@ -247,6 +329,8 @@ def main():
         counts = np.array([len(x) for x in vox])
         print(f'  voxel record: {counts.mean():.0f} voxels with activity per tick (max {counts.max()})')
     coherence(head, r, vox)
+    if args.story:
+        story(head, r, vox)
     if args.csv:
         with open(args.csv, 'w') as f:
             f.write('tick,sound,heard,step2d,step3d,step4d,modulator,active1d,sum1d,active2d,sum2d,active3d,sum3d,cells4d_active\n')

@@ -1933,6 +1933,94 @@ int runAlphabetTest(const Config& cfg) {
     return pass ? 0 : 3;
 }
 
+// Observation lab: feeds one brain a stimulus script and does nothing else (no grading); run it
+// with the activity monitor (NCM_MONITOR, NCM_MONITOR_VOXELS=1) and read the story with
+// tools/monitor/read_monitor.py --story. NCM_SCRIPT = steps separated by ';':
+//   say:WORD[:N[:R]]        hear WORD and a space, N times (default 1), R ticks of silence after
+//                           each (default 30)
+//   seq:W1,W2,...[:N[:R]]   hear the words in order (one space between), N times, R silence after
+//   cue:TEXT[:R]            hear TEXT (no space), learning off, then R ticks of silence (default 30)
+//   hold:X:T                hold character X for T ticks
+//   rest:T                  silence for T ticks
+//   learn:1 | learn:0       learning on (default) or off for the following steps
+// NCM_STATE_IN / NCM_STATE_OUT continue a saved brain.
+int runScriptTest(const Config& cfg) {
+    const char* env = std::getenv("NCM_SCRIPT");
+    const std::string script = env && *env ? env : "say:apple:10:30;rest:200;cue:app:40";
+    std::printf("Observation script: %s\n", script.c_str());
+    Session s(cfg, true);
+    if (const char* in = std::getenv("NCM_STATE_IN"); in && *in) {
+        StateFile st(in, false);
+        s.state(st);
+        std::printf("  continued the brain saved in %s\n", in);
+    }
+    auto split = [](const std::string& text, char sep) {
+        std::vector<std::string> parts;
+        std::string cur;
+        for (char c : text) {
+            if (c == sep) {
+                parts.push_back(cur);
+                cur.clear();
+            } else {
+                cur += c;
+            }
+        }
+        parts.push_back(cur);
+        return parts;
+    };
+    auto num = [](const std::vector<std::string>& f, size_t i, uint64_t fallback) {
+        return f.size() > i && !f[i].empty() ? std::strtoull(f[i].c_str(), nullptr, 10) : fallback;
+    };
+    bool learn = true;
+    uint64_t tick = 0;
+    for (const std::string& step : split(script, ';')) {
+        if (step.empty()) continue;
+        const std::vector<std::string> f = split(step, ':');
+        const std::string& op = f[0];
+        const uint64_t start = tick;
+        if (op == "say" || op == "seq") {
+            std::string text;
+            for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) text += (text.empty() ? "" : " ") + w;
+            text += " ";
+            const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
+            for (uint64_t k = 0; k < n; ++k) {
+                for (char ch : text) s.present(std::string(1, ch), 1, 1.0f, learn, UINT64_MAX);
+                s.silence(rest, learn);
+                tick += text.size() + rest;
+            }
+        } else if (op == "cue") {
+            const std::string text = f.size() > 1 ? f[1] : "";
+            const uint64_t rest = num(f, 2, 30);
+            for (char ch : text) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            s.silence(rest, false);
+            tick += text.size() + rest;
+        } else if (op == "hold") {
+            const char ch = f.size() > 1 && !f[1].empty() ? f[1][0] : 'a';
+            const uint64_t t = num(f, 2, 20);
+            s.present(std::string(1, ch), t, 1.0f, learn, UINT64_MAX);
+            tick += t;
+        } else if (op == "rest") {
+            const uint64_t t = num(f, 1, 100);
+            s.silence(t, learn);
+            tick += t;
+        } else if (op == "learn") {
+            learn = num(f, 1, 1) != 0;
+        } else {
+            std::fprintf(stderr, "unknown script step '%s'\n", step.c_str());
+            return 2;
+        }
+        std::printf("  ticks %llu-%llu: %s\n", (unsigned long long)start, (unsigned long long)tick, step.c_str());
+    }
+    std::printf("  microtubule reductions: %llu in %zu microtubules\n",
+                (unsigned long long)s.matrix().microtubuleCollapses(), s.matrix().microtubules());
+    if (const char* out = std::getenv("NCM_STATE_OUT"); out && *out) {
+        StateFile st(out, true);
+        s.state(st);
+        std::printf("  saved the brain to %s\n", out);
+    }
+    return 0;
+}
+
 // Completion moment in the vocabulary test: ticks 5-10 after a word's first half ends.
 constexpr uint64_t kVocabFrom = 4, kVocabTo = 10; // ticks 5-10 (measured: completion peaks at ticks 5-7)
 
