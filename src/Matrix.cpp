@@ -351,6 +351,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.inner_up > 0.0f) UPL_.assign(V_ * C3 * SS_ * C2, 0.0f);
     if (cfg_.learning.inner_down > 0.0f) DNL_.assign(V_ * SS_ * C2 * C3, 0.0f);
     if (!UPL_.empty() || !DNL_.empty()) innerLearned_.assign(V_, 0.0f);
+    if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     lrTarget_.resize(V_ * K);
 
     // Long-range targets: random voxels in the same field, fixed for life (spec Section 3C).
@@ -596,6 +597,7 @@ void NeuralCellularMatrix::step2D() {
     float* theta = s2_.theta.data();
     const float gd = cfg_.downward_gain;
     const LevelParams lp = cfg_.level2;
+    const float rec2 = 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) * std::clamp(modulator_, 0.0f, 1.0f);
     const float target = cfg_.target_activity;
     const float inh = -cfg_.inhibitory_strength;
     const uint32_t S = S_, L = L_;
@@ -610,6 +612,16 @@ void NeuralCellularMatrix::step2D() {
         const size_t v = size_t(vi);
         bool quiet = sheetQuietCur_[v] && isSilent(s3 + v * C3, C3);
         for (size_t c = 0; quiet && c < SS; ++c) quiet = lineQuietCur_[v * SS + c] != 0;
+        if (quiet && cfg_.sheet_continuous > 0.5f) { // the sheets around feed its edges
+            const int x = int(v % N_), y = int((v / N_) % N_);
+            const size_t rest = v / (size_t(N_) * N_);
+            for (int dy = -1; quiet && dy <= 1; ++dy)
+                for (int dx = -1; quiet && dx <= 1; ++dx) {
+                    const int nx = x + dx, ny = y + dy;
+                    if ((dx == 0 && dy == 0) || nx < 0 || ny < 0 || nx >= int(N_) || ny >= int(N_)) continue;
+                    quiet = sheetQuietCur_[(rest * N_ + size_t(ny)) * N_ + size_t(nx)] != 0;
+                }
+        }
         sheetSkip_[v] = quiet ? 1 : 0;
     }
 
@@ -627,16 +639,19 @@ void NeuralCellularMatrix::step2D() {
         const int sy = int(cell / S), sx = int(cell % S);
 
         float in[C2] = {};
+        (void)sy, (void)sx;
         for (int dy = -1; dy <= 1; ++dy)
             for (int dx = -1; dx <= 1; ++dx) {
-                const int ny = sy + dy, nx = sx + dx;
-                if (ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
-                const size_t qn = v * SS + size_t(ny) * S + size_t(nx);
+                const size_t qn = (dy == 0 && dx == 0) ? q : sheetNeighbour(q, dy, dx);
+                if (qn == SIZE_MAX) continue;
                 const uint32_t o = uint32_t((dy + 1) * 3 + (dx + 1));
                 if (isSilent(s2 + qn * C2, C2)) continue; // silent sources contribute nothing
                 // Self-persistence is not a synapse; lateral inputs carry the sender's sign.
                 const float sign = (o == 4 || !inhib2_[qn]) ? 1.0f : inh;
                 matvecAdd(W2_.data() + size_t(o) * C2 * C2, s2 + qn * C2, in, C2, C2, sign);
+                // Learned part (sheet_learn): excitatory neighbours only, muted while encoding.
+                if (!L2_.empty() && o != 4 && !inhib2_[qn])
+                    matvecAdd(L2_.data() + (q * 8 + (o < 4 ? o : o - 1)) * C2 * C2, s2 + qn * C2, in, C2, C2, rec2);
             }
         // Sheet modulation (spec Section 2C): the voxel's learned C2 x C2 map of its sheet cells' state.
         if (!isSilent(s2 + q * C2, C2)) matvecAdd(M2_.data() + v * C2 * C2, s2 + q * C2, in, C2, C2, 1.0f);
@@ -682,11 +697,12 @@ void NeuralCellularMatrix::step2D() {
         const int sy = int(cell / S), sx = int(cell % S);
         size_t rivals[8];
         uint32_t n = 0;
+        (void)sy, (void)sx;
         for (int dy = -1; dy <= 1; ++dy)
             for (int dx = -1; dx <= 1; ++dx) {
-                const int ny = sy + dy, nx = sx + dx;
-                if ((dy == 0 && dx == 0) || ny < 0 || nx < 0 || ny >= int(S) || nx >= int(S)) continue;
-                rivals[n++] = v * SS + size_t(ny) * S + size_t(nx);
+                if (dy == 0 && dx == 0) continue;
+                const size_t qn = sheetNeighbour(q, dy, dx);
+                if (qn != SIZE_MAX) rivals[n++] = qn;
             }
         float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.fire_threshold2,
                                          cfg_.fire_gain2);
@@ -1154,6 +1170,48 @@ void NeuralCellularMatrix::wordBoundary() {
     memoryPause_ = uint32_t(cfg_.learning.field_roles);
 }
 
+void NeuralCellularMatrix::learn2D(float modulator) {
+    if (L2_.empty()) return;
+    const float rate = cfg_.learning.sheet_learn * std::clamp(modulator, 0.0f, 1.0f);
+    if (rate <= 0.0f) return;
+    // After step2D() swapped the buffers, `cur` holds the new state and `next` the previous one.
+    const float* post = s2_.cur.data();
+    const float* prev = s2_.next.data();
+    const float lambda = cfg_.learning.order_gain;
+    const float oja = std::max(0.0f, cfg_.learning.oja);
+    const float budget = std::max(0.0f, cfg_.learning.sheet_budget);
+    const float linkMax = std::max(0.0f, cfg_.learning.sheet_link_bound);
+    const int64_t cells = int64_t(Q_);
+#pragma omp parallel for schedule(dynamic, 256)
+    for (int64_t qi = 0; qi < cells; ++qi) {
+        const size_t q = size_t(qi);
+        if (sheetSkip_[q / SS_]) continue;
+        const float* pq = post + q * C2;
+        const float* rq = prev + q * C2;
+        if (!anyActive(pq, rq, C2)) continue;
+        float* blocks = L2_.data() + q * 8 * C2 * C2;
+        uint32_t oi = 0;
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (dy == 0 && dx == 0) continue;
+                const size_t qn = sheetNeighbour(q, dy, dx);
+                float* block = blocks + size_t(oi++) * C2 * C2;
+                if (qn == SIZE_MAX || inhib2_[qn]) continue;
+                hebbianBlock<C2>(block, pq, rq, post + qn * C2, prev + qn * C2, 0.0f, 0.0f, rate, lambda, oja, 0.0f,
+                                 nullptr, linkMax);
+            }
+        // Each output channel's total learned input stays within the budget.
+        for (uint32_t a = 0; a < C2; ++a) {
+            float total = 0.0f;
+            for (uint32_t k = 0; k < 8; ++k)
+                for (uint32_t b = 0; b < C2; ++b) total += blocks[(size_t(k) * C2 + a) * C2 + b];
+            if (total > budget)
+                for (uint32_t k = 0; k < 8; ++k)
+                    for (uint32_t b = 0; b < C2; ++b) blocks[(size_t(k) * C2 + a) * C2 + b] *= budget / total;
+        }
+    }
+}
+
 void NeuralCellularMatrix::learn(float modulator) {
     ScopeTimer timer_(timeLearn);
     const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f);
@@ -1528,6 +1586,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(UPL_, "inner up");
     st.vec(DNL_, "inner down");
     st.vec(innerLearned_, "inner learned");
+    st.vec(L2_, "sheet links");
     st.vec(sensoryDrive_, "sensory drive");
     st.vec(motorDrive_, "motor drive");
     st.value(sensoryOn_);

@@ -72,6 +72,8 @@ public:
     // Learns the 3D neighbourhood, long-range and 4D connections from excitatory
     // sources, and each voxel's sheet modulation. M = 0 leaves everything frozen.
     void learn(float modulator);
+    // 2D learning (sheet_learn), applied right after step2D().
+    void learn2D(float modulator);
 
     // The current surprise modulator M in [0, 1]. Besides gating learning it sets the
     // mode: high M = encoding (learned connections turned down), low M = recall.
@@ -283,6 +285,23 @@ private:
     // Inner-level learning: per voxel C3 x (SS x C2) learned upward weights (path 1), per sheet
     // cell C2 x C3 learned downward weights (path 2), and each voxel's learned amount (critical period).
     AVec<float> UPL_, DNL_, innerLearned_;
+    // 2D learned lateral links: per sheet cell 8 neighbours x C2 x C2 (sheet_learn).
+    AVec<float> L2_;
+    // Sheet cell next to q at offset (dy, dx), or SIZE_MAX at the edge; with sheet_continuous the
+    // sheet continues into the neighbouring voxel's sheet (same z and w).
+    size_t sheetNeighbour(size_t q, int dy, int dx) const {
+        const size_t v = q / SS_, cell = q % SS_;
+        int sy = int(cell / S_) + dy, sx = int(cell % S_) + dx;
+        if (sy >= 0 && sx >= 0 && sy < int(S_) && sx < int(S_)) return v * SS_ + size_t(sy) * S_ + size_t(sx);
+        if (cfg_.sheet_continuous < 0.5f) return SIZE_MAX;
+        int x = int(v % N_), y = int((v / N_) % N_);
+        const size_t rest = v / (size_t(N_) * N_); // z and w
+        if (sx < 0) { --x; sx += int(S_); } else if (sx >= int(S_)) { ++x; sx -= int(S_); }
+        if (sy < 0) { --y; sy += int(S_); } else if (sy >= int(S_)) { ++y; sy -= int(S_); }
+        if (x < 0 || y < 0 || x >= int(N_) || y >= int(N_)) return SIZE_MAX;
+        const size_t vn = (rest * N_ + size_t(y)) * N_ + size_t(x);
+        return vn * SS_ + size_t(sy) * S_ + size_t(sx);
+    }
 
     // Surfaces: surface line index -> sheet cell index q.
     std::vector<uint32_t> sensoryQ_;

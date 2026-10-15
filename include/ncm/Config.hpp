@@ -166,6 +166,14 @@ struct LearningParams {
     float inner_down = 0.0f;
     float inner_rate = 0.05f;
     float inner_period = 0.0f;
+    // 2D level learns (every level influences its neighbours): each sheet cell gets a learned
+    // C2 x C2 block from each of its 8 neighbours on top of the fixed rule, learned on every 2D
+    // step with the voxels' rule (fire together / in order, Oja, per-link bound sheet_link_bound,
+    // each channel's learned input capped at sheet_budget). Muted while encoding like the
+    // voxels' learned links. Rate = sheet_learn x M; 0 = off.
+    float sheet_learn = 0.0f;
+    float sheet_budget = 1.0f;
+    float sheet_link_bound = 0.3f;
     float modulation_rate = 1.0f;   // learning-rate multiplier for each voxel's sheet modulation (0 = off)
 };
 
@@ -304,6 +312,11 @@ struct Config {
     float lattice_lr_slice = 0.0f;
     float lattice_spread_back = 0.0f;
     float lattice_sep0 = 1.0f;
+    // No islands at 2D: 1 = the sheets of neighbouring voxels join edge to edge into one
+    // continuous sheet (the sheet of voxel (x, y) continues into the sheets of (x +- 1, y +- 1)
+    // in the same z and w), so a sheet cell's 8 neighbours, its competition and its learned links
+    // reach across voxels. 0 = each voxel's sheet is closed.
+    float sheet_continuous = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

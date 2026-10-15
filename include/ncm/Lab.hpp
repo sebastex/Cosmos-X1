@@ -74,7 +74,10 @@ public:
 
         m_->step1D();
         const LevelScheduler::Tick t = clock_.advance();
-        if (t.sheet) m_->step2D();
+        if (t.sheet) {
+            m_->step2D();
+            if (learning_ && allowLearning) m_->learn2D(lastModulator_);
+        }
         if (monitor_) {
             monitorEvent_ = Monitor::Event{};
             monitorEvent_.sheet = t.sheet;
