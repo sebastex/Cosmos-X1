@@ -212,7 +212,8 @@ private:
     uint32_t hBlocks_ = 3;     // learned 4D blocks per voxel: 3 other fields (Prime) or 80 lattice neighbours
     bool tick4_ = true;        // the current 3D step is a 4D step
     std::vector<int8_t> lat4_; // 80 x (dx, dy, dz, dw): the 4D neighbourhood
-    std::vector<float> latScale_;   // per 4D-lattice offset: scaffold scale (lattice_falloff)
+    std::vector<float> latScale_;   // per 4D-lattice offset: scaffold scale (lattice_falloff, direction)
+    std::vector<float> latDir_;     // per 4D-lattice offset: direction scale, also for the learned part (as Prime's feedback)
     std::vector<uint32_t> latPerm_; // lattice_scramble: 80 x B^3 shuffles of the place inside a 4D cell
     AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
     std::vector<float> cellGain_;          // gain control per 4D cell

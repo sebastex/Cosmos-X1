@@ -241,7 +241,10 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         for (uint32_t k = 0; k < hBlocks_; ++k) {
             int d = 0;
             for (int a = 0; a < 4; ++a) d += lat4_[4 * k + a] != 0;
-            latScale_.push_back(std::pow(std::max(0.0f, cfg.lattice_falloff), float(d - 1)));
+            const int dw = lat4_[4 * k + 3]; // source at w + dw
+            const float dir = dw > 0 ? cfg.lattice_back : dw == 0 ? cfg.lattice_side : 1.0f;
+            latDir_.push_back(dir);
+            latScale_.push_back(dir * std::pow(std::max(0.0f, cfg.lattice_falloff), float(d - 1)));
         }
         if (cfg.lattice_scramble > 0.5f) {
             const uint32_t inner = B_ * B_ * B_;
@@ -749,8 +752,8 @@ void NeuralCellularMatrix::step3D() {
                     addScaled(src, fx, C3, inh * r.lattice_link * latScale_[k]);
                 } else {
                     addScaled(src, fx, C3, r.lattice_link * latScale_[k]);
-                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, 1.0f);
-                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, 1.0f);
+                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
+                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
                 }
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);

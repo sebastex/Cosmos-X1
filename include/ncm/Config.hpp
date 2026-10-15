@@ -291,6 +291,12 @@ struct Config {
     // differs in d of its 4 coordinates has strength lattice_link x lattice_falloff^(d - 1), so the
     // 8 face neighbours couple most. 1 = all 80 links the same.
     float lattice_falloff = 1.0f;
+    // Pharmakon: direction of flow, the same rule for every cell: a link's scaffold is scaled by
+    // lattice_back when its source lies further from the senses (higher w: the signal flows back
+    // toward where it entered) and by lattice_side when the source has the same w. Links whose
+    // source lies nearer the senses keep full strength. 1 = no direction (all links equal).
+    float lattice_back = 1.0f;
+    float lattice_side = 1.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input
