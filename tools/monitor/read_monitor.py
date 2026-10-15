@@ -305,6 +305,20 @@ def main():
     if head['lattice']:
         d4 = g['d4']
         print(f"    4D-lattice drive per 4D cell: mean {d4.mean():.4f}, max {d4.max():.4f}")
+    # The 4D surface by distance from the senses: the 4D cells of each w-slice (w = 0 holds the senses), how often they light up and how
+    # much 4D-lattice signal reaches them (does the signal arrive but not fire, or not arrive?).
+    per_slice = G // head['fields']
+    act = g['a3'] > 0
+    print('  4D surface by distance from the senses (w = 0 is where the senses plug in): 4D cells ever lit | lit at once (mean, sound) | 4D signal arriving per cell (sound / silence) | voxels firing per lit cell')
+    for w in range(head['fields']):
+        sl = slice(w * per_slice, (w + 1) * per_slice)
+        a = act[:, sl]
+        lit_once = a.sum(axis=1)
+        sig = g['d4'][:, sl].mean(axis=1) if head['lattice'] else np.zeros(n)
+        vfire = g["a3"][:, sl].sum(axis=1)
+        snd = lit_once[sound].mean() if sound.any() else 0.0
+        print(f"    w={w}: {int(np.sum(a.any(axis=0))):3d}/{per_slice} | {snd:6.1f} | {sig[sound].mean() if sound.any() else 0:.4f} / {sig[~sound].mean() if (~sound).any() else 0:.4f}"
+              f" | {(vfire[lit_once > 0] / lit_once[lit_once > 0]).mean() if np.any(lit_once > 0) else 0:.2f}")
     if head['version'] >= 3 and r['mtc'][-1] > 0:
         mtc = np.diff(r['mtc'].astype(np.int64), prepend=r['mtc'][0])
         print(f"  microtubules: {r['mtc'][-1] - r['mtc'][0]} objective reductions; per tick mean {mtc.mean():.1f} "

@@ -1940,6 +1940,7 @@ int runAlphabetTest(const Config& cfg) {
 //                           each (default 30)
 //   seq:W1,W2,...[:N[:R]]   hear the words in order (one space between), N times, R silence after
 //   cue:TEXT[:R]            hear TEXT (no space), learning off, then R ticks of silence (default 30)
+//   slow:WORD:H[:N[:R]]     hear WORD and a space with every character held H ticks, N times, R silence
 //   hold:X:T                hold character X for T ticks
 //   rest:T                  silence for T ticks
 //   learn:1 | learn:0       learning on (default) or off for the following steps
@@ -1989,6 +1990,14 @@ int runScriptTest(const Config& cfg) {
                 for (char ch : text) s.present(std::string(1, ch), 1, 1.0f, learn, UINT64_MAX);
                 s.silence(rest, learn);
                 tick += text.size() + rest;
+            }
+        } else if (op == "slow") {
+            const std::string text = (f.size() > 1 ? f[1] : "") + " ";
+            const uint64_t hold = std::max<uint64_t>(1, num(f, 2, 3)), n = num(f, 3, 1), rest = num(f, 4, 30);
+            for (uint64_t k = 0; k < n; ++k) {
+                for (char ch : text) s.present(std::string(1, ch), hold, 1.0f, learn, UINT64_MAX);
+                s.silence(rest, learn);
+                tick += text.size() * hold + rest;
             }
         } else if (op == "cue") {
             const std::string text = f.size() > 1 ? f[1] : "";
