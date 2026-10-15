@@ -1943,10 +1943,12 @@ int runAlphabetTest(const Config& cfg) {
 //   hold:X:T                hold character X for T ticks
 //   rest:T                  silence for T ticks
 //   learn:1 | learn:0       learning on (default) or off for the following steps
+// An underscore in a text stands for a space (cue:the_cat), since the script travels without spaces.
 // NCM_STATE_IN / NCM_STATE_OUT continue a saved brain.
 int runScriptTest(const Config& cfg) {
     const char* env = std::getenv("NCM_SCRIPT");
-    const std::string script = env && *env ? env : "say:apple:10:30;rest:200;cue:app:40";
+    std::string script = env && *env ? env : "say:apple:10:30;rest:200;cue:app:40";
+    std::replace(script.begin(), script.end(), '_', ' ');
     std::printf("Observation script: %s\n", script.c_str());
     Session s(cfg, true);
     if (const char* in = std::getenv("NCM_STATE_IN"); in && *in) {
