@@ -215,6 +215,11 @@ private:
     std::vector<uint32_t> latPerm_; // lattice_scramble: 80 x B^3 shuffles of the place inside a 4D cell
     AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
     std::vector<float> cellGain_;          // gain control per 4D cell
+    // Gain-control region of voxel v (lattice_agc: 4D cell, w-slice or whole brain).
+    size_t gainOf(size_t v) const {
+        const int grain = int(cfg_.lattice_agc + 0.5f);
+        return grain == 2 ? 0 : grain == 1 ? v / Vf_ : cell4Of(v);
+    }
     size_t cell4Of(size_t v) const {
         const uint32_t x = uint32_t(v % N_), y = uint32_t((v / N_) % N_), z = uint32_t((v / (size_t(N_) * N_)) % N_);
         const uint32_t A = N_ / B_;

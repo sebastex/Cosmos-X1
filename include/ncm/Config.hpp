@@ -284,6 +284,9 @@ struct Config {
     // Pharmakon: 1 = on each 3D step the w-slices update in order from the senses (w = 0) on, each
     // reading the new state of the slices before it (no extra step of lag per slice); 0 = all at once.
     float lattice_sweep = 0.0f;
+    // Pharmakon: the region whose gain control acts together: 0 = each 4D cell, 1 = each w-slice
+    // (Prime's grain: a quiet region raises its gain as a whole), 2 = the whole brain.
+    float lattice_agc = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

@@ -769,7 +769,7 @@ void NeuralCellularMatrix::step3D() {
             return t;
         };
         // Gain control scales incoming signals only (per field).
-        const float afferentGain = lattice_ ? cellGain_[cell4Of(v)] : fieldGain_[f];
+        const float afferentGain = lattice_ ? cellGain_[gainOf(v)] : fieldGain_[f];
         const float* w = W3_.data() + v * 27 * C3 * C3;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
@@ -1030,12 +1030,14 @@ void NeuralCellularMatrix::step3D() {
             float strongest = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, cell[c]);
             if (strongest <= 0.0f) continue;
-            const size_t k = cell4Of(v);
+            const size_t k = gainOf(v);
             anything[k] = 1;
             if (strongest >= level) ++active[k];
         }
-        const float inside = float(size_t(B_) * B_ * B_);
-        for (size_t k = 0; k < cells; ++k) {
+        const int grain = int(cfg_.lattice_agc + 0.5f);
+        const size_t regions = grain == 2 ? 1 : grain == 1 ? kFields : cells;
+        const float inside = grain == 2 ? float(V_) : grain == 1 ? float(Vf_) : float(size_t(B_) * B_ * B_);
+        for (size_t k = 0; k < regions; ++k) {
             float& g = cellGain_[k];
             if (!anything[k] || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
                 g += (1.0f - g) * std::clamp(cfg_.agc_relax_field, 0.0f, 1.0f);

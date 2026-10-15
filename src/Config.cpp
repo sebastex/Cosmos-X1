@@ -206,6 +206,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"spread_local", &c.spread_local},
         {"lattice_hold", &c.lattice_hold},
         {"lattice_sweep", &c.lattice_sweep},
+        {"lattice_agc", &c.lattice_agc},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},
