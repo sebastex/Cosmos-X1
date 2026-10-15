@@ -230,6 +230,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"mt_threshold", &c.mt_threshold},
         {"mt_gain", &c.mt_gain},
         {"mt_decay", &c.mt_decay},
+        {"mt_levels", &c.mt_levels},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},
