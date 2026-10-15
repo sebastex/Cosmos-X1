@@ -317,6 +317,28 @@ struct Config {
     // in the same z and w), so a sheet cell's 8 neighbours, its competition and its learned links
     // reach across voxels. 0 = each voxel's sheet is closed.
     float sheet_continuous = 0.0f;
+    // Evidence only, the same rule at every level: a child reports up only the part of its drive
+    // that did not come from its own parent. A sheet cell lit only by its voxel sends nothing
+    // back to that voxel (its roots show, but cannot echo), while sheet cells lit from their lines
+    // or neighbours count fully. Strength 0..1 (0 = off: the whole state goes up).
+    float up_evidence = 0.0f;
+    // Microtubules (Orch-OR-like, local quantum mathematics): inside every voxel a cylindrical
+    // lattice of 13 protofilaments x mt_len tubulin units. Each unit holds a superposition
+    // a0|0> + a1|1> (complex amplitudes) and evolves unitarily under H = mt_bias sz + h sx, where
+    // h = mt_couple x (sum of its 4 neighbours' <sx>, helical seam included) + mt_drive x (its voxel
+    // channel's activity): superposition, phase and interference. Each 3D step the microtubule
+    // accumulates its superposition (sum of 4 |a0|^2 |a1|^2); when the total passes mt_threshold
+    // it reduces objectively: every unit collapses to 0 or 1 with the Born probabilities. The
+    // collapsed pattern pushes the voxel's channels (mt_gain x share of each channel's units at 1),
+    // fading by mt_decay per 3D step. 0 = off.
+    float microtubule = 0.0f;
+    float mt_len = 8.0f;
+    float mt_couple = 0.3f;
+    float mt_drive = 1.0f;
+    float mt_bias = 0.2f;
+    float mt_threshold = 30.0f;
+    float mt_gain = 0.05f;
+    float mt_decay = 0.7f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

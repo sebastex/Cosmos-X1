@@ -352,6 +352,19 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.inner_down > 0.0f) DNL_.assign(V_ * SS_ * C2 * C3, 0.0f);
     if (!UPL_.empty() || !DNL_.empty()) innerLearned_.assign(V_, 0.0f);
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
+    if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
+    if (cfg_.microtubule > 0.5f) {
+        mtLen_ = std::clamp<uint32_t>(uint32_t(cfg_.mt_len + 0.5f), 4, 64);
+        mtUnits_ = 13 * mtLen_;
+        mtAmp_.assign(V_ * mtUnits_ * 4, 0.0f);
+        for (size_t i = 0; i < V_ * mtUnits_; ++i) mtAmp_[i * 4] = 1.0f; // every unit starts definite in |0>
+        mtTau_.assign(V_, 0.0f);
+        mtOut_.assign(V_ * C3, 0.0f);
+        mtQuiet_.assign(V_, 1);
+        mtChan_.resize(mtUnits_);
+        for (uint32_t u = 0; u < mtUnits_; ++u)
+            mtChan_[u] = std::min<uint32_t>(C3 - 1, uint32_t(hashUniform(cfg_.seed, kStreamMicrotubule, u) * C3));
+    }
     lrTarget_.resize(V_ * K);
 
     // Long-range targets: random voxels in the same field, fixed for life (spec Section 3C).
@@ -672,9 +685,17 @@ void NeuralCellularMatrix::step2D() {
             if (anyActive)
                 for (uint32_t c = 0; c < C2; ++c) in[c] += cfg_.line_upward_gain * up[c];
         }
+        float before = 0.0f;
+        if (!parentShare2_.empty())
+            for (uint32_t c = 0; c < C2; ++c) before += std::max(0.0f, in[c]);
         if (!isSilent(s3 + v * C3, C3)) {
             matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
             if (!DNL_.empty()) matvecAdd(DNL_.data() + q * C2 * C3, s3 + v * C3, in, C2, C3, gd * cfg_.learning.inner_down);
+        }
+        if (!parentShare2_.empty()) { // how much of this cell's drive its own voxel gave it
+            float after = 0.0f;
+            for (uint32_t c = 0; c < C2; ++c) after += std::max(0.0f, in[c]);
+            parentShare2_[q] = after > 0.0f ? std::clamp((after - before) / after, 0.0f, 1.0f) : 0.0f;
         }
 
         drive2_[q] = activateCell<C2>(in, out + q * C2,
@@ -749,6 +770,7 @@ void NeuralCellularMatrix::step3D() {
     const size_t SS = SS_;
 
     const int64_t voxels = int64_t(V_);
+    if (!mtAmp_.empty()) stepMicrotubules();
     // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
     // the later ones within the same step. Otherwise one pass over all fields.
     // Pharmakon: lattice_sweep = the w-slices update in order (the input enters at w = 0), each
@@ -953,6 +975,14 @@ void NeuralCellularMatrix::step3D() {
                 for (uint32_t c = 0; c < C2; ++c) active = active || sc[c] != 0.0f;
                 if (!active) continue;
                 anyActive = true;
+                // Evidence only: what the voxel itself put into this sheet cell does not come back.
+                const float own = parentShare2_.empty()
+                                      ? 1.0f
+                                      : 1.0f - std::clamp(cfg_.up_evidence, 0.0f, 1.0f) * parentShare2_[v * SS + cell];
+                if (own <= 0.0f) continue;
+                float scw[C2];
+                for (uint32_t c = 0; c < C2; ++c) scw[c] = own * sc[c];
+                sc = scw;
                 matvecAdd(U2_.data() + cell * C3 * C2, sc, up, C3, C2, 1.0f);
                 if (!UPL_.empty()) {
                     const float* wl = UPL_.data() + v * C3 * SS * C2 + cell * C2;
@@ -996,6 +1026,9 @@ void NeuralCellularMatrix::step3D() {
                 plSum += learned;
                 inSum += std::max(0.0f, in[c]);
             }
+            // Microtubules: the pattern of the last objective reduction pushes the channels.
+            if (!mtOut_.empty())
+                for (uint32_t c = 0; c < C3; ++c) in[c] += mtOut_[v * C3 + c];
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
         }
@@ -1168,6 +1201,75 @@ void NeuralCellularMatrix::wordBoundary() {
     if (cfg_.learning.field_roles <= 0.0f) return;
     std::fill(orderTrace3_.begin() + Vf_ * C3, orderTrace3_.begin() + 2 * Vf_ * C3, 0.0f);
     memoryPause_ = uint32_t(cfg_.learning.field_roles);
+}
+
+void NeuralCellularMatrix::stepMicrotubules() {
+    // One 3D step of every voxel's microtubule (exact 2 x 2 unitary per unit, dt = 1), driven by
+    // the voxel's current state; objective reduction when the accumulated superposition passes
+    // the threshold.
+    const float* s3 = s3_.cur.data();
+    const uint32_t P = 13, Lm = mtLen_, T = mtUnits_;
+    const float J = cfg_.mt_couple, D = cfg_.mt_drive, eps = cfg_.mt_bias;
+    const float thr = std::max(1e-3f, cfg_.mt_threshold), gain = cfg_.mt_gain;
+    const float decay = std::clamp(cfg_.mt_decay, 0.0f, 1.0f);
+    const uint64_t step = mtSteps_++;
+    const int64_t voxels = int64_t(V_);
+    uint64_t collapses = 0;
+#pragma omp parallel for schedule(dynamic, 256) reduction(+ : collapses)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        float* out = mtOut_.data() + v * C3;
+        for (uint32_t c = 0; c < C3; ++c) out[c] *= decay;
+        const float* x = s3 + v * C3;
+        const bool driven = !isSilent(x, C3);
+        if (!driven && mtQuiet_[v]) continue; // definite and undriven: nothing changes
+        float* a = mtAmp_.data() + v * T * 4;
+        float sx[13 * 64];
+        for (uint32_t u = 0; u < T; ++u) sx[u] = 2.0f * (a[u * 4] * a[u * 4 + 2] + a[u * 4 + 1] * a[u * 4 + 3]);
+        float sup = 0.0f;
+        for (uint32_t u = 0; u < T; ++u) {
+            const uint32_t p = u % P, k = u / P;
+            // Neighbours on the cylinder: along the protofilament, and around it (3-start helical seam).
+            float field = 0.0f;
+            if (k > 0) field += sx[u - P];
+            if (k + 1 < Lm) field += sx[u + P];
+            if (p + 1 < P) field += sx[u + 1];
+            else if (k + 3 < Lm) field += sx[(k + 3) * P];
+            if (p > 0) field += sx[u - 1];
+            else if (k >= 3) field += sx[(k - 3) * P + P - 1];
+            const float h = J * field + D * x[mtChan_[u]];
+            float* au = a + u * 4;
+            const float om = std::sqrt(eps * eps + h * h);
+            if (om > 1e-9f) {
+                const float cs = std::cos(om), sn = std::sin(om) / om;
+                // a' = cos(om) a - i sin(om)/om H a, with H = [[eps, h], [h, -eps]].
+                const float h0r = eps * au[0] + h * au[2], h0i = eps * au[1] + h * au[3];
+                const float h1r = h * au[0] - eps * au[2], h1i = h * au[1] - eps * au[3];
+                const float n0r = cs * au[0] + sn * h0i, n0i = cs * au[1] - sn * h0r;
+                const float n1r = cs * au[2] + sn * h1i, n1i = cs * au[3] - sn * h1r;
+                au[0] = n0r, au[1] = n0i, au[2] = n1r, au[3] = n1i;
+            }
+            const float p1 = au[2] * au[2] + au[3] * au[3];
+            sup += 4.0f * p1 * (1.0f - p1);
+        }
+        mtTau_[v] += sup;
+        mtQuiet_[v] = (!driven && sup < 1e-6f) ? 1 : 0;
+        if (mtTau_[v] < thr) continue;
+        // Objective reduction: every unit becomes definite, 1 with probability |a1|^2 (Born rule).
+        float ones[C3] = {}, units[C3] = {};
+        for (uint32_t u = 0; u < T; ++u) {
+            float* au = a + u * 4;
+            const float p1 = au[2] * au[2] + au[3] * au[3];
+            const bool one = hashUniform(cfg_.seed, kStreamMicrotubule, ((step * V_ + v) * T + u) + (uint64_t(1) << 44)) < p1;
+            au[0] = one ? 0.0f : 1.0f, au[1] = 0.0f, au[2] = one ? 1.0f : 0.0f, au[3] = 0.0f;
+            units[mtChan_[u]] += 1.0f;
+            ones[mtChan_[u]] += one ? 1.0f : 0.0f;
+        }
+        for (uint32_t c = 0; c < C3; ++c) out[c] += units[c] > 0.0f ? gain * ones[c] / units[c] : 0.0f;
+        mtTau_[v] = 0.0f;
+        ++collapses;
+    }
+    mtCollapses_ += collapses;
 }
 
 void NeuralCellularMatrix::learn2D(float modulator) {
@@ -1587,6 +1689,13 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(DNL_, "inner down");
     st.vec(innerLearned_, "inner learned");
     st.vec(L2_, "sheet links");
+    st.vec(parentShare2_, "parent share");
+    st.vec(mtAmp_, "microtubules");
+    st.vec(mtTau_, "microtubules");
+    st.vec(mtOut_, "microtubules");
+    st.vec(mtQuiet_, "microtubules");
+    st.value(mtSteps_);
+    st.value(mtCollapses_);
     st.vec(sensoryDrive_, "sensory drive");
     st.vec(motorDrive_, "motor drive");
     st.value(sensoryOn_);

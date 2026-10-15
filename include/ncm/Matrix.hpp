@@ -131,6 +131,8 @@ public:
     const std::vector<uint8_t>& sheetQuiet() const { return sheetQuietCur_; } // 1 = the voxel's sheet is silent
     const AVec<float>& latticeDriveFixed() const { return hold4Fixed_; }     // held 4D-lattice drive (Pharmakon)
     const AVec<float>& latticeDriveLearned() const { return hold4Learned_; }
+    // Microtubule objective reductions so far (all voxels).
+    uint64_t microtubuleCollapses() const { return mtCollapses_; }
     size_t memoryBytes() const;
     // Save or restore everything that changes while the brain runs (one brain across runs).
     // Restoring needs a brain built with the same configuration and seed.
@@ -287,6 +289,16 @@ private:
     AVec<float> UPL_, DNL_, innerLearned_;
     // 2D learned lateral links: per sheet cell 8 neighbours x C2 x C2 (sheet_learn).
     AVec<float> L2_;
+    // up_evidence: per sheet cell, the share of its last drive that came from its own voxel.
+    AVec<float> parentShare2_;
+    // Microtubules: per voxel mtUnits_ units x (re a0, im a0, re a1, im a1); accumulated
+    // superposition; held push on the voxel's channels; which channel drives each unit.
+    uint32_t mtUnits_ = 0, mtLen_ = 0;
+    AVec<float> mtAmp_, mtTau_, mtOut_;
+    std::vector<uint8_t> mtQuiet_;
+    std::vector<uint32_t> mtChan_;
+    uint64_t mtSteps_ = 0, mtCollapses_ = 0;
+    void stepMicrotubules();
     // Sheet cell next to q at offset (dy, dx), or SIZE_MAX at the edge; with sheet_continuous the
     // sheet continues into the neighbouring voxel's sheet (same z and w).
     size_t sheetNeighbour(size_t q, int dy, int dx) const {

@@ -64,7 +64,7 @@ Monitor::Monitor(const Config& cfg, const std::string& file, uint64_t every, uin
 
     // Header (little-endian): magic, version, geometry, levels, options.
     std::fwrite("NCMMON01", 1, 8, f_);
-    const uint32_t head[] = {2u, N_, SS_, L_, C1, C2, C3, kFields, A_, B_, G_, cfg.lattice4d > 0.5f ? 1u : 0u,
+    const uint32_t head[] = {3u, N_, SS_, L_, C1, C2, C3, kFields, A_, B_, G_, cfg.lattice4d > 0.5f ? 1u : 0u,
                              voxels_ ? 1u : 0u, uint32_t(std::min<uint64_t>(every_, UINT32_MAX))};
     std::fwrite(head, sizeof(uint32_t), sizeof(head) / sizeof(uint32_t), f_);
     const float levels[] = {level1_, level2_, level3_};
@@ -153,6 +153,7 @@ void Monitor::record(const NeuralCellularMatrix& m, const Event& e) {
     for (uint32_t g = 0; g < G_; ++g) stems += ga3[g] > 0;
     for (size_t v = 0; v < V_; ++v) r2 += r2_[v], o2 += o2_[v], r1 += r1_[v], o1 += o1_[v];
     put(f_, stems), put(f_, r2), put(f_, o2), put(f_, r1), put(f_, o1);
+    put(f_, m.microtubuleCollapses()); // microtubule objective reductions so far (version 3)
     for (uint32_t g = 0; g < G_; ++g) {
         put(f_, ga1[g]), put(f_, gs1[g]), put(f_, ga2[g]), put(f_, gs2[g]), put(f_, ga3[g]), put(f_, gs3[g]);
         put(f_, gd4[g]);

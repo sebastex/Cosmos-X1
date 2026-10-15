@@ -35,7 +35,8 @@ def read(path):
                     ('g', [('a1', '<u4'), ('s1', '<f4'), ('a2', '<u4'), ('s2', '<f4'), ('a3', '<u4'),
                            ('s3', '<f4'), ('d4', '<f4')], (G,))])
     if version >= 2:  # roots: stems, sheet cells in active / silent voxels, line cells in active / silent sheet cells
-        rec = np.dtype(rec.descr[:11] + [('stems', '<u4'), ('r2', '<u4'), ('o2', '<u4'), ('r1', '<u4'), ('o1', '<u4')] +
+        extra = [('mtc', '<u8')] if version >= 3 else []  # microtubule reductions so far
+        rec = np.dtype(rec.descr[:11] + [('stems', '<u4'), ('r2', '<u4'), ('o2', '<u4'), ('r1', '<u4'), ('o1', '<u4')] + extra +
                        rec.descr[11:])
     if not voxels:
         n = (len(data) - o) // rec.itemsize
@@ -222,6 +223,11 @@ def main():
     if head['lattice']:
         d4 = g['d4']
         print(f"    4D-lattice drive per 4D cell: mean {d4.mean():.4f}, max {d4.max():.4f}")
+    if head['version'] >= 3 and r['mtc'][-1] > 0:
+        mtc = np.diff(r['mtc'].astype(np.int64), prepend=r['mtc'][0])
+        print(f"  microtubules: {r['mtc'][-1] - r['mtc'][0]} objective reductions; per tick mean {mtc.mean():.1f} "
+              f"(sound {mtc[sound].mean() if sound.any() else 0:.1f} / silence {mtc[~sound].mean() if (~sound).any() else 0:.1f}), "
+              f"ticks with any {np.mean(mtc > 0) * 100:.0f}%")
     if head['version'] >= 2:
         st = r['stems'].astype(float)
         on = st > 0
