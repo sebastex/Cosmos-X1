@@ -297,6 +297,13 @@ struct Config {
     // source lies nearer the senses keep full strength. 1 = no direction (all links equal).
     float lattice_back = 1.0f;
     float lattice_side = 1.0f;
+    // Pharmakon, Prime's choices one at a time (diagnosis): lattice_lr_slice = 1: long-range
+    // targets inside the voxel's own w-slice (Prime: inside its field); lattice_spread_back = 1:
+    // spread sources only in slices nearer the senses (Prime: earlier fields; w = 0 has none);
+    // lattice_sep0 = 0: no pattern separation in the w = 0 slice (Prime: none in the Input field).
+    float lattice_lr_slice = 0.0f;
+    float lattice_spread_back = 0.0f;
+    float lattice_sep0 = 1.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

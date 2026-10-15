@@ -359,8 +359,9 @@ void NeuralCellularMatrix::initVoxelWeights() {
 #pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
-        const size_t fieldBase = lattice_ ? 0 : (v / Vf_) * Vf_;
-        const size_t range = lattice_ ? V_ : Vf_;
+        const bool anywhere = lattice_ && cfg_.lattice_lr_slice < 0.5f;
+        const size_t fieldBase = anywhere ? 0 : (v / Vf_) * Vf_;
+        const size_t range = anywhere ? V_ : Vf_;
         for (uint32_t l = 0; l < K; ++l) {
             size_t t = v;
             uint64_t attempt = 0;
@@ -400,6 +401,16 @@ void NeuralCellularMatrix::initVoxelWeights() {
             for (uint32_t l = 0; l < S4; ++l) {
                 const uint64_t key = uint64_t(v) * S4 + l;
                 const double u = hashUniform(cfg_.seed, kStreamLink4dSpread, key);
+                if (cfg_.lattice_spread_back > 0.5f) { // a random voxel in a random slice nearer the senses
+                    if (w == 0) {
+                        spreadPos_[v * S4 + l] = UINT32_MAX; // none
+                        continue;
+                    }
+                    const uint32_t g = std::min<uint32_t>(uint32_t(u * double(w)), w - 1);
+                    const double p = hashUniform(cfg_.seed, kStreamLattice4d, key + (uint64_t(1) << 42));
+                    spreadPos_[v * S4 + l] = uint32_t(size_t(g) * Vf_ + std::min(size_t(p * double(Vf_)), Vf_ - 1));
+                    continue;
+                }
                 if (!local) {
                     spreadPos_[v * S4 + l] = uint32_t(std::min(size_t(u * double(V_)), V_ - 1));
                     continue;
@@ -888,6 +899,7 @@ void NeuralCellularMatrix::step3D() {
             if (lattice_)
                 for (uint32_t l = 0; l < S4; ++l) {
                     const size_t vs = spreadPos_[v * S4 + l];
+                    if (vs >= V_) continue; // no source
                     const float* src = (sweep && vs / Vf_ < f ? out : s3) + vs * C3;
                     if (isSilent(src, C3)) continue;
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
@@ -972,7 +984,7 @@ void NeuralCellularMatrix::step3D() {
             diagInput3_[v] = inSum;
         }
         // Pattern separation: while encoding, channels already loaded with memories are harder to recruit.
-        if (!usage3_.empty() && (f > 0 || lattice_) && modulator_ > 0.0f) {
+        if (!usage3_.empty() && (f > 0 || (lattice_ && cfg_.lattice_sep0 > 0.5f)) && modulator_ > 0.0f) {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
             const float* u = usage3_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
@@ -1115,7 +1127,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
         if (!WS_.empty())
             for (uint32_t l = 0; l < spreadK_; ++l) {
                 const size_t vs = spreadPos_[v * spreadK_ + l];
-                if (!inhib3_[vs]) fn(WS_.data() + (v * spreadK_ + l) * C3 * C3, vs);
+                if (vs < V_ && !inhib3_[vs]) fn(WS_.data() + (v * spreadK_ + l) * C3 * C3, vs);
             }
         return;
     }
