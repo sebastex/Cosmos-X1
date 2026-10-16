@@ -1974,6 +1974,8 @@ int runScriptTest(const Config& cfg) {
     auto num = [](const std::vector<std::string>& f, size_t i, uint64_t fallback) {
         return f.size() > i && !f[i].empty() ? std::strtoull(f[i].c_str(), nullptr, 10) : fallback;
     };
+    // One run of the script on a session (the learner, then optionally its untrained twin).
+    auto run = [&](Session& s) -> int {
     bool learn = true;
     uint64_t tick = 0;
     for (const std::string& step : split(script, ';')) {
@@ -2022,6 +2024,9 @@ int runScriptTest(const Config& cfg) {
         }
         std::printf("  ticks %llu-%llu: %s\n", (unsigned long long)start, (unsigned long long)tick, step.c_str());
     }
+    return 0;
+    };
+    if (int r = run(s)) return r;
     std::fputs(s.matrix().probeReport().c_str(), stdout);
     std::printf("  microtubule reductions: %llu in %zu microtubules\n",
                 (unsigned long long)s.matrix().microtubuleCollapses(), s.matrix().microtubules());
@@ -2029,6 +2034,13 @@ int runScriptTest(const Config& cfg) {
         StateFile st(out, true);
         s.state(st);
         std::printf("  saved the brain to %s\n", out);
+    }
+    // NCM_SCRIPT_TWIN=1: the same script on an untrained twin (same wiring, learning off), so every
+    // cue result has a baseline (a cue can also bring back its word by its own echo).
+    if (const char* tw = std::getenv("NCM_SCRIPT_TWIN"); tw && std::atoi(tw) > 0) {
+        Session twin(cfg, false);
+        std::printf("Untrained twin (same wiring, no learning), same script:\n");
+        if (int r = run(twin)) return r;
     }
     return 0;
 }

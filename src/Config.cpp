@@ -239,6 +239,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"mt_gain", &c.mt_gain},
         {"mt_decay", &c.mt_decay},
         {"mt_levels", &c.mt_levels},
+        {"mt_mode", &c.mt_mode},
+        {"mt_stream", &c.mt_stream},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},

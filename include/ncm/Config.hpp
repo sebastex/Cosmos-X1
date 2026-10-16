@@ -348,6 +348,11 @@ struct Config {
     // Which levels have microtubules (with microtubule = 1): sum of 1 = line cells, 2 = sheet
     // cells, 4 = voxels. 7 = every cell. Each level's microtubules step on that level's clock.
     float mt_levels = 7.0f;
+    // Microtubule controls (MicrotubuleLayer::Params::mode): 0 quantum, 1 expected value,
+    // 2 classical stand-in, 3 shuffled outputs, 4 constant boost. mt_stream picks another random
+    // stream for the reductions (the same brain with other chances).
+    float mt_mode = 0.0f;
+    float mt_stream = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

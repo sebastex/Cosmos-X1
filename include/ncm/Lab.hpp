@@ -84,7 +84,7 @@ public:
             monitorEvent_.voxel = t.voxel;
             monitorEvent_.fourD = t.fourD;
             monitorEvent_.sensory = fingerprint != nullptr;
-            monitorEvent_.learning = learning_ && allowLearning;
+            monitorEvent_.learning = allowLearning; // teaching moment (the same in an untrained twin)
             monitorEvent_.heard = fingerprint ? heard_ : 0;
         }
         if (t.voxel) {

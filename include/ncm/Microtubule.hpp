@@ -28,6 +28,14 @@ class MicrotubuleLayer {
 public:
     struct Params {
         float couple = 0.3f, drive = 1.0f, bias = 0.2f, threshold = 30.0f, gain = 0.05f, decay = 0.7f;
+        // Controls (to tell what the quantum part adds): 0 = quantum (Born-rule reduction),
+        // 1 = expected value (reduction pushes by |a1|^2 and each unit takes its likelier state, no
+        // chance), 2 = classical stand-in (no quantum state: the push is a fading trace of the cell's
+        // recent firing per channel), 3 = shuffled (quantum, but each unit's collapse pushes a
+        // different channel than the one that drives it), 4 = constant boost (gain x 0.5 on every
+        // channel of a cell with input, no microtubule at all).
+        int mode = 0;
+        uint64_t stream = 0; // which random stream the reductions draw from (same brain, other chances)
     };
 
     bool on() const { return channels_ > 0; }
@@ -46,6 +54,8 @@ private:
     static constexpr uint32_t kNone = UINT32_MAX;
     uint32_t channels_ = 0, len_ = 0, units_ = 0;
     uint64_t seed_ = 0, salt_ = 0, step_ = 0, collapses_ = 0;
+    int mode_ = 0;
+    float gain_ = 0.0f;
     std::vector<uint32_t> index_;  // per cell: its microtubule, or kNone
     std::vector<uint32_t> owner_;  // per microtubule: its cell
     std::vector<int16_t> amp_;     // per microtubule: units x (a0, re a1, im a1), scaled by 32767
@@ -56,6 +66,7 @@ private:
     std::vector<uint64_t> visit_;  // step at which the microtubule was last updated
     std::vector<uint32_t> live_;   // microtubules still holding a superposition
     std::vector<uint32_t> chan_;   // per unit: the channel of the cell that drives it
+    std::vector<uint32_t> outChan_; // per unit: the channel its collapse pushes in the shuffled control
 };
 
 } // namespace ncm

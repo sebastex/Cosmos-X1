@@ -1307,6 +1307,7 @@ MicrotubuleLayer::Params NeuralCellularMatrix::mtParams() const {
     MicrotubuleLayer::Params p;
     p.couple = cfg_.mt_couple, p.drive = cfg_.mt_drive, p.bias = cfg_.mt_bias;
     p.threshold = cfg_.mt_threshold, p.gain = cfg_.mt_gain, p.decay = cfg_.mt_decay;
+    p.mode = int(cfg_.mt_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
     return p;
 }
 

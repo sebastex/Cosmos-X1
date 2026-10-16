@@ -25,9 +25,20 @@ void MicrotubuleLayer::init(size_t cells, uint32_t channels, uint32_t len, uint6
     chan_.resize(units_);
     for (uint32_t u = 0; u < units_; ++u)
         chan_[u] = std::min<uint32_t>(channels - 1, uint32_t(hashUniform(seed, kStreamMicrotubule, salt * 4096 + u) * channels));
+    outChan_.resize(units_);
+    for (uint32_t u = 0; u < units_; ++u) // always a different channel
+        outChan_[u] = (chan_[u] + 1 + std::min<uint32_t>(channels - 2, uint32_t(hashUniform(seed, kStreamMicrotubule, salt * 4096 + 2048 + u) * (channels - 1)))) % channels;
 }
 
 void MicrotubuleLayer::addPush(size_t cell, float* in, float decay) const {
+    if (mode_ == 4) { // constant boost control: the same size of push everywhere, no microtubule
+        float own = 0.0f;
+        for (uint32_t c = 0; c < channels_; ++c) own += std::max(0.0f, in[c]);
+        if (own <= 0.0f) return;
+        own /= float(channels_);
+        for (uint32_t c = 0; c < channels_; ++c) in[c] += 0.5f * gain_ * own;
+        return;
+    }
     const uint32_t id = index_[cell];
     if (id == kNone) return;
     const float f = std::pow(std::clamp(decay, 0.0f, 1.0f), float(step_ - stamp_[id]));
@@ -45,6 +56,8 @@ void MicrotubuleLayer::addPush(size_t cell, float* in, float decay) const {
 void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& active, const Params& p) {
     const uint64_t now = ++step_;
     const uint32_t C = channels_, T = units_, P = 13, Lm = len_;
+    mode_ = p.mode, gain_ = p.gain;
+    if (mode_ == 4) return; // constant boost: nothing to step
     // A cell's microtubule is made the first time the cell fires (every unit definite in |0>).
     for (uint32_t cell : active) {
         if (index_[cell] != kNone) continue;
@@ -79,6 +92,14 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
     for (int64_t i = 0; i < n; ++i) {
         const uint32_t id = list[size_t(i)];
         const float* x = state + size_t(owner_[id]) * C;
+        if (mode_ == 2) { // classical stand-in: a fading trace of recent firing, no quantum state
+            float* o = out_.data() + size_t(id) * C;
+            const float f = std::pow(decay, float(now - stamp_[id]));
+            for (uint32_t c = 0; c < C; ++c) o[c] = f * o[c] + (1.0f - decay) * p.gain * std::clamp(x[c], 0.0f, 1.0f);
+            stamp_[id] = now;
+            quiet_[id] = 1;
+            continue;
+        }
         int16_t* a = amp_.data() + size_t(id) * T * 3;
         float a0[13 * 64], br[13 * 64], bi[13 * 64], sx[13 * 64];
         for (uint32_t u = 0; u < T; ++u) {
@@ -128,11 +149,20 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
         float ones[64] = {}, count[64] = {};
         for (uint32_t u = 0; u < T; ++u) {
             const float r1 = a[u * 3 + 1] / kScale, i1 = a[u * 3 + 2] / kScale;
-            const bool one = hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull), kStreamMicrotubule,
+            const float p1 = r1 * r1 + i1 * i1;
+            if (mode_ == 1) { // expected value: push by the probability, the likelier state wins
+                const bool likely = p1 > 0.5f;
+                a[u * 3] = likely ? 0 : int16_t(kScale), a[u * 3 + 1] = likely ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
+                count[chan_[u]] += 1.0f;
+                ones[chan_[u]] += p1;
+                continue;
+            }
+            const bool one = hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull) ^ mix64(p.stream + 1), kStreamMicrotubule,
                                          mix64(now * 0x9E3779B97F4A7C15ull + 0x632BE59BD9B4E019ull) ^ (uint64_t(owner_[id]) * T + u)) < r1 * r1 + i1 * i1; // step and unit hashed apart (no overlap for 16M cells)
             a[u * 3] = one ? 0 : int16_t(kScale), a[u * 3 + 1] = one ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
-            count[chan_[u]] += 1.0f;
-            ones[chan_[u]] += one ? 1.0f : 0.0f;
+            const uint32_t pc = mode_ == 3 ? outChan_[u] : chan_[u];
+            count[pc] += 1.0f;
+            ones[pc] += one ? 1.0f : 0.0f;
         }
         float* o = out_.data() + size_t(id) * C;
         const float f = std::pow(decay, float(now - stamp_[id]));

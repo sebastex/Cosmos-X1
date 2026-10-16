@@ -259,6 +259,108 @@ def story(head, r, vox, limit=400):
         run = 0
 
 
+def dense(sp, size):
+    v = np.zeros(size, np.float32)
+    if len(sp.idx):
+        v[sp.idx] = sp.val
+    return v
+
+
+def lab_scores(head, r, vox, window=25):
+    """Stricter scores (independent review): shapes are centred (the mean word shape, the
+    always-on background, is removed), cue results are own-minus-best margins against every other
+    known word, after-windows have one fixed length, and a 4D cell counts as carrying activity only
+    when at least 10% of its voxels fire. Prints a table and one LABSCORE json line."""
+    import json
+    if vox is None:
+        return None
+    n = len(r)
+    heard = r['heard']
+    flags = r['flags']
+    sound = (flags & 8) != 0
+    learning = (flags & 16) != 0
+    size = head['cells'][2] * head['C'][2]
+    x = [Sparse.of(v, head['C'][2]) for v in vox]
+    events, i = [], 0
+    while i < n:
+        if sound[i] and heard[i] not in (0, 32):
+            j, w = i, ''
+            while j < n and sound[j] and heard[j] not in (0, 32):
+                w += chr(heard[j])
+                j += 1
+            nxt = j
+            while nxt < n and not (sound[nxt] and heard[nxt] not in (0, 32)):
+                nxt += 1
+            events.append(dict(word=w, start=i, end=j, next=nxt, learn=bool(learning[i:j].any())))
+            i = j
+        else:
+            i += 1
+    taught = [e for e in events if e['learn']]
+    cues = [e for e in events if not e['learn']]
+    shapes = {}
+    for e in taught:
+        shapes.setdefault(e['word'], []).append(Sparse.total(x[e['start']:min(n, e['end'] + 3)]))
+    words = list(shapes)
+    if not words:
+        return None
+    mean = {w: dense(Sparse.total(s[-3:]), size) for w, s in shapes.items()}
+    background = np.mean([mean[w] for w in words], axis=0)
+    centred = {w: mean[w] - background for w in words}
+    successor = {}
+    for a, b2 in zip(taught, taught[1:]):
+        if b2['start'] - a['end'] <= 3:  # heard right after, in the same phrase
+            successor.setdefault(a['word'], []).append(b2['word'])
+
+    def ccos(a, b2):
+        na, nb = np.linalg.norm(a), np.linalg.norm(b2)
+        return float(a @ b2 / (na * nb)) if na > 0 and nb > 0 else 0.0
+
+    def after(e):
+        a0 = min(n, e['end'] + 3)
+        a1 = min(n, a0 + window)
+        full = e['next'] >= a1  # nothing heard inside the window
+        return dense(Sparse.total(x[a0:a1]), size) - background, full
+
+    rows = []
+    print(f'  lab scores (centred shapes, after-window {window} ticks, margin = target minus best other known word):')
+    for e in cues:
+        cw = e['word']
+        if cw in successor:
+            target = max(set(successor[cw]), key=successor[cw].count)
+        else:
+            cand = [w for w in words if w.startswith(cw) and w != cw]
+            target = cand[0] if len(cand) == 1 else None
+        if target is None:
+            continue
+        aft, full = after(e)
+        sims = {w: ccos(aft, centred[w]) for w in words if w != cw}
+        best_other = max((s for w, s in sims.items() if w != target), default=0.0)
+        best_word = max(sims, key=sims.get)
+        rows.append(dict(cue=cw, target=target, own=round(sims.get(target, 0.0), 3), margin=round(sims.get(target, 0.0) - best_other, 3),
+                         best=best_word, full_window=full))
+        print(f"    cue {cw:10s} -> target {target:8s} own {sims.get(target, 0.0):+.3f}  margin {sims.get(target, 0.0) - best_other:+.3f}  (most like {best_word}){'' if full else '  [window cut]'}")
+    # Afterglow per hearing, equal windows only.
+    glow = {}
+    for e in taught:
+        a0 = min(n, e['end'] + 3)
+        a1 = a0 + window
+        if e['next'] >= a1 and a1 <= n:
+            glow.setdefault(e['word'], []).append(round(float(r['a3'][a0:a1].mean()), 2))
+    # Strict 4D lighting: at least 10% of a 4D cell's voxels firing.
+    G = head['G']
+    per = head['cells'][2] // G
+    strong = r['g']['a3'] >= max(1, per // 10)
+    per_slice = G // head['fields']
+    strict = [int(strong[:, s * per_slice:(s + 1) * per_slice].any(axis=0).sum()) for s in range(head['fields'])]
+    at_once = [round(float(strong[sound][:, s * per_slice:(s + 1) * per_slice].sum(axis=1).mean()), 2) if sound.any() else 0.0
+               for s in range(head['fields'])]
+    print(f'    4D cells carrying activity (>= 10% of voxels firing), per slice from the senses: ever {strict}, at once during sound {at_once}')
+    score = dict(cues=rows, glow=glow, strict4d=strict, strict4d_at_once=at_once,
+                 mt=int(r['mtc'][-1]) if head['version'] >= 3 else 0)
+    print('LABSCORE ' + json.dumps(score))
+    return score
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('file')
@@ -345,6 +447,7 @@ def main():
     coherence(head, r, vox)
     if args.story:
         story(head, r, vox)
+        lab_scores(head, r, vox)
     if args.csv:
         with open(args.csv, 'w') as f:
             f.write('tick,sound,heard,step2d,step3d,step4d,modulator,active1d,sum1d,active2d,sum2d,active3d,sum3d,cells4d_active\n')
