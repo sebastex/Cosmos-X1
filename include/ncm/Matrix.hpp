@@ -233,7 +233,7 @@ private:
     AVec<float> probeExc_, probeInh_, probeMax_, probeThr_;
     struct ProbeSums {
         double steps = 0, voxels = 0, with4D = 0, exc = 0, inh = 0, learned4D = 0, input = 0, maxIn = 0, thr = 0,
-               above = 0, active = 0, fired = 0, gain = 0;
+               above = 0, active = 0, fired = 0, gain = 0, strength = 0, strong = 0;
         std::array<double, 8> sources{};
     };
     std::array<std::array<ProbeSums, 2>, kFields> probeSums_{};
