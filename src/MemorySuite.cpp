@@ -1951,7 +1951,8 @@ int runScriptTest(const Config& cfg) {
     std::string script = env && *env ? env : "say:apple:10:30;rest:200;cue:app:40";
     std::replace(script.begin(), script.end(), '_', ' ');
     std::printf("Observation script: %s\n", script.c_str());
-    Session s(cfg, true);
+    std::unique_ptr<Session> learner = std::make_unique<Session>(cfg, true);
+    Session& s = *learner;
     if (const char* in = std::getenv("NCM_STATE_IN"); in && *in) {
         StateFile st(in, false);
         s.state(st);
@@ -2035,6 +2036,7 @@ int runScriptTest(const Config& cfg) {
         s.state(st);
         std::printf("  saved the brain to %s\n", out);
     }
+    learner.reset(); // free the learner's brain before the twin is built (two big brains do not fit)
     // NCM_SCRIPT_TWIN=1: the same script on an untrained twin (same wiring, learning off), so every
     // cue result has a baseline (a cue can also bring back its word by its own echo).
     if (const char* tw = std::getenv("NCM_SCRIPT_TWIN"); tw && std::atoi(tw) > 0) {
