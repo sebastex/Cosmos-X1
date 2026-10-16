@@ -129,7 +129,7 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
         for (uint32_t u = 0; u < T; ++u) {
             const float r1 = a[u * 3 + 1] / kScale, i1 = a[u * 3 + 2] / kScale;
             const bool one = hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull), kStreamMicrotubule,
-                                         (now << 28) ^ (uint64_t(owner_[id]) * T + u)) < r1 * r1 + i1 * i1;
+                                         mix64(now * 0x9E3779B97F4A7C15ull + 0x632BE59BD9B4E019ull) ^ (uint64_t(owner_[id]) * T + u)) < r1 * r1 + i1 * i1; // step and unit hashed apart (no overlap for 16M cells)
             a[u * 3] = one ? 0 : int16_t(kScale), a[u * 3 + 1] = one ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
             count[chan_[u]] += 1.0f;
             ones[chan_[u]] += one ? 1.0f : 0.0f;
