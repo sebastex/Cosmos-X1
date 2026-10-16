@@ -220,6 +220,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"lattice_lr_slice", &c.lattice_lr_slice},
         {"lattice_spread_back", &c.lattice_spread_back},
         {"lattice_sep0", &c.lattice_sep0},
+        {"lattice_exc_only", &c.lattice_exc_only},
         {"sheet_continuous", &c.sheet_continuous},
         {"up_evidence", &c.up_evidence},
         {"microtubule", &c.microtubule},

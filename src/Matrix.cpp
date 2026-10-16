@@ -817,6 +817,7 @@ void NeuralCellularMatrix::step3D() {
             for (uint32_t k = 0; k < KH; ++k) {
                 const size_t vg = lattice4Partner(x, y, z, w, k);
                 if (vg == SIZE_MAX) continue;
+                if (inhib3_[vg] && cfg_.lattice_exc_only > 0.5f) continue; // inhibition stays local
                 const float* src = (sweep && vg / Vf_ < w ? out : s3) + vg * C3; // sweep: earlier slices' new state
                 if (isSilent(src, C3)) continue;
                 if (probe_) {

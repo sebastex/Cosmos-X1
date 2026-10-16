@@ -312,6 +312,11 @@ struct Config {
     float lattice_lr_slice = 0.0f;
     float lattice_spread_back = 0.0f;
     float lattice_sep0 = 1.0f;
+    // Pharmakon: 1 = links between 4D cells come only from excitatory voxels (as long-range
+    // connections between brain areas are excitatory; inhibitory cells act only on their own
+    // neighbourhood). The firing probe showed inhibitory 4D partners cancelling about 90% of the
+    // excitatory 4D signal, so cells far from the senses fired at 0.08-0.14 strength. 0 = both.
+    float lattice_exc_only = 0.0f;
     // No islands at 2D: 1 = the sheets of neighbouring voxels join edge to edge into one
     // continuous sheet (the sheet of voxel (x, y) continues into the sheets of (x +- 1, y +- 1)
     // in the same z and w), so a sheet cell's 8 neighbours, its competition and its learned links
