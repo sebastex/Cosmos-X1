@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "ncm/Buffer.hpp"
@@ -133,6 +134,8 @@ public:
     const AVec<float>& latticeDriveFixed() const { return hold4Fixed_; }     // held 4D-lattice drive (Pharmakon)
     const AVec<float>& latticeDriveLearned() const { return hold4Learned_; }
     // Microtubule objective reductions so far (all voxels).
+    // Firing probe (env NCM_PROBE=1): per w-slice, sound and silence, why voxels fire or not.
+    std::string probeReport() const;
     uint64_t microtubuleCollapses() const { return mt1_.collapses() + mt2_.collapses() + mt3_.collapses(); }
     size_t microtubules() const { return mt1_.tubes() + mt2_.tubes() + mt3_.tubes(); }
     size_t memoryBytes() const;
@@ -223,6 +226,17 @@ private:
     std::vector<uint32_t> latPerm_; // lattice_scramble: 80 x B^3 shuffles of the place inside a 4D cell
     AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
     std::vector<float> cellGain_;          // gain control per 4D cell
+    // Firing probe (NCM_PROBE=1): per voxel this step, the 4D-lattice signal from excitatory and from
+    // inhibitory partners, the strongest channel's final input and the firing threshold; and sums
+    // per w-slice x {sound, silence}.
+    bool probe_ = false;
+    AVec<float> probeExc_, probeInh_, probeMax_, probeThr_;
+    struct ProbeSums {
+        double steps = 0, voxels = 0, with4D = 0, exc = 0, inh = 0, learned4D = 0, input = 0, maxIn = 0, thr = 0,
+               above = 0, active = 0, fired = 0, gain = 0;
+        std::array<double, 8> sources{};
+    };
+    std::array<std::array<ProbeSums, 2>, kFields> probeSums_{};
     // Gain-control region of voxel v (lattice_agc: 4D cell, w-slice or whole brain).
     size_t gainOf(size_t v) const {
         const int grain = int(cfg_.lattice_agc + 0.5f);

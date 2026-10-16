@@ -2022,6 +2022,7 @@ int runScriptTest(const Config& cfg) {
         }
         std::printf("  ticks %llu-%llu: %s\n", (unsigned long long)start, (unsigned long long)tick, step.c_str());
     }
+    std::fputs(s.matrix().probeReport().c_str(), stdout);
     std::printf("  microtubule reductions: %llu in %zu microtubules\n",
                 (unsigned long long)s.matrix().microtubuleCollapses(), s.matrix().microtubules());
     if (const char* out = std::getenv("NCM_STATE_OUT"); out && *out) {

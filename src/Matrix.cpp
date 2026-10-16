@@ -227,6 +227,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     Q_ = cfg.sheetCells();
     P_ = cfg.lineCells();
     lattice_ = cfg.lattice4d > 0.5f;
+    if (const char* pr = std::getenv("NCM_PROBE"); pr && std::atoi(pr) > 0) probe_ = true;
     if (lattice_) {
         if (N_ % kFields != 0 || N_ / kFields < 2)
             throw std::invalid_argument("the 4D lattice needs field_dim divisible by 4 (at least 8)");
@@ -267,6 +268,12 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         cellGain_.assign(A * A * A * kFields, 1.0f);
     }
 
+    if (probe_) {
+        probeExc_.assign(V_, 0.0f);
+        probeInh_.assign(V_, 0.0f);
+        probeMax_.assign(V_, 0.0f);
+        probeThr_.assign(V_, 0.0f);
+    }
     s1_.allocate(P_, C1);
     lineQuietCur_.assign(Q_, 1);
     lineQuietNext_.assign(Q_, 1);
@@ -806,11 +813,18 @@ void NeuralCellularMatrix::step3D() {
             const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
             const uint32_t w = uint32_t(v / Vf_);
             float fx[C3] = {}, lx[C3] = {};
+            float pexc = 0.0f, pinh = 0.0f;
             for (uint32_t k = 0; k < KH; ++k) {
                 const size_t vg = lattice4Partner(x, y, z, w, k);
                 if (vg == SIZE_MAX) continue;
                 const float* src = (sweep && vg / Vf_ < w ? out : s3) + vg * C3; // sweep: earlier slices' new state
                 if (isSilent(src, C3)) continue;
+                if (probe_) {
+                    float s = 0.0f;
+                    for (uint32_t c = 0; c < C3; ++c) s += src[c];
+                    if (inhib3_[vg]) pinh += -inh * r.lattice_link * latScale_[k] * s;
+                    else pexc += r.lattice_link * latScale_[k] * s;
+                }
                 if (inhib3_[vg]) {
                     addScaled(src, fx, C3, inh * r.lattice_link * latScale_[k]);
                 } else {
@@ -821,6 +835,7 @@ void NeuralCellularMatrix::step3D() {
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
             std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
+            if (probe_) probeExc_[v] = pexc, probeInh_[v] = pinh;
         }
     }
 #pragma omp parallel for schedule(dynamic, 256)
@@ -1054,6 +1069,12 @@ void NeuralCellularMatrix::step3D() {
         // Channel balance: each channel's own threshold offset (channels that always win are held back).
         if (!chanTheta3_.empty())
             for (uint32_t c = 0; c < C3; ++c) in[c] -= chanTheta3_[v * C3 + c];
+        if (probe_) {
+            float m = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) m = std::max(m, in[c]);
+            probeMax_[v] = m;
+            probeThr_[v] = theta[v] + lp.fatigue_gain * fatigue3_[v];
+        }
         drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v], cfg_.channel_winners3);
     }
 
@@ -1153,6 +1174,30 @@ void NeuralCellularMatrix::step3D() {
                                        cfg_.agc_min, cfg_.agc_max);
         }
     }
+    if (probe_) {
+        const int snd = sensoryOn_ ? 0 : 1;
+        const float* ds = diagSource3_.data();
+        for (size_t v = 0; v < V_; ++v) {
+            ProbeSums& p = probeSums_[v / Vf_][snd];
+            const float* cell = out + v * C3;
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, cell[c]);
+            p.voxels += 1;
+            p.with4D += (probeExc_[v] > 0.0f || probeInh_[v] > 0.0f) ? 1 : 0;
+            p.exc += probeExc_[v];
+            p.inh += probeInh_[v];
+            p.learned4D += ds[v * kSources + kLearned4D];
+            p.input += diagInput3_[v];
+            p.maxIn += probeMax_[v];
+            p.thr += probeThr_[v];
+            p.above += probeMax_[v] - probeThr_[v] > cfg_.fire_threshold3 ? 1 : 0;
+            p.active += drive3_[v] > 0.0f ? 1 : 0;
+            p.fired += strongest > 0.0f ? 1 : 0;
+            p.gain += lattice_ ? cellGain_[gainOf(v)] : fieldGain_[v / Vf_];
+            for (uint32_t s = 0; s < kSources && s < 8; ++s) p.sources[s] += ds[v * kSources + s];
+        }
+        for (uint32_t f = 0; f < kFields; ++f) probeSums_[f][snd].steps += 1;
+    }
     s3_.swap();
     if (mt3_.on()) { // microtubules of the voxels, on the 3D clock
         mtActive_.clear();
@@ -1221,6 +1266,38 @@ void NeuralCellularMatrix::wordBoundary() {
     if (cfg_.learning.field_roles <= 0.0f) return;
     std::fill(orderTrace3_.begin() + Vf_ * C3, orderTrace3_.begin() + 2 * Vf_ * C3, 0.0f);
     memoryPause_ = uint32_t(cfg_.learning.field_roles);
+}
+
+std::string NeuralCellularMatrix::probeReport() const {
+    if (!probe_) return "";
+    std::string s = "Firing probe: per w-slice (w = 0 is where the senses plug in), mean per voxel per 3D step\n"
+                    "  slice  when     4D signal: from excitatory  from inhibitory  net   | learned 4D | all input | strongest channel vs threshold | above firing level | through own channels | fired (won the neighbourhood) | gain\n";
+    char line[512];
+    for (uint32_t f = 0; f < kFields; ++f)
+        for (int k = 0; k < 2; ++k) {
+            const ProbeSums& p = probeSums_[f][k];
+            if (p.voxels <= 0) continue;
+            const double n = p.voxels;
+            std::snprintf(line, sizeof line,
+                          "  w=%u    %-7s  %8.4f  %8.4f  %8.4f  |  %8.4f  | %8.4f  |   %7.4f vs %7.4f   | %6.2f%% | %6.2f%% | %6.2f%% | %5.2f\n",
+                          f, k == 0 ? "sound" : "silence", p.exc / n, p.inh / n, (p.exc - p.inh) / n, p.learned4D / n,
+                          p.input / n, p.maxIn / n, p.thr / n, 100.0 * p.above / n, 100.0 * p.active / n, 100.0 * p.fired / n,
+                          p.gain / n);
+            s += line;
+        }
+    s += "  sources (sum per voxel per step, sound): learned-within learned-4D fixed-local fixed-long fixed-4D input-depth fixed-spread upward\n";
+    for (uint32_t f = 0; f < kFields; ++f) {
+        const ProbeSums& p = probeSums_[f][0];
+        if (p.voxels <= 0) continue;
+        std::snprintf(line, sizeof line, "  w=%u   ", f);
+        s += line;
+        for (uint32_t k = 0; k < 8; ++k) {
+            std::snprintf(line, sizeof line, " %9.5f", p.sources[k] / p.voxels);
+            s += line;
+        }
+        s += "\n";
+    }
+    return s;
 }
 
 MicrotubuleLayer::Params NeuralCellularMatrix::mtParams() const {
