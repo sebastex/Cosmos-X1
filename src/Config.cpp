@@ -138,7 +138,14 @@ const std::vector<std::string>& evolvedRule() {
         // Pharmakon 0.2: no pattern separation in the slice where the senses arrive (w = 0): it
         // distorted what the brain hears. Dev 3004, 16/32 pairs: recall at the moment 44%/28% ->
         // 100%/91% (Prime 100%/94%), coherence +0.61 -> +0.68 (Prime +0.66).
-        "lattice_sep0=0"};
+        "lattice_sep0=0",
+        // Pharmakon 0.3: the 4D surface works. Firing probe (dev 3004): far 4D cells fired at
+        // 0.08-0.14 strength because inhibitory 4D partners cancelled ~90% of the 4D signal and the
+        // rest arrived diluted. Long-range links excitatory only, Prime-strength outward links, weak
+        // links back toward the senses, slices updated in order: all 256 4D cells light during input
+        // (farthest slice fires at 0.39), activity still ends in silence, apple->river->storm chains.
+        // 30% stronger links tip it into humming.
+        "lattice_exc_only=1", "lattice_link=0.124", "lattice_back=0.0875", "lattice_sweep=1"};
     return rule;
 }
 
