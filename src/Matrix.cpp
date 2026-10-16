@@ -1193,6 +1193,8 @@ void NeuralCellularMatrix::step3D() {
             p.above += probeMax_[v] - probeThr_[v] > cfg_.fire_threshold3 ? 1 : 0;
             p.active += drive3_[v] > 0.0f ? 1 : 0;
             p.fired += strongest > 0.0f ? 1 : 0;
+            p.strength += strongest; // firing strength (only fired voxels add)
+            p.strong += strongest >= cfg_.level3.active_level ? 1 : 0;
             p.gain += lattice_ ? cellGain_[gainOf(v)] : fieldGain_[v / Vf_];
             for (uint32_t s = 0; s < kSources && s < 8; ++s) p.sources[s] += ds[v * kSources + s];
         }
@@ -1271,7 +1273,7 @@ void NeuralCellularMatrix::wordBoundary() {
 std::string NeuralCellularMatrix::probeReport() const {
     if (!probe_) return "";
     std::string s = "Firing probe: per w-slice (w = 0 is where the senses plug in), mean per voxel per 3D step\n"
-                    "  slice  when     4D signal: from excitatory  from inhibitory  net   | learned 4D | all input | strongest channel vs threshold | above firing level | through own channels | fired (won the neighbourhood) | gain\n";
+                    "  slice  when     4D signal: from excitatory  from inhibitory  net   | learned 4D | all input | strongest channel vs threshold | above firing level | through own channels | fired (won the neighbourhood) | gain | firing strength of fired voxels | fired strongly (counts as lit)\n";
     char line[512];
     for (uint32_t f = 0; f < kFields; ++f)
         for (int k = 0; k < 2; ++k) {
@@ -1279,10 +1281,10 @@ std::string NeuralCellularMatrix::probeReport() const {
             if (p.voxels <= 0) continue;
             const double n = p.voxels;
             std::snprintf(line, sizeof line,
-                          "  w=%u    %-7s  %8.4f  %8.4f  %8.4f  |  %8.4f  | %8.4f  |   %7.4f vs %7.4f   | %6.2f%% | %6.2f%% | %6.2f%% | %5.2f\n",
+                          "  w=%u    %-7s  %8.4f  %8.4f  %8.4f  |  %8.4f  | %8.4f  |   %7.4f vs %7.4f   | %6.2f%% | %6.2f%% | %6.2f%% | %5.2f | %6.3f | %6.3f%%\n",
                           f, k == 0 ? "sound" : "silence", p.exc / n, p.inh / n, (p.exc - p.inh) / n, p.learned4D / n,
                           p.input / n, p.maxIn / n, p.thr / n, 100.0 * p.above / n, 100.0 * p.active / n, 100.0 * p.fired / n,
-                          p.gain / n);
+                          p.gain / n, p.fired > 0 ? p.strength / p.fired : 0.0, 100.0 * p.strong / n);
             s += line;
         }
     s += "  sources (sum per voxel per step, sound): learned-within learned-4D fixed-local fixed-long fixed-4D input-depth fixed-spread upward\n";
