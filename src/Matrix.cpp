@@ -702,7 +702,9 @@ void NeuralCellularMatrix::step2D() {
             for (uint32_t c = 0; c < C2; ++c) before += std::max(0.0f, in[c]);
         if (!isSilent(s3 + v * C3, C3)) {
             matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
-            if (!DNL_.empty()) matvecAdd(DNL_.data() + q * C2 * C3, s3 + v * C3, in, C2, C3, gd * cfg_.learning.inner_down);
+            if (!DNL_.empty()) // learned downward path (muted while encoding when inner_rules is on)
+                matvecAdd(DNL_.data() + q * C2 * C3, s3 + v * C3, in, C2, C3,
+                          gd * cfg_.learning.inner_down * (cfg_.inner_rules > 0.5f ? rec2 : 1.0f));
         }
         if (!parentShare2_.empty()) { // how much of this cell's drive its own voxel gave it
             float after = 0.0f;
@@ -833,6 +835,15 @@ void NeuralCellularMatrix::step3D() {
                     matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
                     if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
                 }
+            }
+            if (cfg_.lattice_edge_norm > 0.5f) { // edge cells: scale up to the full set of 80 links
+                float have = 0.0f, all = 0.0f;
+                for (uint32_t k = 0; k < KH; ++k) {
+                    all += latScale_[k];
+                    if (lattice4Partner(x, y, z, w, k) != SIZE_MAX) have += latScale_[k];
+                }
+                const float f = have > 0.0f ? all / have : 1.0f;
+                for (uint32_t c = 0; c < C3; ++c) fx[c] *= f, lx[c] *= f;
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
             std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
@@ -996,9 +1007,11 @@ void NeuralCellularMatrix::step3D() {
         // weight, scaled by upward_gain. Not scaled by gain control: a voxel's sheet is driven by
         // the voxel itself, so voxel -> sheet -> voxel is a loop, and amplifying it made activity
         // self-sustain.
+        float upLearned[C3] = {}; // learned upward path (inner_up), when it follows the learned-link rules
         {
             float up[C3] = {};
             bool anyActive = false;
+            const bool innerRules = cfg_.inner_rules > 0.5f;
             for (size_t cell = 0; cell < SS; ++cell) {
                 const float* sc = s2 + (v * SS + cell) * C2;
                 bool active = false;
@@ -1021,7 +1034,8 @@ void NeuralCellularMatrix::step3D() {
                         const float* row = wl + size_t(c) * SS * C2;
                         float dot = 0.0f;
                         for (uint32_t b = 0; b < C2; ++b) dot += row[b] * sc[b];
-                        up[c] += k * dot;
+                        if (innerRules) upLearned[c] += k * dot;
+                        else up[c] += k * dot;
                     }
                 }
             }
@@ -1046,6 +1060,8 @@ void NeuralCellularMatrix::step3D() {
                 ds[kLearnedWithin] += plScale * pl[c];
                 ds[kLearned4D] += pl4[c];
             }
+            if (cfg_.inner_rules > 0.5f) // learned upward path: muted while encoding, like other learned links
+                for (uint32_t c = 0; c < C3; ++c) pl[c] += gu * rec * upLearned[c];
             float plSum = 0.0f, inSum = 0.0f;
             // Quiet ears: without input, the fixed paths (the echo of what was heard) turn down.
             const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
