@@ -198,6 +198,35 @@ The first build of this architecture, a reroll tested against Prime on the same 
 - Senses enter at one face (w = 0, x = 0), the motor exit is the far face (w = 3, x = last).
 - Inner-level learning (paths 1 and 2) is the next step on top.
 
+## What changed since Pharmakon 0 (measured, 2026-10-14 to 2026-10-19)
+
+Each change came from a measurement, not a guess; the earlier "same rules everywhere" list above is
+kept for the record, and these are the places where the working brain differs from it.
+
+- **0.1** (`lattice_scramble=1`, input depth on in the w = 0 slice): words overlapped 0.14 instead of
+  0.09 because the sensory input was not spread over the w = 0 slice (the same in Prime without its
+  input depth); the w = 0 slice is the 3D face of the 4D lattice where the senses arrive, so the
+  input spreads over it. Scrambled counterparts removed a striped grid.
+- **0.2** (`lattice_sep0=0`): pattern separation in the slice where the senses arrive distorted what
+  the brain heard and destroyed pair recall (44% -> 100% at 16 pairs on brain 3004 without it).
+- **0.3** (`lattice_exc_only=1`, `lattice_link=0.124`, `lattice_back=0.0875`, `lattice_sweep=1`): far
+  4D cells fired at 0.08-0.14 strength because inhibitory partners cancelled ~90% of the 4D signal and
+  the rest arrived diluted over up to 80 partners. Long-range links are now excitatory only
+  (inhibition stays local), outward links have Prime's strength, links back toward the senses are
+  weaker (x0.0875, Prime's own ratio) and the slices update in order from the senses. This brings
+  back a direction of flow from the senses; it is the same rule for every cell, but it is a
+  difference between directions, so the "no feedforward/feedback difference" line above no longer
+  holds. 30% stronger links tip the brain into self-sustained humming.
+- Options built and measured but not in the default (see Config.hpp): microtubules in every cell
+  (`microtubule`, with control modes `mt_mode`), roots (`downward_gain` x3 + `inner_up`/`inner_down`
+  + `up_evidence`), the one-rule version of the inner paths (`inner_rules`), sheet learning and
+  continuous sheets (`sheet_learn`, `sheet_continuous`), edge scaling of the 4D drive
+  (`lattice_edge_norm`).
+- Still open (independent review): the humming margin as learning grows; lattice edges (a corner
+  4D cell has 15 of 80 partners; `lattice_edge_norm` is the candidate fix); magnets (a familiarity
+  rule or sleep-like unlearning); whether the 4D surface carries information (decode words per
+  slice); the line level does not learn yet; microtubule memory is never freed.
+
 ## Way there (each step measured against Prime on fresh brains; Prime stays the safe version)
 
 1. Inner-level learning inside today's structure (paths 1 and 2 above).
