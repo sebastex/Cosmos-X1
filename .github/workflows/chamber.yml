@@ -26,6 +26,9 @@ on:
       prev_run:
         description: Run that saved the brain to continue (empty for step 1)
         default: ""
+      test:
+        description: pairload (word pairs) or vocabpass (every word on its own)
+        default: "pairload"
 permissions:
   contents: read
   actions: write
@@ -66,7 +69,11 @@ jobs:
           else export NCM_WORDLIST=${cur:0:1} NCM_PASS_START=${cur:1}; fi
           echo "step $STEP of ${#steps[@]}: $cur"
           if [ -f brain.bin.zst ]; then zstd -d -q --rm brain.bin.zst && export NCM_STATE_IN=brain.bin; fi
-          NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset ${{ inputs.preset }} --seed ${{ inputs.seed }} | tee result_step${STEP}_${cur}.txt
+          if [ "${{ inputs.test }}" = vocabpass ]; then
+            NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test vocabpass --preset ${{ inputs.preset }} --seed ${{ inputs.seed }} | tee result_step${STEP}_${cur}.txt
+          else
+            NCM_STATE_OUT=brain-next.bin ./build/cosmos_x1 --test pairload --store-ticks ${{ inputs.words }} --preset ${{ inputs.preset }} --seed ${{ inputs.seed }} | tee result_step${STEP}_${cur}.txt
+          fi
           rm -f brain.bin
           mv brain-next.bin brain.bin
           zstd -3 -T0 -q --rm brain.bin
@@ -88,4 +95,4 @@ jobs:
         run: |
           gh workflow run chamber.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
             -f seed=${{ inputs.seed }} -f plan="${{ inputs.plan }}" -f words=${{ inputs.words }} -f preset=${{ inputs.preset }} \
-            -f step=$(( ${{ inputs.step }} + 1 )) -f prev_run=${{ github.run_id }}
+            -f step=$(( ${{ inputs.step }} + 1 )) -f prev_run=${{ github.run_id }} -f test=${{ inputs.test }}

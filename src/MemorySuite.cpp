@@ -2047,6 +2047,132 @@ int runScriptTest(const Config& cfg) {
     return 0;
 }
 
+// Vocabulary passes: every word of a list is learned on its own (never linked to another word)
+// and tested on its own, pass after pass on one brain (NCM_STATE_IN / NCM_STATE_OUT continue it).
+// Teaching: each word NCM_VOCAB_REPEATS times (default 5), 40 silent ticks after each hearing and
+// 100 between words. Test (no learning): every word heard whole in listening mode gives its shape;
+// then its first half is heard, and the 25 ticks from 3 ticks after the cue are compared with every
+// word's shape, all shapes centred (the mean shape removed). The word is completed when its own
+// shape is the most alike. An untrained twin (same wiring) gives the baseline on the first pass.
+// NCM_WORDLIST: list letter (default A), NCM_VOCAB_MAX: first N words, NCM_PASS_START: pass label.
+int runVocabPassTest(const Config& cfg) {
+    const char* listName = std::getenv("NCM_WORDLIST");
+    const int listIndex = listName && listName[0] >= 'B' && listName[0] <= 'Z' ? listName[0] - 'B' : -1;
+    if (listIndex >= int(extraWordLists().size())) {
+        std::fprintf(stderr, "error: no word list %c\n", listName[0]);
+        return 2;
+    }
+    std::vector<std::string> words = listIndex < 0 ? pairWords() : extraWordLists()[size_t(listIndex)];
+    if (const char* mx = std::getenv("NCM_VOCAB_MAX"); mx && std::atoi(mx) > 0 && size_t(std::atoi(mx)) < words.size())
+        words.resize(size_t(std::atoi(mx)));
+    const int repeats = std::getenv("NCM_VOCAB_REPEATS") ? std::max(1, std::atoi(std::getenv("NCM_VOCAB_REPEATS"))) : 5;
+    const int pass = std::getenv("NCM_PASS_START") ? std::max(1, std::atoi(std::getenv("NCM_PASS_START"))) : 1;
+    const size_t n = words.size();
+    std::printf("Vocabulary passes: list %c, %zu words, each learned on its own (%d hearings per pass); this is pass %d\n",
+                listIndex < 0 ? 'A' : char('B' + listIndex), n, repeats, pass);
+    auto half = [](const std::string& w) { return (w.size() + 1) / 2; };
+    auto test = [&](Session& s, const char* who) {
+        s.setLearning(false);
+        std::vector<std::vector<float>> shape(n);
+        for (size_t k = 0; k < n; ++k) { // listening mode: shapes as heard, no learning
+            const std::string ws = words[k] + " ";
+            std::vector<double> acc = s.present(ws, ws.size(), 1.0f, true, 0);
+            for (int t = 0; t < 3; ++t) {
+                s.silence(1, false);
+                s.accumulate(acc);
+            }
+            shape[k].assign(acc.begin(), acc.end());
+            s.silence(60, false);
+        }
+        std::vector<double> mean(shape[0].size(), 0.0);
+        for (const auto& sh : shape)
+            for (size_t i = 0; i < sh.size(); ++i) mean[i] += sh[i] / double(n);
+        std::vector<double> norm(n, 0.0);
+        for (size_t k = 0; k < n; ++k) {
+            double q = 0.0;
+            for (size_t i = 0; i < mean.size(); ++i) {
+                const double d = shape[k][i] - mean[i];
+                q += d * d;
+            }
+            norm[k] = std::sqrt(q);
+        }
+        std::string per, margins;
+        size_t right = 0;
+        double marginSum = 0.0;
+        std::string wrong;
+        for (size_t k = 0; k < n; ++k) {
+            const std::string head = words[k].substr(0, half(words[k]));
+            for (char ch : head) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            s.silence(3, false);
+            std::vector<double> after;
+            for (int t = 0; t < 25; ++t) {
+                s.silence(1, false);
+                s.accumulate(after);
+            }
+            s.silence(60, false);
+            double an = 0.0;
+            for (size_t i = 0; i < after.size(); ++i) {
+                after[i] -= mean[i];
+                an += after[i] * after[i];
+            }
+            an = std::sqrt(an);
+            double own = 0.0, best = -2.0;
+            size_t bestJ = k;
+            for (size_t j = 0; j < n; ++j) {
+                double dot = 0.0;
+                for (size_t i = 0; i < after.size(); ++i) dot += after[i] * (shape[j][i] - mean[i]);
+                const double c = an > 0.0 && norm[j] > 0.0 ? dot / (an * norm[j]) : 0.0;
+                if (j == k) own = c;
+                else if (c > best) best = c, bestJ = j;
+            }
+            const bool ok = own > best;
+            right += ok;
+            marginSum += own - best;
+            per += ok ? '1' : '0';
+            char mb[16];
+            std::snprintf(mb, sizeof mb, " %.3f", own - best);
+            margins += mb;
+            if (!ok && wrong.size() < 900) wrong += " " + head + ">" + words[bestJ];
+        }
+        std::printf("  %s: completed %zu of %zu words from their first half (%.0f%%, chance %.1f%%), mean margin %+.3f\n", who, right, n,
+                    100.0 * double(right) / double(n), 100.0 / double(n), marginSum / double(n));
+        std::printf("  %s, word by word in list order: %s\n", who, per.c_str());
+        std::printf("  %s, margin word by word (own minus best other):%s\n", who, margins.c_str());
+        if (!wrong.empty()) std::printf("  %s, wrong (cue>taken as):%s\n", who, wrong.c_str());
+    };
+    {
+        Session s(cfg, true);
+        if (const char* in = std::getenv("NCM_STATE_IN"); in && *in) {
+            StateFile st(in, false);
+            s.state(st);
+            std::printf("  continued the brain saved in %s\n", in);
+        }
+        s.setLearning(true);
+        for (size_t k = 0; k < n; ++k) {
+            const std::string ws = words[k] + " ";
+            for (int r = 0; r < repeats; ++r) {
+                for (char ch : ws) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
+                s.silence(40, true);
+            }
+            s.silence(100, true);
+        }
+        char label[64];
+        std::snprintf(label, sizeof label, "LEARNED after pass %d", pass);
+        test(s, label);
+        s.setLearning(true);
+        if (const char* out = std::getenv("NCM_STATE_OUT"); out && *out) {
+            StateFile st(out, true);
+            s.state(st);
+            std::printf("  saved the brain to %s\n", out);
+        }
+    }
+    if (pass == 1) {
+        Session twin(cfg, false);
+        test(twin, "UNTRAINED TWIN");
+    }
+    return 0;
+}
+
 // Completion moment in the vocabulary test: ticks 5-10 after a word's first half ends.
 constexpr uint64_t kVocabFrom = 4, kVocabTo = 10; // ticks 5-10 (measured: completion peaks at ticks 5-7)
 
