@@ -2050,7 +2050,7 @@ int runScriptTest(const Config& cfg) {
 // Vocabulary passes: every word of a list is learned on its own (never linked to another word)
 // and tested on its own, pass after pass on one brain (NCM_STATE_IN / NCM_STATE_OUT continue it).
 // Teaching: each word NCM_VOCAB_REPEATS times (default 5), 40 silent ticks after each hearing and
-// 100 between words. Test (no learning): every word heard whole in listening mode gives its shape;
+// 60 more between words. Test (no learning): every word heard whole in listening mode gives its shape;
 // then its first half is heard, and the 25 ticks from 3 ticks after the cue are compared with every
 // word's shape, all shapes centred (the mean shape removed). The word is completed when its own
 // shape is the most alike. An untrained twin (same wiring) gives the baseline on the first pass.
@@ -2082,7 +2082,7 @@ int runVocabPassTest(const Config& cfg) {
                 s.accumulate(acc);
             }
             shape[k].assign(acc.begin(), acc.end());
-            s.silence(60, false);
+            s.silence(40, false);
         }
         std::vector<double> mean(shape[0].size(), 0.0);
         for (const auto& sh : shape)
@@ -2109,7 +2109,7 @@ int runVocabPassTest(const Config& cfg) {
                 s.silence(1, false);
                 s.accumulate(after);
             }
-            s.silence(60, false);
+            s.silence(40, false);
             double an = 0.0;
             for (size_t i = 0; i < after.size(); ++i) {
                 after[i] -= mean[i];
@@ -2154,7 +2154,7 @@ int runVocabPassTest(const Config& cfg) {
                 for (char ch : ws) s.present(std::string(1, ch), 1, 1.0f, true, UINT64_MAX);
                 s.silence(40, true);
             }
-            s.silence(100, true);
+            s.silence(60, true);
         }
         char label[64];
         std::snprintf(label, sizeof label, "LEARNED after pass %d", pass);
