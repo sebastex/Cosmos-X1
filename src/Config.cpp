@@ -232,6 +232,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"sheet_continuous", &c.sheet_continuous},
         {"up_evidence", &c.up_evidence},
         {"inner_rules", &c.inner_rules},
+        {"familiarity", &c.familiarity},
         {"microtubule", &c.microtubule},
         {"mt_len", &c.mt_len},
         {"mt_couple", &c.mt_couple},

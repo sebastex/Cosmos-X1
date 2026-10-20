@@ -337,6 +337,12 @@ struct Config {
     // (agc_plastic), and not cut by the quiet-ears gate in silence (the gate turns down only the fixed
     // echo paths). 0 = they ride on the fixed paths (the first version).
     float inner_rules = 0.0f;
+    // Familiarity (against magnets): before a voxel learns, its learned links predict its firing from
+    // what fired just before (the same inputs the learning rule uses). The share of its current firing
+    // that is already predicted, f in [0, 1], lowers its learning rate to rate x (1 - familiarity x f):
+    // a well-known pattern stops strengthening (its basin stops growing), new patterns still learn
+    // at full rate. A local rule, the same for every voxel. 0 = off.
+    float familiarity = 0.0f;
     // Microtubules (Orch-OR-like, local quantum mathematics): inside every cell a cylindrical
     // lattice of 13 protofilaments x mt_len tubulin units. Each unit holds a superposition
     // a0|0> + a1|1> (complex amplitudes) and evolves unitarily under H = mt_bias sz + h sx, where

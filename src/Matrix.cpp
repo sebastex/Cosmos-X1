@@ -1446,11 +1446,28 @@ void NeuralCellularMatrix::learn(float modulator) {
             }
         }
 
+        // Familiarity: how much of this voxel's firing its learned links already predict.
+        float vrate = rate;
+        if (cfg_.familiarity > 0.0f) {
+            float pred[C3] = {};
+            forEachLearnedBlock(v, [&](float* block, size_t src) {
+                const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
+                for (uint32_t a = 0; a < C3; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) pred[a] += block[size_t(a) * C3 + b] * sq[b];
+            });
+            float fired = 0.0f, explained = 0.0f;
+            for (uint32_t a = 0; a < C3; ++a) {
+                fired += pi[a];
+                explained += std::min(pi[a], pred[a]);
+            }
+            const float f = fired > 0.0f ? std::clamp(explained / fired, 0.0f, 1.0f) : 0.0f;
+            vrate = rate * std::max(0.0f, 1.0f - cfg_.familiarity * f);
+        }
         // Inhibitory connections and self-persistence are not visited: they stay fixed.
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const float* sp = post + src * C3;
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
-            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), rate, lambda, oja, hetero,
+            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate, lambda, oja, hetero,
                                         preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
         }, !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f); // the 4D-lattice links learn on 4D steps
 
