@@ -317,9 +317,10 @@ struct Config {
     // neighbourhood). The firing probe showed inhibitory 4D partners cancelling about 90% of the
     // excitatory 4D signal, so cells far from the senses fired at 0.08-0.14 strength. 0 = both.
     float lattice_exc_only = 0.0f;
-    // Pharmakon: 1 = every 4D cell is treated alike at the edges of the lattice: a voxel's 4D drive is
-    // scaled up by (weight of all 80 links) / (weight of the links that exist), so corner cells (15
-    // neighbours) get the same total as cells in the middle (80). 0 = edge cells simply get less.
+    // Pharmakon: every 4D cell treated alike at the edges of the lattice. 1 = a voxel's 4D drive is
+    // scaled up to the full 80 links (measured: pushes the brain over the humming edge); 2 = scaled to
+    // the lattice's average number of links, so edge cells get more, middle cells less and the total
+    // stays the same. 0 = edge cells simply get less.
     float lattice_edge_norm = 0.0f;
     // No islands at 2D: 1 = the sheets of neighbouring voxels join edge to edge into one
     // continuous sheet (the sheet of voxel (x, y) continues into the sheets of (x +- 1, y +- 1)

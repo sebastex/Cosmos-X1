@@ -247,6 +247,15 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
             latDir_.push_back(dir);
             latScale_.push_back(dir * std::pow(std::max(0.0f, cfg.lattice_falloff), float(d - 1)));
         }
+        if (cfg.lattice_edge_norm > 1.5f) { // average weight of the existing links over all voxels
+            double sum = 0.0;
+            for (size_t v = 0; v < V_; ++v) {
+                const uint32_t x = uint32_t(v % N_), y = uint32_t((v / N_) % N_), z = uint32_t((v / (size_t(N_) * N_)) % N_);
+                for (uint32_t k = 0; k < hBlocks_; ++k)
+                    if (lattice4Partner(x, y, z, uint32_t(v / Vf_), k) != SIZE_MAX) sum += latScale_[k];
+            }
+            latAvgHave_ = float(sum / double(V_));
+        }
         if (cfg.lattice_scramble > 0.5f) {
             const uint32_t inner = B_ * B_ * B_;
             latPerm_.resize(size_t(hBlocks_) * inner);
@@ -836,13 +845,14 @@ void NeuralCellularMatrix::step3D() {
                     if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
                 }
             }
-            if (cfg_.lattice_edge_norm > 0.5f) { // edge cells: scale up to the full set of 80 links
+            if (cfg_.lattice_edge_norm > 0.5f) { // edge cells: scale to the full or the average set of links
                 float have = 0.0f, all = 0.0f;
                 for (uint32_t k = 0; k < KH; ++k) {
                     all += latScale_[k];
                     if (lattice4Partner(x, y, z, w, k) != SIZE_MAX) have += latScale_[k];
                 }
-                const float f = have > 0.0f ? all / have : 1.0f;
+                const float ref = cfg_.lattice_edge_norm > 1.5f ? latAvgHave_ : all;
+                const float f = have > 0.0f ? ref / have : 1.0f;
                 for (uint32_t c = 0; c < C3; ++c) fx[c] *= f, lx[c] *= f;
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
@@ -1733,6 +1743,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(hold4Fixed_, "4D drive");
     st.vec(hold4Learned_, "4D drive");
     st.value(tick4_);
+    st.value(memoryPause_);
     st.vec(W3_, "W3");
     st.vec(WL_, "WL");
     st.vec(H_, "H");

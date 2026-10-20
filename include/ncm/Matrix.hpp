@@ -222,7 +222,8 @@ private:
     bool tick4_ = true;        // the current 3D step is a 4D step
     std::vector<int8_t> lat4_; // 80 x (dx, dy, dz, dw): the 4D neighbourhood
     std::vector<float> latScale_;   // per 4D-lattice offset: scaffold scale (lattice_falloff, direction)
-    std::vector<float> latDir_;     // per 4D-lattice offset: direction scale, also for the learned part (as Prime's feedback)
+    std::vector<float> latDir_;
+    float latAvgHave_ = 0.0f;       // average weight of a voxel's existing 4D links (lattice_edge_norm 2)     // per 4D-lattice offset: direction scale, also for the learned part (as Prime's feedback)
     std::vector<uint32_t> latPerm_; // lattice_scramble: 80 x B^3 shuffles of the place inside a 4D cell
     AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
     std::vector<float> cellGain_;          // gain control per 4D cell
