@@ -2096,6 +2096,36 @@ int runVocabPassTest(const Config& cfg) {
             }
             norm[k] = std::sqrt(q);
         }
+        // How distinct the word shapes are: mean cosine between two different words' shapes, raw and centred.
+        {
+            double rawSum = 0.0, cenSum = 0.0;
+            size_t pairs = 0;
+            std::vector<double> rawNorm(n, 0.0);
+            for (size_t k = 0; k < n; ++k) {
+                double q = 0.0;
+                for (float v : shape[k]) q += double(v) * v;
+                rawNorm[k] = std::sqrt(q);
+            }
+            for (size_t a = 0; a < n; a += 3)
+                for (size_t b2 = a + 1; b2 < n; b2 += 7) {
+                    double dr = 0.0, dc = 0.0;
+                    for (size_t i = 0; i < mean.size(); ++i) {
+                        dr += double(shape[a][i]) * shape[b2][i];
+                        dc += (shape[a][i] - mean[i]) * (shape[b2][i] - mean[i]);
+                    }
+                    if (rawNorm[a] > 0 && rawNorm[b2] > 0) rawSum += dr / (rawNorm[a] * rawNorm[b2]);
+                    if (norm[a] > 0 && norm[b2] > 0) cenSum += dc / (norm[a] * norm[b2]);
+                    ++pairs;
+                }
+            double active = 0.0;
+            for (size_t k = 0; k < n; ++k) {
+                size_t on = 0;
+                for (float v : shape[k]) on += v > 0.0f;
+                active += double(on) / double(n);
+            }
+            std::printf("  %s: word shapes - mean likeness of two different words %.3f raw, %+.3f centred; active voxel channels per word %.0f\n", who,
+                        pairs ? rawSum / double(pairs) : 0.0, pairs ? cenSum / double(pairs) : 0.0, active);
+        }
         std::string per, margins;
         size_t right = 0;
         double marginSum = 0.0;
