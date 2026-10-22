@@ -2084,6 +2084,30 @@ int runVocabPassTest(const Config& cfg) {
             shape[k].assign(acc.begin(), acc.end());
             s.silence(40, false);
         }
+        // The rest of each word as heard inside the word: the ticks from its second half on (+3).
+        // The first half's echo is not in it, so only a real completion can match it.
+        std::vector<std::vector<float>> rest(n);
+        for (size_t k = 0; k < n; ++k) {
+            const std::string ws = words[k] + " ";
+            std::vector<double> acc = s.present(ws, ws.size(), 1.0f, true, half(words[k]));
+            for (int t = 0; t < 3; ++t) {
+                s.silence(1, false);
+                s.accumulate(acc);
+            }
+            rest[k].assign(acc.begin(), acc.end());
+            s.silence(40, false);
+        }
+        std::vector<double> mean2(rest[0].size(), 0.0), norm2(n, 0.0);
+        for (const auto& sh : rest)
+            for (size_t i = 0; i < sh.size(); ++i) mean2[i] += sh[i] / double(n);
+        for (size_t k = 0; k < n; ++k) {
+            double q = 0.0;
+            for (size_t i = 0; i < mean2.size(); ++i) q += (rest[k][i] - mean2[i]) * (rest[k][i] - mean2[i]);
+            norm2[k] = std::sqrt(q);
+        }
+        size_t right2 = 0;
+        double margin2Sum = 0.0;
+        std::string per2;
         std::vector<double> mean(shape[0].size(), 0.0);
         for (const auto& sh : shape)
             for (size_t i = 0; i < sh.size(); ++i) mean[i] += sh[i] / double(n);
@@ -2140,6 +2164,26 @@ int runVocabPassTest(const Config& cfg) {
                 s.accumulate(after);
             }
             s.silence(40, false);
+            { // echo-free score: against the rest of every word
+                double an2 = 0.0;
+                std::vector<double> a2(after.size());
+                for (size_t i = 0; i < after.size(); ++i) {
+                    a2[i] = after[i] - mean2[i];
+                    an2 += a2[i] * a2[i];
+                }
+                an2 = std::sqrt(an2);
+                double own2 = 0.0, best2 = -2.0;
+                for (size_t j2 = 0; j2 < n; ++j2) {
+                    double dot = 0.0;
+                    for (size_t i = 0; i < a2.size(); ++i) dot += a2[i] * (rest[j2][i] - mean2[i]);
+                    const double cc = an2 > 0.0 && norm2[j2] > 0.0 ? dot / (an2 * norm2[j2]) : 0.0;
+                    if (j2 == k) own2 = cc;
+                    else if (cc > best2) best2 = cc;
+                }
+                right2 += own2 > best2;
+                margin2Sum += own2 - best2;
+                per2 += own2 > best2 ? '1' : '0';
+            }
             double an = 0.0;
             for (size_t i = 0; i < after.size(); ++i) {
                 after[i] -= mean[i];
@@ -2167,6 +2211,9 @@ int runVocabPassTest(const Config& cfg) {
         std::printf("  %s: completed %zu of %zu words from their first half (%.0f%%, chance %.1f%%), mean margin %+.3f\n", who, right, n,
                     100.0 * double(right) / double(n), 100.0 / double(n), marginSum / double(n));
         std::printf("  %s, word by word in list order: %s\n", who, per.c_str());
+        std::printf("  %s: completed the REST of the word (echo-free) %zu of %zu (%.0f%%), mean margin %+.3f\n", who, right2, n,
+                    100.0 * double(right2) / double(n), margin2Sum / double(n));
+        std::printf("  %s, rest of the word, word by word: %s\n", who, per2.c_str());
         std::printf("  %s, margin word by word (own minus best other):%s\n", who, margins.c_str());
         if (!wrong.empty()) std::printf("  %s, wrong (cue>taken as):%s\n", who, wrong.c_str());
     };
