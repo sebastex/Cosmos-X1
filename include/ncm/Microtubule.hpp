@@ -43,6 +43,9 @@ public:
         // the group total passes orchThreshold every tube in the group reduces at once with one shared
         // quantum draw, so the outcomes are correlated across the whole group (one decision for the
         // whole pattern) instead of independent coin flips. Tubes then never reduce on their own.
+        // Mode 6 is the control for it: the same tubes, timing and shared decision, but at the
+        // reduction each unit's odds come from its channel's ordinary activity instead of the quantum
+        // amplitudes (tells coordination apart from the quantum part).
         bool orch = false;
         float orchCouple = 0.3f, orchThreshold = 300.0f;
     };
@@ -85,7 +88,7 @@ private:
     std::vector<float> groupSx_, groupTau_;
     std::vector<float> tubeSup_, tubeSx_;
     uint64_t groupCollapses_ = 0;
-    void reduce(uint32_t id, uint64_t now, const Params& p, bool shared, float sharedU);
+    void reduce(uint32_t id, uint64_t now, const Params& p, bool shared, float sharedU, const float* state);
 };
 
 } // namespace ncm

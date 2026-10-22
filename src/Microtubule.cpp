@@ -63,13 +63,16 @@ void MicrotubuleLayer::setGroups(std::vector<uint32_t> groupOfCell, uint32_t gro
 
 // Objective reduction of one tube: every unit becomes definite, 1 with probability |a1|^2 (Born
 // rule), from its own draw, or from the group's one shared draw when the group reduces together.
-void MicrotubuleLayer::reduce(uint32_t id, uint64_t now, const Params& p, bool shared, float sharedU) {
+void MicrotubuleLayer::reduce(uint32_t id, uint64_t now, const Params& p, bool shared, float sharedU, const float* state) {
     const uint32_t C = channels_, T = units_;
     int16_t* a = amp_.data() + size_t(id) * T * 3;
+    const float* x = state + size_t(owner_[id]) * C;
     float ones[64] = {}, count[64] = {};
     for (uint32_t u = 0; u < T; ++u) {
         const float r1 = a[u * 3 + 1] / kScale, i1 = a[u * 3 + 2] / kScale;
-        const float p1 = r1 * r1 + i1 * i1;
+        // Classical control (mode 6): the same tubes, timing and shared decision, but the odds come
+        // from the channel's ordinary activity instead of the quantum amplitudes.
+        const float p1 = mode_ == 6 ? std::clamp(x[chan_[u]], 0.0f, 1.0f) : r1 * r1 + i1 * i1;
         if (mode_ == 1) { // expected value: push by the probability, the likelier state wins
             const bool likely = p1 > 0.5f;
             a[u * 3] = likely ? 0 : int16_t(kScale), a[u * 3 + 1] = likely ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
@@ -116,7 +119,7 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
         visit_.push_back(0);
         if (!groupOf_.empty()) groupTubes_[groupOf_[cell]].push_back(uint32_t(owner_.size() - 1));
     }
-    const bool orch = p.orch && !groupOf_.empty() && (mode_ == 0 || mode_ == 1 || mode_ == 3);
+    const bool orch = p.orch && !groupOf_.empty() && (mode_ == 0 || mode_ == 1 || mode_ == 3 || mode_ == 6);
     if (orch) tubeSup_.assign(owner_.size(), 0.0f), tubeSx_.assign(owner_.size(), 0.0f);
     // Update: microtubules of active cells, and those still holding a superposition.
     std::vector<uint32_t> list;
@@ -213,7 +216,7 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
             continue;
         }
         if (tau_[id] < thr) continue;
-        reduce(id, now, p, false, 0.0f);
+        reduce(id, now, p, false, 0.0f, state);
         ++collapses;
     }
     (void)decay;
@@ -239,7 +242,7 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
             const float u = float(hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull) ^ mix64(p.stream + 7), kStreamMicrotubule,
                                               mix64(now * 0xD1B54A32D192ED03ull + g)));
             for (uint32_t id : groupTubes_[g]) {
-                reduce(id, now, p, true, u);
+                reduce(id, now, p, true, u, state);
                 ++collapses;
             }
             groupTau_[g] = 0.0f;
