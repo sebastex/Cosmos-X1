@@ -336,7 +336,9 @@ def lab_scores(head, r, vox, window=25):
         sims = {w: ccos(aft, centred[w]) for w in words if w != cw}
         best_other = max((s for w, s in sims.items() if w != target), default=0.0)
         best_word = max(sims, key=sims.get)
+        top = sorted(sims.items(), key=lambda kv: -kv[1])[:8]
         rows.append(dict(cue=cw, target=target, own=round(sims.get(target, 0.0), 3), margin=round(sims.get(target, 0.0) - best_other, 3),
+                         top=[[w, round(s, 3)] for w, s in top], tick=int(r['tick'][e['start']]),
                          best=best_word, full_window=full))
         print(f"    cue {cw:10s} -> target {target:8s} own {sims.get(target, 0.0):+.3f}  margin {sims.get(target, 0.0) - best_other:+.3f}  (most like {best_word}){'' if full else '  [window cut]'}")
     # Afterglow per hearing, equal windows only.

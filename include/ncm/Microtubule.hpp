@@ -33,7 +33,9 @@ public:
         // chance), 2 = classical stand-in (no quantum state: the push is a fading trace of the cell's
         // recent firing per channel), 3 = shuffled (quantum, but each unit's collapse pushes a
         // different channel than the one that drives it), 4 = constant boost (gain x 0.5 on every
-        // channel of a cell with input, no microtubule at all).
+        // channel of a cell with input, no microtubule at all), 5 = classical with chance (no quantum
+        // state; each unit fires at random with the probability of its channel's recent firing, and
+        // the push is the share that fired: ordinary randomness without superposition or interference).
         int mode = 0;
         uint64_t stream = 0; // which random stream the reductions draw from (same brain, other chances)
     };

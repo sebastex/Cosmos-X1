@@ -365,7 +365,7 @@ struct Config {
     // cells, 4 = voxels. 7 = every cell. Each level's microtubules step on that level's clock.
     float mt_levels = 7.0f;
     // Microtubule controls (MicrotubuleLayer::Params::mode): 0 quantum, 1 expected value,
-    // 2 classical stand-in, 3 shuffled outputs, 4 constant boost. mt_stream picks another random
+    // 2 classical stand-in, 3 shuffled outputs, 4 constant boost, 5 classical with chance. mt_stream picks another random
     // stream for the reductions (the same brain with other chances).
     float mt_mode = 0.0f;
     float mt_stream = 0.0f;

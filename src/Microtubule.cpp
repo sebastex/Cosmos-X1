@@ -92,6 +92,22 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
     for (int64_t i = 0; i < n; ++i) {
         const uint32_t id = list[size_t(i)];
         const float* x = state + size_t(owner_[id]) * C;
+        if (mode_ == 5) { // classical with chance: random units at the trace's probability, no quantum state
+            float* o = out_.data() + size_t(id) * C;
+            const float f = std::pow(decay, float(now - stamp_[id]));
+            float ones[64] = {}, count[64] = {};
+            for (uint32_t u = 0; u < T; ++u) {
+                const float pr = std::clamp(x[chan_[u]], 0.0f, 1.0f);
+                const bool on = hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull) ^ mix64(p.stream + 1), kStreamMicrotubule,
+                                            mix64(now * 0x9E3779B97F4A7C15ull + 0x632BE59BD9B4E019ull) ^ (uint64_t(owner_[id]) * T + u)) < pr;
+                count[chan_[u]] += 1.0f;
+                ones[chan_[u]] += on ? 1.0f : 0.0f;
+            }
+            for (uint32_t c = 0; c < C; ++c) o[c] = f * o[c] + (1.0f - decay) * (count[c] > 0.0f ? p.gain * ones[c] / count[c] : 0.0f);
+            stamp_[id] = now;
+            quiet_[id] = 1;
+            continue;
+        }
         if (mode_ == 2) { // classical stand-in: a fading trace of recent firing, no quantum state
             float* o = out_.data() + size_t(id) * C;
             const float f = std::pow(decay, float(now - stamp_[id]));
