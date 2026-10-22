@@ -53,6 +53,47 @@ void MicrotubuleLayer::addPush(size_t cell, float* in, float decay) const {
     for (uint32_t c = 0; c < channels_; ++c) in[c] += f * o[c] * own;
 }
 
+void MicrotubuleLayer::setGroups(std::vector<uint32_t> groupOfCell, uint32_t groups) {
+    groupOf_ = std::move(groupOfCell);
+    groupTubes_.assign(groups, {});
+    groupSx_.assign(groups, 0.0f);
+    groupTau_.assign(groups, 0.0f);
+    for (uint32_t id = 0; id < owner_.size(); ++id) groupTubes_[groupOf_[owner_[id]]].push_back(id);
+}
+
+// Objective reduction of one tube: every unit becomes definite, 1 with probability |a1|^2 (Born
+// rule), from its own draw, or from the group's one shared draw when the group reduces together.
+void MicrotubuleLayer::reduce(uint32_t id, uint64_t now, const Params& p, bool shared, float sharedU) {
+    const uint32_t C = channels_, T = units_;
+    int16_t* a = amp_.data() + size_t(id) * T * 3;
+    float ones[64] = {}, count[64] = {};
+    for (uint32_t u = 0; u < T; ++u) {
+        const float r1 = a[u * 3 + 1] / kScale, i1 = a[u * 3 + 2] / kScale;
+        const float p1 = r1 * r1 + i1 * i1;
+        if (mode_ == 1) { // expected value: push by the probability, the likelier state wins
+            const bool likely = p1 > 0.5f;
+            a[u * 3] = likely ? 0 : int16_t(kScale), a[u * 3 + 1] = likely ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
+            count[chan_[u]] += 1.0f;
+            ones[chan_[u]] += p1;
+            continue;
+        }
+        const float draw = shared ? sharedU
+                                  : float(hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull) ^ mix64(p.stream + 1), kStreamMicrotubule,
+                                                      mix64(now * 0x9E3779B97F4A7C15ull + 0x632BE59BD9B4E019ull) ^ (uint64_t(owner_[id]) * T + u)));
+        const bool one = draw < p1;
+        a[u * 3] = one ? 0 : int16_t(kScale), a[u * 3 + 1] = one ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
+        const uint32_t pc = mode_ == 3 ? outChan_[u] : chan_[u];
+        count[pc] += 1.0f;
+        ones[pc] += one ? 1.0f : 0.0f;
+    }
+    float* o = out_.data() + size_t(id) * C;
+    const float f = std::pow(std::clamp(p.decay, 0.0f, 1.0f), float(now - stamp_[id]));
+    for (uint32_t c = 0; c < C; ++c) o[c] = f * o[c] + (count[c] > 0.0f ? p.gain * ones[c] / count[c] : 0.0f);
+    stamp_[id] = now;
+    tau_[id] = 0.0f;
+    quiet_[id] = 1;
+}
+
 void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& active, const Params& p) {
     const uint64_t now = ++step_;
     const uint32_t C = channels_, T = units_, P = 13, Lm = len_;
@@ -73,7 +114,10 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
         stamp_.push_back(now);
         quiet_.push_back(1);
         visit_.push_back(0);
+        if (!groupOf_.empty()) groupTubes_[groupOf_[cell]].push_back(uint32_t(owner_.size() - 1));
     }
+    const bool orch = p.orch && !groupOf_.empty() && (mode_ == 0 || mode_ == 1 || mode_ == 3);
+    if (orch) tubeSup_.assign(owner_.size(), 0.0f), tubeSx_.assign(owner_.size(), 0.0f);
     // Update: microtubules of active cells, and those still holding a superposition.
     std::vector<uint32_t> list;
     list.reserve(active.size() + live_.size());
@@ -132,7 +176,8 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
             else if (k + 3 < Lm) field += sx[(k + 3) * P];
             if (pf > 0) field += sx[u - 1];
             else if (k >= 3) field += sx[(k - 3) * P + P - 1];
-            const float h = J * field + D * x[chan_[u]];
+            float h = J * field + D * x[chan_[u]];
+            if (orch) h += p.orchCouple * groupSx_[groupOf_[owner_[id]]]; // gap junctions: the group's field
             float r0 = a0[u], i0 = 0.0f, r1 = br[u], i1 = bi[u];
             const float om = std::sqrt(eps * eps + h * h);
             if (om > 1e-9f) {
@@ -160,33 +205,47 @@ void MicrotubuleLayer::step(const float* state, const std::vector<uint32_t>& act
         }
         tau_[id] += sup;
         quiet_[id] = sup < 1e-5f ? 1 : 0;
-        if (tau_[id] < thr) continue;
-        // Objective reduction: every unit becomes definite, 1 with probability |a1|^2 (Born rule).
-        float ones[64] = {}, count[64] = {};
-        for (uint32_t u = 0; u < T; ++u) {
-            const float r1 = a[u * 3 + 1] / kScale, i1 = a[u * 3 + 2] / kScale;
-            const float p1 = r1 * r1 + i1 * i1;
-            if (mode_ == 1) { // expected value: push by the probability, the likelier state wins
-                const bool likely = p1 > 0.5f;
-                a[u * 3] = likely ? 0 : int16_t(kScale), a[u * 3 + 1] = likely ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
-                count[chan_[u]] += 1.0f;
-                ones[chan_[u]] += p1;
-                continue;
-            }
-            const bool one = hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull) ^ mix64(p.stream + 1), kStreamMicrotubule,
-                                         mix64(now * 0x9E3779B97F4A7C15ull + 0x632BE59BD9B4E019ull) ^ (uint64_t(owner_[id]) * T + u)) < r1 * r1 + i1 * i1; // step and unit hashed apart (no overlap for 16M cells)
-            a[u * 3] = one ? 0 : int16_t(kScale), a[u * 3 + 1] = one ? int16_t(kScale) : 0, a[u * 3 + 2] = 0;
-            const uint32_t pc = mode_ == 3 ? outChan_[u] : chan_[u];
-            count[pc] += 1.0f;
-            ones[pc] += one ? 1.0f : 0.0f;
+        if (orch) { // the group decides together (below)
+            float m = 0.0f;
+            for (uint32_t u = 0; u < T; ++u) m += sx[u];
+            tubeSup_[id] = sup;
+            tubeSx_[id] = m / float(T);
+            continue;
         }
-        float* o = out_.data() + size_t(id) * C;
-        const float f = std::pow(decay, float(now - stamp_[id]));
-        for (uint32_t c = 0; c < C; ++c) o[c] = f * o[c] + (count[c] > 0.0f ? p.gain * ones[c] / count[c] : 0.0f);
-        stamp_[id] = now;
-        tau_[id] = 0.0f;
-        quiet_[id] = 1;
+        if (tau_[id] < thr) continue;
+        reduce(id, now, p, false, 0.0f);
         ++collapses;
+    }
+    (void)decay;
+    if (orch) { // orchestrated reduction: each group adds up its tubes; past its threshold all reduce at once
+        const size_t G = groupTubes_.size();
+        std::vector<double> sxSum(G, 0.0);
+        std::vector<uint32_t> sxN(G, 0);
+        for (uint32_t id : list) {
+            const uint32_t g = groupOf_[owner_[id]];
+            groupTau_[g] += tubeSup_[id];
+            sxSum[g] += tubeSx_[id];
+            ++sxN[g];
+        }
+        std::vector<uint32_t> fire;
+        for (uint32_t g = 0; g < G; ++g) {
+            groupSx_[g] = sxN[g] ? float(sxSum[g] / double(sxN[g])) : 0.9f * groupSx_[g];
+            if (groupTau_[g] >= std::max(1e-3f, p.orchThreshold)) fire.push_back(g);
+        }
+        const int64_t nf = int64_t(fire.size());
+#pragma omp parallel for schedule(dynamic, 1) reduction(+ : collapses)
+        for (int64_t i = 0; i < nf; ++i) {
+            const uint32_t g = fire[size_t(i)];
+            const float u = float(hashUniform(seed_ ^ (salt_ * 0x9E3779B97F4A7C15ull) ^ mix64(p.stream + 7), kStreamMicrotubule,
+                                              mix64(now * 0xD1B54A32D192ED03ull + g)));
+            for (uint32_t id : groupTubes_[g]) {
+                reduce(id, now, p, true, u);
+                ++collapses;
+            }
+            groupTau_[g] = 0.0f;
+            groupSx_[g] = 0.0f;
+        }
+        groupCollapses_ += uint64_t(nf);
     }
     collapses_ += collapses;
     live_.clear();
@@ -210,6 +269,9 @@ void MicrotubuleLayer::state(StateFile& st) {
     st.vec(visit_, "microtubules");
     st.vec(live_, "microtubules");
     st.vec(chan_, "microtubules");
+    st.vec(groupSx_, "microtubule groups");
+    st.vec(groupTau_, "microtubule groups");
+    st.value(groupCollapses_);
 }
 
 } // namespace ncm

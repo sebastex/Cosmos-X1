@@ -369,6 +369,13 @@ struct Config {
     // stream for the reductions (the same brain with other chances).
     float mt_mode = 0.0f;
     float mt_stream = 0.0f;
+    // Tubular inception (Orch-OR's orchestration through gap junctions): 1 = the voxels' tubes inside
+    // each 4D cell are coupled (mt_orch_couple x the cell's mean <sx>) and reduce together with one
+    // shared quantum draw when the 4D cell's summed superposition passes mt_orch_threshold, so one
+    // reduction decides the whole 4D cell's pattern. Needs the 4D lattice (lattice4d). 0 = off.
+    float mt_orch = 0.0f;
+    float mt_orch_couple = 0.3f;
+    float mt_orch_threshold = 300.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

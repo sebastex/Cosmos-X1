@@ -374,7 +374,14 @@ void NeuralCellularMatrix::initVoxelWeights() {
         const uint32_t len = uint32_t(cfg_.mt_len + 0.5f);
         if (levels & 1) mt1_.init(P_, C1, len, cfg_.seed, 1);
         if (levels & 2) mt2_.init(Q_, C2, len, cfg_.seed, 2);
-        if (levels & 4) mt3_.init(V_, C3, len, cfg_.seed, 3);
+        if (levels & 4) {
+            mt3_.init(V_, C3, len, cfg_.seed, 3);
+            if (cfg_.mt_orch > 0.5f && lattice_) { // tubular inception: the tubes of each 4D cell work as one
+                std::vector<uint32_t> g(V_);
+                for (size_t v = 0; v < V_; ++v) g[v] = uint32_t(cell4Of(v));
+                mt3_.setGroups(std::move(g), uint32_t(cellGain_.size()));
+            }
+        }
     }
     lrTarget_.resize(V_ * K);
 
@@ -1334,6 +1341,7 @@ MicrotubuleLayer::Params NeuralCellularMatrix::mtParams() const {
     p.couple = cfg_.mt_couple, p.drive = cfg_.mt_drive, p.bias = cfg_.mt_bias;
     p.threshold = cfg_.mt_threshold, p.gain = cfg_.mt_gain, p.decay = cfg_.mt_decay;
     p.mode = int(cfg_.mt_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
+    p.orch = cfg_.mt_orch > 0.5f, p.orchCouple = cfg_.mt_orch_couple, p.orchThreshold = cfg_.mt_orch_threshold;
     return p;
 }
 

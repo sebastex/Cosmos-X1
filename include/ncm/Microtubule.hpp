@@ -38,6 +38,13 @@ public:
         // the push is the share that fired: ordinary randomness without superposition or interference).
         int mode = 0;
         uint64_t stream = 0; // which random stream the reductions draw from (same brain, other chances)
+        // Orchestration ("tubular inception", Orch-OR's gap junctions): the tubes of one group (a 4D
+        // cell) feel the group's mean <sx> (orchCouple), add up their superposition together, and when
+        // the group total passes orchThreshold every tube in the group reduces at once with one shared
+        // quantum draw, so the outcomes are correlated across the whole group (one decision for the
+        // whole pattern) instead of independent coin flips. Tubes then never reduce on their own.
+        bool orch = false;
+        float orchCouple = 0.3f, orchThreshold = 300.0f;
     };
 
     bool on() const { return channels_ > 0; }
@@ -48,6 +55,8 @@ public:
     void step(const float* state, const std::vector<uint32_t>& active, const Params& p);
     // Adds the cell's held push (from its last objective reduction) to `in`.
     void addPush(size_t cell, float* in, float decay) const;
+    // Orchestration groups: the group of every cell (e.g. its 4D cell); empty = no groups.
+    void setGroups(std::vector<uint32_t> groupOfCell, uint32_t groups);
     uint64_t collapses() const { return collapses_; }
     size_t tubes() const { return owner_.size(); }
     void state(StateFile& st);
@@ -69,6 +78,14 @@ private:
     std::vector<uint32_t> live_;   // microtubules still holding a superposition
     std::vector<uint32_t> chan_;   // per unit: the channel of the cell that drives it
     std::vector<uint32_t> outChan_; // per unit: the channel its collapse pushes in the shuffled control
+    // Orchestration: group of each cell, tubes of each group, each group's mean <sx> (gap-junction
+    // field) and its accumulated superposition; per tube this step's superposition and mean <sx>.
+    std::vector<uint32_t> groupOf_;
+    std::vector<std::vector<uint32_t>> groupTubes_;
+    std::vector<float> groupSx_, groupTau_;
+    std::vector<float> tubeSup_, tubeSx_;
+    uint64_t groupCollapses_ = 0;
+    void reduce(uint32_t id, uint64_t now, const Params& p, bool shared, float sharedU);
 };
 
 } // namespace ncm
