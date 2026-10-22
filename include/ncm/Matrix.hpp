@@ -85,6 +85,11 @@ public:
     // and learns only then; in between its drive is held).
     void setTick4D(bool fourD) { tick4_ = fourD; }
 
+    // Learn by predicting (predict_surprise): after a 3D step, how much of the voxels' firing their
+    // learned links did not predict (0 = fully expected, 1 = all new). Kept until the next call.
+    float predictSurprise();
+    float lastSurprise() const { return lastSurprise_; }
+
     // Field roles: a word ends here. The Memory field forgets its order window and pauses learning
     // for a few 3D steps, so it never links one word to the next.
     void wordBoundary();
@@ -214,6 +219,7 @@ private:
     LearningStats learnStats_;
     float modulator_ = 0.0f;
     uint32_t memoryPause_ = 0; // field roles: 3D steps left in which the Memory field does not learn
+    float lastSurprise_ = 1.0f; // learn by predicting: share of the last 3D step's firing not predicted
 
     // Cosmos Pharmakon (lattice4d): the 4D lattice.
     bool lattice_ = false;

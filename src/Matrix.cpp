@@ -1345,6 +1345,33 @@ MicrotubuleLayer::Params NeuralCellularMatrix::mtParams() const {
     return p;
 }
 
+float NeuralCellularMatrix::predictSurprise() {
+    // After step3D() swapped the buffers, `cur` holds the new state and `next` the previous one.
+    const float* post = s3_.cur.data();
+    const float* prev = s3_.next.data();
+    const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
+    const int64_t voxels = int64_t(V_);
+    double fired = 0.0, explained = 0.0;
+#pragma omp parallel for schedule(dynamic, 64) reduction(+ : fired, explained)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        const float* pi = post + v * C3;
+        if (isSilent(pi, C3)) continue;
+        float pred[C3] = {};
+        forEachLearnedBlock(v, [&](float* block, size_t src) {
+            const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
+            for (uint32_t a = 0; a < C3; ++a)
+                for (uint32_t b = 0; b < C3; ++b) pred[a] += block[size_t(a) * C3 + b] * sq[b];
+        });
+        for (uint32_t a = 0; a < C3; ++a) {
+            fired += pi[a];
+            explained += std::min(pi[a], pred[a]);
+        }
+    }
+    lastSurprise_ = fired > 0.0 ? float(std::clamp(1.0 - explained / fired, 0.0, 1.0)) : lastSurprise_;
+    return lastSurprise_;
+}
+
 void NeuralCellularMatrix::learn2D(float modulator) {
     if (L2_.empty()) return;
     const float rate = cfg_.learning.sheet_learn * std::clamp(modulator, 0.0f, 1.0f);

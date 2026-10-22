@@ -1944,6 +1944,9 @@ int runAlphabetTest(const Config& cfg) {
 //   hold:X:T                hold character X for T ticks
 //   rest:T                  silence for T ticks
 //   learn:1 | learn:0       learning on (default) or off for the following steps
+//   voice                   record every letter's shape (heard alone) for speaking
+//   speak:N[:H]             say N letters: each time the letter the brain now expects most (held H
+//                           ticks), heard back by the brain itself; '_' = nothing expected
 // An underscore in a text stands for a space (cue:the_cat), since the script travels without spaces.
 // NCM_STATE_IN / NCM_STATE_OUT continue a saved brain.
 int runScriptTest(const Config& cfg) {
@@ -1977,6 +1980,29 @@ int runScriptTest(const Config& cfg) {
     };
     // One run of the script on a session (the learner, then optionally its untrained twin).
     auto run = [&](Session& s) -> int {
+    // Speech (op voice, op speak): each letter's shape heard alone is its "voice" template; speaking
+    // = reading which letter the brain's activity now expects most (shapes centred, the letter just
+    // said excluded), saying it, and hearing itself say it (the self-hearing loop), letter by letter.
+    std::vector<std::vector<double>> voice;
+    const std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+    auto recordVoice = [&](Session& ss) {
+        voice.clear();
+        for (char ch : alphabet) {
+            std::vector<double> acc = ss.present(std::string(1, ch), 3, 1.0f, false, 0);
+            for (int k = 0; k < 2; ++k) {
+                ss.silence(1, false);
+                ss.accumulate(acc);
+            }
+            voice.push_back(acc);
+            ss.silence(30, false);
+        }
+        std::vector<double> mean(voice[0].size(), 0.0);
+        for (const auto& v : voice)
+            for (size_t k = 0; k < v.size(); ++k) mean[k] += v[k] / double(voice.size());
+        for (auto& v : voice)
+            for (size_t k = 0; k < v.size(); ++k) v[k] -= mean[k];
+        voice.push_back(mean); // last entry: the mean (to centre what is heard)
+    };
     bool learn = true;
     uint64_t tick = 0;
     for (const std::string& step : split(script, ';')) {
@@ -2002,6 +2028,54 @@ int runScriptTest(const Config& cfg) {
                 s.silence(rest, learn);
                 tick += text.size() * hold + rest;
             }
+        } else if (op == "voice") {
+            recordVoice(s);
+            tick += alphabet.size() * 35;
+        } else if (op == "speak") {
+            if (voice.empty()) {
+                recordVoice(s);
+                tick += alphabet.size() * 35;
+            }
+            const uint64_t n = num(f, 1, 8), hold = std::max<uint64_t>(1, num(f, 2, 1));
+            std::string said;
+            char last = 0;
+            const std::vector<double>& mean = voice.back();
+            // NCM_SPEAK_RISING=1: read only what is newly lighting up (rising activity), where an
+            // expectation shows, instead of everything active (which is mostly the echo of what was heard).
+            const bool rising = std::getenv("NCM_SPEAK_RISING") && std::atoi(std::getenv("NCM_SPEAK_RISING")) > 0;
+            std::vector<double> before;
+            s.accumulate(before);
+            for (uint64_t k = 0; k < n; ++k) {
+                std::vector<double> now;
+                s.silence(1, false);
+                s.accumulate(now);
+                std::vector<double> raw = now;
+                if (rising)
+                    for (size_t q = 0; q < now.size(); ++q) now[q] = std::max(0.0, now[q] - before[q]);
+                else
+                    for (size_t q = 0; q < now.size(); ++q) now[q] -= mean[q];
+                double best = -2.0;
+                char pick = '?';
+                for (size_t a = 0; a < alphabet.size(); ++a) {
+                    if (alphabet[a] == last) continue;
+                    const double cs = lab::cosine(now, voice[a]);
+                    if (cs > best) best = cs, pick = alphabet[a];
+                }
+                if (best <= 0.0) { // nothing expected: the brain falls silent
+                    said += '_';
+                    last = 0;
+                    tick += 1;
+                    continue;
+                }
+                said += pick;
+                last = pick;
+                before = raw;
+                s.present(std::string(1, pick), hold, 1.0f, false, UINT64_MAX); // it hears itself
+                before.clear();
+                s.accumulate(before);
+                tick += 1 + hold;
+            }
+            std::printf("  spoke: \"%s\"\n", said.c_str());
         } else if (op == "cue") {
             const std::string text = f.size() > 1 ? f[1] : "";
             const uint64_t rest = num(f, 2, 30);

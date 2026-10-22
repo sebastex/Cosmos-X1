@@ -59,7 +59,9 @@ public:
         if (fingerprint) {
             // Surprise (spec Section 5A): read the matrix's guess before the character
             // arrives. Only external text produces surprise.
-            const double guess = actual ? m_->motorOverlap(*actual) : 0.0;
+            // Learn by predicting: the guess is how much the cells' learned links predicted (last 3D step).
+            const double guess = cfg_.predict_surprise > 0.5f ? 1.0 - double(m_->lastSurprise())
+                                                                       : actual ? m_->motorOverlap(*actual) : 0.0;
             surpriseSum_ += 1.0 - guess;
             ++surpriseCount_;
             m_->setSensoryInput(*fingerprint);
@@ -90,6 +92,7 @@ public:
         if (t.voxel) {
             m_->setTick4D(t.fourD);
             m_->step3D();
+            if (cfg_.predict_surprise > 0.5f) m_->predictSurprise();
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;

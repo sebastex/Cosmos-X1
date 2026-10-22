@@ -343,6 +343,11 @@ struct Config {
     // a well-known pattern stops strengthening (its basin stops growing), new patterns still learn
     // at full rate. A local rule, the same for every voxel. 0 = off.
     float familiarity = 0.0f;
+    // Learn by predicting: 1 = the brain's surprise (which sets how strongly it learns and whether
+    // it is in encoding or recall mode) is how much of its voxels' firing their learned links did NOT
+    // predict from what fired just before (firing-weighted over all firing voxels), instead of the
+    // untrained motor guess. Familiar input is then unsurprising: learned less, recalled more.
+    float predict_surprise = 0.0f;
     // Microtubules (Orch-OR-like, local quantum mathematics): inside every cell a cylindrical
     // lattice of 13 protofilaments x mt_len tubulin units. Each unit holds a superposition
     // a0|0> + a1|1> (complex amplitudes) and evolves unitarily under H = mt_bias sz + h sx, where
