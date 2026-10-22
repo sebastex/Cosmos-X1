@@ -74,6 +74,14 @@ public:
     // Learns the 3D neighbourhood, long-range and 4D connections from excitatory
     // sources, and each voxel's sheet modulation. M = 0 leaves everything frozen.
     void learn(float modulator);
+
+    // Sleep: faint random nudges (each voxel with probability `prob` gets `level` on one channel per
+    // 3D step) let the brain fall into what it has learned; 0 = off.
+    void setNoise(float level, float prob) { noiseLevel_ = level, noiseProb_ = prob; }
+    // Sleep unlearning (Crick-Mitchison): every learned link between two voxels firing together now is
+    // weakened by eta x (their product); the slow consolidated part is left alone, so what is stored
+    // stays while over-strong attractors (magnets) are trimmed most.
+    void learnSleep(float eta);
     // 2D learning (sheet_learn), applied right after step2D().
     void learn2D(float modulator);
 
@@ -219,7 +227,9 @@ private:
     LearningStats learnStats_;
     float modulator_ = 0.0f;
     uint32_t memoryPause_ = 0; // field roles: 3D steps left in which the Memory field does not learn
-    float lastSurprise_ = 1.0f; // learn by predicting: share of the last 3D step's firing not predicted
+    float lastSurprise_ = 1.0f;
+    float noiseLevel_ = 0.0f, noiseProb_ = 0.0f; // sleep nudges
+    uint64_t noiseStep_ = 0; // learn by predicting: share of the last 3D step's firing not predicted
 
     // Cosmos Pharmakon (lattice4d): the 4D lattice.
     bool lattice_ = false;

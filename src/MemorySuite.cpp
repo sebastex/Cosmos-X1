@@ -1944,6 +1944,8 @@ int runAlphabetTest(const Config& cfg) {
 //   hold:X:T                hold character X for T ticks
 //   rest:T                  silence for T ticks
 //   learn:1 | learn:0       learning on (default) or off for the following steps
+//   sleep:T[:ETA[:LEVEL]]   sleep T ticks: faint random nudges (LEVEL, default 0.1) replay what it knows,
+//                           links firing together weakened by ETA (default 0.002) - unlearning
 //   voice                   record every letter's shape (heard alone) for speaking
 //   speak:N[:H]             say N letters: each time the letter the brain now expects most (held H
 //                           ticks), heard back by the brain itself; '_' = nothing expected
@@ -2028,6 +2030,12 @@ int runScriptTest(const Config& cfg) {
                 s.silence(rest, learn);
                 tick += text.size() * hold + rest;
             }
+        } else if (op == "sleep") {
+            const uint64_t tt = num(f, 1, 600);
+            const float eta = f.size() > 2 && !f[2].empty() ? float(std::atof(f[2].c_str())) : 0.002f;
+            const float level = f.size() > 3 && !f[3].empty() ? float(std::atof(f[3].c_str())) : 0.1f;
+            s.sleep(tt, learn ? eta : 0.0f, level, 0.01f);
+            tick += tt;
         } else if (op == "voice") {
             recordVoice(s);
             tick += alphabet.size() * 35;
@@ -2306,6 +2314,13 @@ int runVocabPassTest(const Config& cfg) {
                 s.silence(40, true);
             }
             s.silence(60, true);
+        }
+        // NCM_VOCAB_SLEEP=T: sleep T ticks after teaching (NCM_SLEEP_ETA, NCM_SLEEP_LEVEL).
+        if (const char* sl = std::getenv("NCM_VOCAB_SLEEP"); sl && std::atoi(sl) > 0) {
+            const float eta = std::getenv("NCM_SLEEP_ETA") ? float(std::atof(std::getenv("NCM_SLEEP_ETA"))) : 0.002f;
+            const float level = std::getenv("NCM_SLEEP_LEVEL") ? float(std::atof(std::getenv("NCM_SLEEP_LEVEL"))) : 0.1f;
+            s.sleep(uint64_t(std::atoi(sl)), eta, level, 0.01f);
+            std::printf("  slept %d ticks (unlearning %.4f, nudges %.2f)\n", std::atoi(sl), eta, level);
         }
         char label[64];
         std::snprintf(label, sizeof label, "LEARNED after pass %d", pass);

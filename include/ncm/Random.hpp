@@ -52,6 +52,7 @@ enum Stream : uint64_t {
     kStreamInputDepth,
     kStreamLattice4d,
     kStreamMicrotubule,
+    kStreamSleep,
 };
 
 } // namespace ncm

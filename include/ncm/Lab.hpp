@@ -151,6 +151,27 @@ public:
     }
 
     void clearActivity() { m_->clearActivity(); }
+
+    // Sleep for `ticks` ticks: no input, recall mode (learned links fully on), faint random nudges
+    // (level, prob) so the brain falls into and replays what it knows, and on every 3D step the links
+    // between voxels firing together are weakened by eta (unlearning; the slow stored part stays).
+    void sleep(uint64_t ticks, float eta, float level, float prob) {
+        m_->clearSensoryInput();
+        m_->setNoise(level, prob);
+        for (uint64_t t = 0; t < ticks; ++t) {
+            setMode(0.0f, false);
+            m_->step1D();
+            const LevelScheduler::Tick tk = clock_.advance();
+            if (tk.sheet) m_->step2D();
+            if (tk.voxel) {
+                m_->setTick4D(tk.fourD);
+                m_->step3D();
+                if (learning_) m_->learnSleep(eta);
+            }
+        }
+        m_->setNoise(0.0f, 0.0f);
+        wasSilent_ = true;
+    }
     void setLearning(bool on) { learning_ = on; } // diagnostic: pause learning, keep the mode
     double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
     const NeuralCellularMatrix& matrix() const { return *m_; }

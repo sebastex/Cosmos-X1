@@ -1103,6 +1103,13 @@ void NeuralCellularMatrix::step3D() {
         // Channel balance: each channel's own threshold offset (channels that always win are held back).
         if (!chanTheta3_.empty())
             for (uint32_t c = 0; c < C3; ++c) in[c] -= chanTheta3_[v * C3 + c];
+        if (noiseLevel_ > 0.0f) { // sleep: a faint random nudge
+            const uint64_t key = noiseStep_ * uint64_t(V_) + v;
+            if (hashUniform(cfg_.seed, kStreamSleep, key) < noiseProb_) {
+                const uint32_t ch = std::min<uint32_t>(C3 - 1, uint32_t(hashUniform(cfg_.seed, kStreamSleep, key + (uint64_t(1) << 50)) * C3));
+                in[ch] += noiseLevel_;
+            }
+        }
         if (probe_) {
             float m = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) m = std::max(m, in[c]);
@@ -1234,6 +1241,7 @@ void NeuralCellularMatrix::step3D() {
         }
         for (uint32_t f = 0; f < kFields; ++f) probeSums_[f][snd].steps += 1;
     }
+    if (noiseLevel_ > 0.0f) ++noiseStep_;
     s3_.swap();
     if (mt3_.on()) { // microtubules of the voxels, on the 3D clock
         mtActive_.clear();
@@ -1343,6 +1351,27 @@ MicrotubuleLayer::Params NeuralCellularMatrix::mtParams() const {
     p.mode = int(cfg_.mt_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
     p.orch = cfg_.mt_orch > 0.5f, p.orchCouple = cfg_.mt_orch_couple, p.orchThreshold = cfg_.mt_orch_threshold;
     return p;
+}
+
+void NeuralCellularMatrix::learnSleep(float eta) {
+    if (eta <= 0.0f) return;
+    const float* post = s3_.cur.data();
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        const float* pi = post + v * C3;
+        if (isSilent(pi, C3)) continue;
+        forEachLearnedBlock(v, [&](float* block, size_t src) {
+            const float* sp = post + src * C3;
+            if (isSilent(sp, C3)) return;
+            for (uint32_t a = 0; a < C3; ++a) {
+                if (pi[a] == 0.0f) continue;
+                for (uint32_t b = 0; b < C3; ++b)
+                    if (sp[b] != 0.0f) block[size_t(a) * C3 + b] = std::max(0.0f, block[size_t(a) * C3 + b] - eta * pi[a] * sp[b]);
+            }
+        });
+    }
 }
 
 float NeuralCellularMatrix::predictSurprise() {
@@ -1796,6 +1825,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(hold4Learned_, "4D drive");
     st.value(tick4_);
     st.value(memoryPause_);
+    st.value(noiseStep_);
     st.vec(W3_, "W3");
     st.vec(WL_, "WL");
     st.vec(H_, "H");
