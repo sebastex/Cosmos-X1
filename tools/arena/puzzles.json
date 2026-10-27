@@ -92,7 +92,7 @@
       "kind": "complete",
       "twin": true,
       "tests": "50 words, each learned on its own; 10 of them cued by their first 3 letters. Does the silence bring back the right word, better than the untrained twin?",
-      "script": "say:night:8:40;say:hard:8:40;say:tadpole:8:40;say:pink:8:40;say:foal:8:40;say:brush:8:40;say:dark:8:40;say:house:8:40;say:kitten:8:40;say:mango:8:40;say:beach:8:40;say:horse:8:40;say:pillow:8:40;say:green:8:40;say:ball:8:40;say:bright:8:40;say:fire:8:40;say:mouse:8:40;say:piglet:8:40;say:feather:8:40;say:chick:8:40;say:heavy:8:40;say:cherry:8:40;say:white:8:40;say:duck:8:40;say:bear:8:40;say:water:8:40;say:fast:8:40;say:peach:8:40;say:spade:8:40;say:light:8:40;say:frog:8:40;say:boat:8:40;say:calf:8:40;say:juice:8:40;say:book:8:40;say:grass:8:40;say:truck:8:40;say:sugar:8:40;say:shop:8:40;say:blue:8:40;say:whale:8:40;say:cold:8:40;say:park:8:40;say:slow:8:40;say:apple:8:40;say:school:8:40;say:lamb:8:40;say:pear:8:40;say:sand:8:40;rest:300;cue:nig:60;cue:tad:60;cue:bru:60;cue:hou:60;cue:kit:60;cue:man:60;cue:hor:60;cue:pil:60;cue:gre:60;cue:bri:60",
+      "script": "say:beach:8:40;say:soft:8:40;say:jump:8:40;say:juice:8:40;say:rice:8:40;say:pillow:8:40;say:hand:8:40;say:cheetah:8:40;say:black:8:40;say:friend:8:40;say:white:8:40;say:hard:8:40;say:calf:8:40;say:walk:8:40;say:flower:8:40;say:park:8:40;say:star:8:40;say:grass:8:40;say:sour:8:40;say:play:8:40;say:apple:8:40;say:knife:8:40;say:grandpa:8:40;say:drink:8:40;say:kitten:8:40;say:truck:8:40;say:soup:8:40;say:feather:8:40;say:hair:8:40;say:pink:8:40;say:calm:8:40;say:river:8:40;say:milk:8:40;say:rock:8:40;say:snow:8:40;say:bear:8:40;say:ball:8:40;say:horse:8:40;say:baby:8:40;say:cherry:8:40;say:storm:8:40;say:slow:8:40;say:leaf:8:40;say:school:8:40;say:bike:8:40;say:foal:8:40;say:stone:8:40;say:brown:8:40;say:sand:8:40;say:give:8:40;rest:300;cue:jui:60;cue:pil:60;cue:bla:60;cue:fri:60;cue:whi:60;cue:flo:60;cue:app:60;cue:kni:60;cue:dri:60;cue:kit:60",
       "probes": "room for many words",
       "if_fails": "word shapes overlap and crowd each other out"
     },
@@ -102,7 +102,7 @@
       "kind": "complete",
       "twin": true,
       "tests": "The same 50 words, then sleep (replay and unlearning), then the same 10 cues.",
-      "script": "say:night:8:40;say:hard:8:40;say:tadpole:8:40;say:pink:8:40;say:foal:8:40;say:brush:8:40;say:dark:8:40;say:house:8:40;say:kitten:8:40;say:mango:8:40;say:beach:8:40;say:horse:8:40;say:pillow:8:40;say:green:8:40;say:ball:8:40;say:bright:8:40;say:fire:8:40;say:mouse:8:40;say:piglet:8:40;say:feather:8:40;say:chick:8:40;say:heavy:8:40;say:cherry:8:40;say:white:8:40;say:duck:8:40;say:bear:8:40;say:water:8:40;say:fast:8:40;say:peach:8:40;say:spade:8:40;say:light:8:40;say:frog:8:40;say:boat:8:40;say:calf:8:40;say:juice:8:40;say:book:8:40;say:grass:8:40;say:truck:8:40;say:sugar:8:40;say:shop:8:40;say:blue:8:40;say:whale:8:40;say:cold:8:40;say:park:8:40;say:slow:8:40;say:apple:8:40;say:school:8:40;say:lamb:8:40;say:pear:8:40;say:sand:8:40;sleep:800;cue:nig:60;cue:tad:60;cue:bru:60;cue:hou:60;cue:kit:60;cue:man:60;cue:hor:60;cue:pil:60;cue:gre:60;cue:bri:60",
+      "script": "say:beach:8:40;say:soft:8:40;say:jump:8:40;say:juice:8:40;say:rice:8:40;say:pillow:8:40;say:hand:8:40;say:cheetah:8:40;say:black:8:40;say:friend:8:40;say:white:8:40;say:hard:8:40;say:calf:8:40;say:walk:8:40;say:flower:8:40;say:park:8:40;say:star:8:40;say:grass:8:40;say:sour:8:40;say:play:8:40;say:apple:8:40;say:knife:8:40;say:grandpa:8:40;say:drink:8:40;say:kitten:8:40;say:truck:8:40;say:soup:8:40;say:feather:8:40;say:hair:8:40;say:pink:8:40;say:calm:8:40;say:river:8:40;say:milk:8:40;say:rock:8:40;say:snow:8:40;say:bear:8:40;say:ball:8:40;say:horse:8:40;say:baby:8:40;say:cherry:8:40;say:storm:8:40;say:slow:8:40;say:leaf:8:40;say:school:8:40;say:bike:8:40;say:foal:8:40;say:stone:8:40;say:brown:8:40;say:sand:8:40;say:give:8:40;sleep:800;cue:jui:60;cue:pil:60;cue:bla:60;cue:fri:60;cue:whi:60;cue:flo:60;cue:app:60;cue:kni:60;cue:dri:60;cue:kit:60",
       "probes": "sleep that helps (many words)",
       "if_fails": "sleep does not untangle crowded words"
     },
@@ -373,6 +373,157 @@
       "script": "say:bad:6:40;say:caring:6:40;say:good:6:40;say:helping:6:40;say:hitting:6:40;say:is:6:40;say:lying:6:40;say:sharing:6:40;say:stealing:6:40;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:caring,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;rest:300;cue:caring_is:80;rest:150;cue:sharing_is:80;rest:150;cue:stealing_is:80;rest:150;cue:hitting_is:80;rest:150;cue:lying_is:80;rest:150;cue:helping_is:80",
       "probes": "good and bad (first step of virtue)",
       "if_fails": "it does not tie acts to good or bad; next it needs a sense of approval"
+    },
+    {
+      "id": "next_t",
+      "name": "What comes next (taught harder)",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven"
+      ],
+      "asks": [
+        {
+          "q": "six",
+          "a": "seven"
+        },
+        {
+          "q": "two",
+          "a": "three"
+        },
+        {
+          "q": "five",
+          "a": "six"
+        },
+        {
+          "q": "four",
+          "a": "five"
+        }
+      ],
+      "tests": "Count from one to seven a few times; hear one number, does the silence bring the next one? Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.",
+      "script": "say:five:6:40;say:four:6:40;say:one:6:40;say:seven:6:40;say:six:6:40;say:three:6:40;say:two:6:40;seq:one,two:3:60;seq:two,three:3:60;seq:three,four:3:60;seq:four,five:3:60;seq:five,six:3:60;seq:six,seven:3:60;seq:two,three:3:60;seq:three,four:3:60;seq:four,five:3:60;seq:five,six:3:60;seq:six,seven:3:60;seq:one,two:3:60;seq:three,four:3:60;seq:four,five:3:60;seq:five,six:3:60;seq:six,seven:3:60;seq:one,two:3:60;seq:two,three:3:60;seq:four,five:3:60;seq:five,six:3:60;seq:six,seven:3:60;seq:one,two:3:60;seq:two,three:3:60;seq:three,four:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;rest:300;cue:six:80;rest:150;cue:two:80;rest:150;cue:five:80;rest:150;cue:four:80",
+      "probes": "order (first step), taught harder",
+      "if_fails": "it does not hold which item follows which (even with better teaching)"
+    },
+    {
+      "id": "analogy_t",
+      "name": "Mother and baby (taught harder)",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "kitten",
+        "puppy",
+        "calf",
+        "chick"
+      ],
+      "asks": [
+        {
+          "q": "the cow has a",
+          "a": "calf"
+        },
+        {
+          "q": "the cat has a",
+          "a": "kitten"
+        },
+        {
+          "q": "the hen has a",
+          "a": "chick"
+        },
+        {
+          "q": "the dog has a",
+          "a": "puppy"
+        }
+      ],
+      "tests": "Learn the cat has a kitten, the dog has a puppy...; asked \"the cow has a\", does it bring calf (an analogy held in sentences)? Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.",
+      "script": "say:a:6:40;say:calf:6:40;say:cat:6:40;say:chick:6:40;say:cow:6:40;say:dog:6:40;say:has:6:40;say:hen:6:40;say:kitten:6:40;say:puppy:6:40;say:the:6:40;seq:cat,has,kitten:3:60;seq:dog,has,puppy:3:60;seq:cow,has,calf:3:60;seq:hen,has,chick:3:60;seq:dog,has,puppy:3:60;seq:cow,has,calf:3:60;seq:hen,has,chick:3:60;seq:cat,has,kitten:3:60;seq:cow,has,calf:3:60;seq:hen,has,chick:3:60;seq:cat,has,kitten:3:60;seq:dog,has,puppy:3:60;seq:hen,has,chick:3:60;seq:cat,has,kitten:3:60;seq:dog,has,puppy:3:60;seq:cow,has,calf:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;rest:300;cue:the_cow_has_a:80;rest:150;cue:the_cat_has_a:80;rest:150;cue:the_hen_has_a:80;rest:150;cue:the_dog_has_a:80",
+      "probes": "relations held in sentences, taught harder",
+      "if_fails": "it loses the subject by the time the answer is due (even with better teaching)"
+    },
+    {
+      "id": "yesno_t",
+      "name": "Yes or no (taught harder)",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "yes",
+        "no"
+      ],
+      "asks": [
+        {
+          "q": "is sun bright",
+          "a": "yes"
+        },
+        {
+          "q": "is lemon sweet",
+          "a": "no"
+        },
+        {
+          "q": "is ice hot",
+          "a": "no"
+        },
+        {
+          "q": "is night bright",
+          "a": "no"
+        },
+        {
+          "q": "is fire hot",
+          "a": "yes"
+        },
+        {
+          "q": "is sugar sweet",
+          "a": "yes"
+        }
+      ],
+      "tests": "Learn questions with answers (is fire hot yes, is ice hot no...); asked one, does it answer yes or no correctly? Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.",
+      "script": "say:bright:6:40;say:fire:6:40;say:hot:6:40;say:ice:6:40;say:is:6:40;say:lemon:6:40;say:night:6:40;say:no:6:40;say:sugar:6:40;say:sun:6:40;say:sweet:6:40;say:yes:6:40;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;rest:300;cue:is_sun_bright:80;rest:150;cue:is_lemon_sweet:80;rest:150;cue:is_ice_hot:80;rest:150;cue:is_night_bright:80;rest:150;cue:is_fire_hot:80;rest:150;cue:is_sugar_sweet:80",
+      "probes": "true or false, taught harder",
+      "if_fails": "it cannot use the whole question to pick yes or no (even with better teaching)"
+    },
+    {
+      "id": "virtue_t",
+      "name": "Good or bad (taught harder)",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "good",
+        "bad"
+      ],
+      "asks": [
+        {
+          "q": "caring is",
+          "a": "good"
+        },
+        {
+          "q": "sharing is",
+          "a": "good"
+        },
+        {
+          "q": "stealing is",
+          "a": "bad"
+        },
+        {
+          "q": "hitting is",
+          "a": "bad"
+        },
+        {
+          "q": "lying is",
+          "a": "bad"
+        },
+        {
+          "q": "helping is",
+          "a": "good"
+        }
+      ],
+      "tests": "Learn sharing is good, hitting is bad...; asked \"sharing is\", does it say good or bad correctly? Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.",
+      "script": "say:bad:6:40;say:caring:6:40;say:good:6:40;say:helping:6:40;say:hitting:6:40;say:is:6:40;say:lying:6:40;say:sharing:6:40;say:stealing:6:40;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:caring,is,good:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:lying,is,bad:3:60;seq:helping,is,good:3:60;rest:300;cue:caring_is:80;rest:150;cue:sharing_is:80;rest:150;cue:stealing_is:80;rest:150;cue:hitting_is:80;rest:150;cue:lying_is:80;rest:150;cue:helping_is:80",
+      "probes": "good and bad (first step of virtue), taught harder",
+      "if_fails": "it does not tie acts to good or bad; next it needs a sense of approval (even with better teaching)"
     }
   ]
 }

@@ -32,6 +32,10 @@ PROBES = {
     'yesno': ('true or false', 'it cannot use the whole question to pick yes or no'),
     'virtue': ('good and bad (first step of virtue)', 'it does not tie acts to good or bad; next it needs a sense of approval'),
 }
+# Taught harder: the same questions after better teaching (short steps first, pairs that differ by one
+# word, more rounds). If a score rises it was a lesson; if it stays flat the brain is missing a part.
+for _k in ('next', 'analogy', 'yesno', 'virtue'):
+    PROBES[_k + '_t'] = (PROBES[_k][0] + ', taught harder', PROBES[_k][1] + ' (even with better teaching)')
 
 
 def words_alone(words, reps=6, gap=40):
@@ -134,6 +138,25 @@ def main():
         ['sharing is good', 'helping is good', 'caring is good', 'lying is bad', 'hitting is bad', 'stealing is bad'],
         [('sharing is', 'good'), ('lying is', 'bad'), ('helping is', 'good'), ('hitting is', 'bad'), ('caring is', 'good'), ('stealing is', 'bad')],
         ['good', 'bad'], 7))
+    # (short steps taught first, then the full sentences, rounds of each)
+    harder = {
+        'next': (['one two', 'two three', 'three four', 'four five', 'five six', 'six seven'], ['one two three four five six seven'], 4, 6),
+        'analogy': (['cat has kitten', 'dog has puppy', 'cow has calf', 'hen has chick'],
+                    ['the cat has a kitten', 'the dog has a puppy', 'the cow has a calf', 'the hen has a chick'], 4, 6),
+        'yesno': ([], ['is fire hot yes', 'is ice hot no', 'is sun bright yes', 'is night bright no', 'is sugar sweet yes', 'is lemon sweet no'], 0, 10),
+        'virtue': ([], ['sharing is good', 'lying is bad', 'helping is good', 'hitting is bad', 'caring is good', 'stealing is bad'], 0, 10),
+    }
+    for p in list(new):
+        if p['id'] in harder:
+            short, full, r1, r2 = harder[p['id']]
+            vocab = sorted({w for t in short + full for w in t.split()})
+            qops = []
+            for q in p['asks']:  # the same questions in the same order as the first version
+                qops += [f"cue:{'_'.join(q['q'].split())}:80", 'rest:150']
+            script = words_alone(vocab) + (sentences(short, r1) if short else []) + sentences(full, r2) + ['rest:300'] + qops[:-1]
+            new.append(dict(id=p['id'] + '_t', name=p['name'] + ' (taught harder)', kind='ask', twin=True, choices=p['choices'],
+                            asks=p['asks'], tests=p['tests'] + ' Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.',
+                            script=';'.join(script)))
     old['puzzles'] = keep + new
     for p in old['puzzles']:
         p['probes'], p['if_fails'] = PROBES[p['id']]
