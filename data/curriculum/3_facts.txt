@@ -38,10 +38,10 @@ a train is a vehicle
 a boat is a vehicle
 a truck is a vehicle
 a bike is a vehicle
-a water is a drink
-a milk is a drink
-a juice is a drink
-a tea is a drink
+water is a drink
+milk is a drink
+juice is a drink
+tea is a drink
 a house is a place
 a school is a place
 a park is a place
@@ -109,3 +109,18 @@ a fall can hurt
 a smile makes friends happy
 a gift makes people glad
 a lie breaks trust
+a gift makes you happy
+a hug makes you happy
+a lost toy makes you sad
+a loud storm makes you scared
+a long day makes you tired
+a mean word makes you sad
+a kind word makes you glad
+a good job makes you proud
+a cow lives in the farm
+a fish lives in the sea
+a bird lives in the tree
+a bear lives in the woods
+a child lives in the school
+a car goes on the road
+a boat goes on the river

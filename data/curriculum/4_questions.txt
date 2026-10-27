@@ -30,10 +30,10 @@ what is a train | a vehicle
 what is a boat | a vehicle
 what is a truck | a vehicle
 what is a bike | a vehicle
-what is a water | a drink
-what is a milk | a drink
-what is a juice | a drink
-what is a tea | a drink
+what is water | a drink
+what is milk | a drink
+what is juice | a drink
+what is tea | a drink
 what is a house | a place
 what is a school | a place
 what is a park | a place
@@ -87,3 +87,32 @@ what does a pig say | oinks
 what does a hen say | clucks
 what does a lion say | roars
 what does a frog say | croaks
+what is a baby cat | kitten
+what is a baby dog | puppy
+what is a baby cow | calf
+what is a baby duck | duckling
+what is a baby horse | foal
+what is a baby sheep | lamb
+what is a baby goat | kid
+what is a baby bear | cub
+what is a baby lion | cub
+what is a baby pig | piglet
+what is a baby hen | chick
+what is a baby frog | tadpole
+how does a gift make you feel | happy
+how does a hug make you feel | happy
+how does a lost toy make you feel | sad
+how does a loud storm make you feel | scared
+how does a long day make you feel | tired
+how does a mean word make you feel | sad
+how does a kind word make you feel | glad
+how does a good job make you feel | proud
+what comes after one | two
+what comes after two | three
+what comes after three | four
+what comes after four | five
+what comes after five | six
+what comes after six | seven
+what comes after seven | eight
+what comes after eight | nine
+what comes after nine | ten

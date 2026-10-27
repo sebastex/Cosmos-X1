@@ -330,6 +330,34 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                   "mt_orch=1", "mt_gain=1"}},                                                   // + microtubules, tubular inception
         {"eta", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
                  "mt_orch=1", "mt_gain=1", "predict_surprise=1", "familiarity=1"}},              // + learning by predicting
+        // Playground lanes: the same parts mixed differently (quality-diversity, not one tuned line).
+        {"theta", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "familiarity=1"}},                                                           // Epsilon + familiar input learned less
+        {"iota", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "predict_surprise=1", "familiarity=1"}},                                      // Eta without microtubules
+        {"kappa", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
+                   "mt_gain=1"}},                                                               // Zeta, tubes each on their own
+        {"lambda", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "learning_rate=0.01111"}},                                                  // Epsilon, slow learner
+        {"mu", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                "learning_rate=0.04444"}},                                                      // Epsilon, fast learner
+        {"nu", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                "consolidation_rate=0.0112"}},                                                  // Epsilon, stronger long-term store
+        {"xi", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                "plastic_budget=11.3566"}},                                                     // Epsilon, more room per cell
+        {"omicron", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                     "order_gain=12.4669"}},                                                    // Epsilon, stronger sense of order
+        {"pi", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                "assembly_inhibition=0.00642"}},                                                // Epsilon, shapes kept further apart
+        {"rho", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
+                 "mt_orch=1", "mt_gain=1", "mt_orch_couple=0.6"}},                              // Zeta, tubes tied more tightly
+        {"sigma", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
+                   "mt_orch=1", "mt_gain=1", "predict_surprise=1", "familiarity=1", "learning_rate=0.01111",
+                   "consolidation_rate=0.0112"}},                                               // Eta, slow and consolidating
+        {"tau", {"predict_surprise=1", "familiarity=1"}},                                       // Delta + learning by predicting
+        {"upsilon", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
+                     "mt_orch=1", "mt_gain=1", "predict_surprise=1", "familiarity=1", "plastic_budget=11.3566",
+                     "assembly_inhibition=0.00642"}},                                           // Eta + more room, shapes further apart
     };
     return v;
 }

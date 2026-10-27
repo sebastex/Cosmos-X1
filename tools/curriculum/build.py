@@ -39,6 +39,19 @@ PEOPLE = ['mia', 'tom', 'sam', 'ana', 'leo', 'zoe']
 THINGS = ['ball', 'book', 'apple', 'toy', 'hat', 'cup', 'kite', 'cake']
 VERBS = ['sees', 'likes', 'has', 'finds', 'wants', 'holds']
 ADJ = ['big', 'small', 'red', 'blue', 'new', 'old']
+GROUPS = {  # more words to learn on their own (level 1), by theme
+    'body': ['hand', 'foot', 'head', 'eye', 'ear', 'nose', 'mouth', 'arm', 'leg', 'hair'],
+    'family': ['mom', 'dad', 'baby', 'sister', 'brother', 'friend', 'grandma', 'grandpa'],
+    'food': ['bread', 'egg', 'rice', 'soup', 'cheese', 'cake', 'honey', 'jam'],
+    'weather': ['rain', 'snow', 'wind', 'sun', 'cloud', 'storm', 'fog', 'ice'],
+    'feeling': ['happy', 'sad', 'angry', 'scared', 'calm', 'tired', 'glad', 'proud'],
+    'action': ['run', 'walk', 'jump', 'eat', 'drink', 'sleep', 'read', 'sing', 'play', 'help', 'share', 'give'],
+    'number': ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'],
+    'nature': ['tree', 'flower', 'river', 'hill', 'sea', 'rock', 'leaf', 'moon', 'star', 'sky'],
+}
+FEEL = [('a gift', 'happy'), ('a hug', 'happy'), ('a lost toy', 'sad'), ('a loud storm', 'scared'), ('a long day', 'tired'),
+        ('a mean word', 'sad'), ('a kind word', 'glad'), ('a good job', 'proud')]
+PLACES = {'cow': 'farm', 'fish': 'sea', 'bird': 'tree', 'bear': 'woods', 'child': 'school', 'car': 'road', 'boat': 'river'}
 
 
 def sentences(rng):
@@ -52,6 +65,17 @@ def sentences(rng):
         out.add(f'the {a} {s}')
     for a, c in CAN.items():
         out.add(f'the {a} can {c}')
+    for p in PEOPLE:
+        for act in ['runs', 'walks', 'jumps', 'eats', 'sings', 'reads', 'plays', 'sleeps']:
+            out.add(f'{p} {act}')
+        for f in GROUPS['feeling']:
+            out.add(f'{p} is {f}')
+    for a, pl in PLACES.items():
+        out.add(f'the {a} is in the {pl}')
+    for w in GROUPS['weather']:
+        out.add(f'the {w} is here')
+    for a, b in zip(GROUPS['number'], GROUPS['number'][1:]):
+        out.add(f'after {a} comes {b}')
     return sorted(out)
 
 
@@ -61,7 +85,7 @@ def facts():
         art = 'an' if cat[0] in 'aeiou' else 'a'
         for m in members:
             ma = 'an' if m[0] in 'aeiou' else 'a'
-            out.append(f'{ma} {m} is {art} {cat}' if cat != 'color' else f'{m} is a color')
+            out.append(f'{m} is a color' if cat == 'color' else f'{m} is a drink' if cat == 'drink' else f'{ma} {m} is {art} {cat}')
     for thing, prop in PROPERTY:
         out.append(f'{thing} is {prop}')
     for a, c in CAN.items():
@@ -72,6 +96,10 @@ def facts():
         out.append(f'a baby {a} is a {b}')
     for c, e in CAUSE:
         out.append(f'{c} {e}')
+    for c, f in FEEL:
+        out.append(f'{c} makes you {f}')
+    for a, pl in PLACES.items():
+        out.append(f'a {a} lives in the {pl}' if a not in ('car', 'boat') else f'a {a} goes on the {pl}')
     return out
 
 
@@ -83,7 +111,7 @@ def questions():
         art = 'an' if cat[0] in 'aeiou' else 'a'
         for m in members:
             ma = 'an' if m[0] in 'aeiou' else 'a'
-            out.append((f'what is {ma} {m}', f'{art} {cat}'))
+            out.append((f'what is {m}' if cat == 'drink' else f'what is {ma} {m}', f'{art} {cat}'))
     for thing, prop in PROPERTY:
         out.append((f'is {thing} {prop}', 'yes'))
     for a, c in CAN.items():
@@ -92,6 +120,12 @@ def questions():
         out.append((f'can a {a} {c}', 'no'))
     for a, s in SOUNDS.items():
         out.append((f'what does a {a} say', s))
+    for a, b in ANIMALS.items():
+        out.append((f'what is a baby {a}', b))
+    for c, f in FEEL:
+        out.append((f'how does {c} make you feel', f))
+    for a, b in zip(GROUPS['number'], GROUPS['number'][1:]):
+        out.append((f'what comes after {a}', b))
     return out
 
 
@@ -142,7 +176,8 @@ def main():
         about='Cosmos curriculum library (tools/curriculum/build.py). Lower-case words and spaces only.',
         levels=[
             dict(level=1, name='words', items=sorted({w for c in CATEGORY.values() for w in c} | set(ANIMALS) | set(ANIMALS.values())
-                                                      | set(THINGS) | set(PEOPLE) | {p for p, _ in PROPERTY} | {q for _, q in PROPERTY})),
+                                                      | set(THINGS) | set(PEOPLE) | {p for p, _ in PROPERTY} | {q for _, q in PROPERTY}
+                                                      | {w for g in GROUPS.values() for w in g})),
             dict(level=2, name='sentences', items=sentences(rng)),
             dict(level=3, name='facts', items=facts()),
             dict(level=4, name='questions', items=[dict(q=q, a=a) for q, a in questions()]),

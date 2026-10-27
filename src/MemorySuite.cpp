@@ -4,7 +4,10 @@
 // specific. Bars are fixed in advance.
 
 #include <map>
+#include <chrono>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 #include <numeric>
 #include <algorithm>
 #include <cstdio>
@@ -1954,8 +1957,23 @@ int runAlphabetTest(const Config& cfg) {
 int runScriptTest(const Config& cfg) {
     const char* env = std::getenv("NCM_SCRIPT");
     std::string script = env && *env ? env : "say:apple:10:30;rest:200;cue:app:40";
+    // Playground (long lessons over many runs): NCM_SCRIPT_FILE holds the script, NCM_SCRIPT_START
+    // skips the steps an earlier run already did, and NCM_DEADLINE_SEC stops before the next step once
+    // that much wall time has passed, so the brain is saved just before the machine's time runs out.
+    if (const char* file = std::getenv("NCM_SCRIPT_FILE"); file && *file) {
+        std::ifstream in(file);
+        std::stringstream buf;
+        buf << in.rdbuf();
+        script = buf.str();
+        script.erase(std::remove(script.begin(), script.end(), '\n'), script.end());
+        script.erase(std::remove(script.begin(), script.end(), '\r'), script.end());
+    }
+    const uint64_t startAt = std::getenv("NCM_SCRIPT_START") ? std::strtoull(std::getenv("NCM_SCRIPT_START"), nullptr, 10) : 0;
+    const double deadline = std::getenv("NCM_DEADLINE_SEC") ? std::atof(std::getenv("NCM_DEADLINE_SEC")) : 0.0;
+    const auto began = std::chrono::steady_clock::now();
     std::replace(script.begin(), script.end(), '_', ' ');
-    std::printf("Observation script: %s\n", script.c_str());
+    if (script.size() < 4000) std::printf("Observation script: %s\n", script.c_str());
+    else std::printf("Observation script: %zu characters, from step %llu\n", script.size(), (unsigned long long)startAt);
     std::unique_ptr<Session> learner = std::make_unique<Session>(cfg, true);
     Session& s = *learner;
     if (const char* in = std::getenv("NCM_STATE_IN"); in && *in) {
@@ -2006,10 +2024,19 @@ int runScriptTest(const Config& cfg) {
         voice.push_back(mean); // last entry: the mean (to centre what is heard)
     };
     bool learn = true;
-    uint64_t tick = 0;
+    uint64_t tick = 0, index = 0;
     for (const std::string& step : split(script, ';')) {
         if (step.empty()) continue;
         const std::vector<std::string> f = split(step, ':');
+        const uint64_t here = index++;
+        if (here < startAt) {
+            if (f[0] == "learn") learn = num(f, 1, 1) != 0; // keep the learning switch as it was
+            continue;
+        }
+        if (deadline > 0.0 && std::chrono::duration<double>(std::chrono::steady_clock::now() - began).count() >= deadline) {
+            std::printf("  STOPPED_AT %llu\n", (unsigned long long)here);
+            return 0;
+        }
         const std::string& op = f[0];
         const uint64_t start = tick;
         if (op == "say" || op == "seq") {
@@ -2107,6 +2134,7 @@ int runScriptTest(const Config& cfg) {
         }
         std::printf("  ticks %llu-%llu: %s\n", (unsigned long long)start, (unsigned long long)tick, step.c_str());
     }
+    std::printf("  SCRIPT_DONE %llu\n", (unsigned long long)index);
     return 0;
     };
     if (int r = run(s)) return r;
