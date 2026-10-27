@@ -1,0 +1,89 @@
+what is a cat | an animal
+what is a dog | an animal
+what is a cow | an animal
+what is a horse | an animal
+what is a sheep | an animal
+what is a pig | an animal
+what is a goat | an animal
+what is a bear | an animal
+what is a lion | an animal
+what is a frog | an animal
+what is a duck | an animal
+what is a hen | an animal
+what is an apple | a fruit
+what is a pear | a fruit
+what is a plum | a fruit
+what is a grape | a fruit
+what is a lemon | a fruit
+what is a peach | a fruit
+what is a mango | a fruit
+what is a cherry | a fruit
+what is a hammer | a tool
+what is a saw | a tool
+what is a spade | a tool
+what is a drill | a tool
+what is a brush | a tool
+what is a knife | a tool
+what is a car | a vehicle
+what is a bus | a vehicle
+what is a train | a vehicle
+what is a boat | a vehicle
+what is a truck | a vehicle
+what is a bike | a vehicle
+what is a water | a drink
+what is a milk | a drink
+what is a juice | a drink
+what is a tea | a drink
+what is a house | a place
+what is a school | a place
+what is a park | a place
+what is a farm | a place
+what is a shop | a place
+what is a beach | a place
+is fire hot | yes
+is ice cold | yes
+is snow white | yes
+is grass green | yes
+is sky blue | yes
+is sun bright | yes
+is night dark | yes
+is stone hard | yes
+is pillow soft | yes
+is sugar sweet | yes
+is lemon sour | yes
+is water wet | yes
+is sand dry | yes
+is feather light | yes
+is rock heavy | yes
+is honey sweet | yes
+is mouse small | yes
+is whale big | yes
+is turtle slow | yes
+is cheetah fast | yes
+can a fish swim | yes
+can a bird fly | yes
+can a dog run | yes
+can a frog jump | yes
+can a snake slide | yes
+can a duck swim | yes
+can a horse run | yes
+can a bee fly | yes
+can a cat climb | yes
+can a monkey climb | yes
+can a fish walk | no
+can a dog fly | no
+can a cow fly | no
+can a snake run | no
+can a cat fly | no
+can a pig fly | no
+can a horse fly | no
+what does a cat say | meows
+what does a dog say | barks
+what does a cow say | moos
+what does a duck say | quacks
+what does a horse say | neighs
+what does a sheep say | bleats
+what does a pig say | oinks
+what does a hen say | clucks
+what does a lion say | roars
+what does a frog say | croaks

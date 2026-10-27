@@ -1,0 +1,856 @@
+{
+ "about": "Cosmos curriculum library (tools/curriculum/build.py). Lower-case words and spaces only.",
+ "levels": [
+  {
+   "level": 1,
+   "name": "words",
+   "items": [
+    "ana",
+    "apple",
+    "ball",
+    "beach",
+    "bear",
+    "big",
+    "bike",
+    "black",
+    "blue",
+    "boat",
+    "book",
+    "bright",
+    "brown",
+    "brush",
+    "bus",
+    "cake",
+    "calf",
+    "car",
+    "cat",
+    "cheetah",
+    "cherry",
+    "chick",
+    "cold",
+    "cow",
+    "cub",
+    "cup",
+    "dark",
+    "dog",
+    "drill",
+    "dry",
+    "duck",
+    "duckling",
+    "farm",
+    "fast",
+    "feather",
+    "fire",
+    "foal",
+    "frog",
+    "goat",
+    "grape",
+    "grass",
+    "green",
+    "hammer",
+    "hard",
+    "hat",
+    "heavy",
+    "hen",
+    "honey",
+    "horse",
+    "hot",
+    "house",
+    "ice",
+    "juice",
+    "kid",
+    "kite",
+    "kitten",
+    "knife",
+    "lamb",
+    "lemon",
+    "leo",
+    "light",
+    "lion",
+    "mango",
+    "mia",
+    "milk",
+    "mouse",
+    "night",
+    "park",
+    "peach",
+    "pear",
+    "pig",
+    "piglet",
+    "pillow",
+    "pink",
+    "plum",
+    "puppy",
+    "red",
+    "rock",
+    "sam",
+    "sand",
+    "saw",
+    "school",
+    "sheep",
+    "shop",
+    "sky",
+    "slow",
+    "small",
+    "snow",
+    "soft",
+    "sour",
+    "spade",
+    "stone",
+    "sugar",
+    "sun",
+    "sweet",
+    "tadpole",
+    "tea",
+    "tom",
+    "toy",
+    "train",
+    "truck",
+    "turtle",
+    "water",
+    "wet",
+    "whale",
+    "white",
+    "yellow",
+    "zoe"
+   ]
+  },
+  {
+   "level": 2,
+   "name": "sentences",
+   "items": [
+    "ana finds the small ball",
+    "ana has the new toy",
+    "ana holds the old kite",
+    "ana likes the new ball",
+    "ana sees the blue cake",
+    "ana wants the old book",
+    "leo finds the old cake",
+    "leo has the big cake",
+    "leo holds the new kite",
+    "leo likes the blue toy",
+    "leo sees the blue apple",
+    "leo wants the old hat",
+    "mia finds the small kite",
+    "mia has the old cup",
+    "mia holds the red kite",
+    "mia likes the big cake",
+    "mia sees the big cake",
+    "mia wants the red cup",
+    "sam finds the big kite",
+    "sam has the blue cake",
+    "sam holds the blue hat",
+    "sam likes the blue book",
+    "sam sees the red cake",
+    "sam wants the new cake",
+    "the bear sees the toy",
+    "the bee can fly",
+    "the bird can fly",
+    "the cat can climb",
+    "the cat meows",
+    "the cat sees the book",
+    "the cow moos",
+    "the cow sees the book",
+    "the dog barks",
+    "the dog can run",
+    "the dog sees the cup",
+    "the duck can swim",
+    "the duck quacks",
+    "the duck sees the toy",
+    "the fish can swim",
+    "the frog can jump",
+    "the frog croaks",
+    "the frog sees the hat",
+    "the goat sees the cake",
+    "the hen clucks",
+    "the hen sees the book",
+    "the horse can run",
+    "the horse neighs",
+    "the horse sees the kite",
+    "the lion roars",
+    "the lion sees the ball",
+    "the monkey can climb",
+    "the pig oinks",
+    "the pig sees the book",
+    "the sheep bleats",
+    "the sheep sees the cake",
+    "the snake can slide",
+    "tom finds the red cake",
+    "tom has the big hat",
+    "tom holds the big cup",
+    "tom likes the old cup",
+    "tom sees the old book",
+    "tom wants the small hat",
+    "zoe finds the small hat",
+    "zoe has the blue kite",
+    "zoe holds the big apple",
+    "zoe likes the new cake",
+    "zoe sees the old hat",
+    "zoe wants the red ball"
+   ]
+  },
+  {
+   "level": 3,
+   "name": "facts",
+   "items": [
+    "a cat is an animal",
+    "a dog is an animal",
+    "a cow is an animal",
+    "a horse is an animal",
+    "a sheep is an animal",
+    "a pig is an animal",
+    "a goat is an animal",
+    "a bear is an animal",
+    "a lion is an animal",
+    "a frog is an animal",
+    "a duck is an animal",
+    "a hen is an animal",
+    "an apple is a fruit",
+    "a pear is a fruit",
+    "a plum is a fruit",
+    "a grape is a fruit",
+    "a lemon is a fruit",
+    "a peach is a fruit",
+    "a mango is a fruit",
+    "a cherry is a fruit",
+    "red is a color",
+    "blue is a color",
+    "green is a color",
+    "yellow is a color",
+    "white is a color",
+    "black is a color",
+    "pink is a color",
+    "brown is a color",
+    "a hammer is a tool",
+    "a saw is a tool",
+    "a spade is a tool",
+    "a drill is a tool",
+    "a brush is a tool",
+    "a knife is a tool",
+    "a car is a vehicle",
+    "a bus is a vehicle",
+    "a train is a vehicle",
+    "a boat is a vehicle",
+    "a truck is a vehicle",
+    "a bike is a vehicle",
+    "a water is a drink",
+    "a milk is a drink",
+    "a juice is a drink",
+    "a tea is a drink",
+    "a house is a place",
+    "a school is a place",
+    "a park is a place",
+    "a farm is a place",
+    "a shop is a place",
+    "a beach is a place",
+    "fire is hot",
+    "ice is cold",
+    "snow is white",
+    "grass is green",
+    "sky is blue",
+    "sun is bright",
+    "night is dark",
+    "stone is hard",
+    "pillow is soft",
+    "sugar is sweet",
+    "lemon is sour",
+    "water is wet",
+    "sand is dry",
+    "feather is light",
+    "rock is heavy",
+    "honey is sweet",
+    "mouse is small",
+    "whale is big",
+    "turtle is slow",
+    "cheetah is fast",
+    "a fish can swim",
+    "a bird can fly",
+    "a dog can run",
+    "a frog can jump",
+    "a snake can slide",
+    "a duck can swim",
+    "a horse can run",
+    "a bee can fly",
+    "a cat can climb",
+    "a monkey can climb",
+    "a fish can not walk",
+    "a dog can not fly",
+    "a cow can not fly",
+    "a snake can not run",
+    "a cat can not fly",
+    "a pig can not fly",
+    "a horse can not fly",
+    "a baby cat is a kitten",
+    "a baby dog is a puppy",
+    "a baby cow is a calf",
+    "a baby duck is a duckling",
+    "a baby horse is a foal",
+    "a baby sheep is a lamb",
+    "a baby goat is a kid",
+    "a baby bear is a cub",
+    "a baby lion is a cub",
+    "a baby pig is a piglet",
+    "a baby hen is a chick",
+    "a baby frog is a tadpole",
+    "rain makes the grass wet",
+    "fire makes smoke",
+    "sun makes the day warm",
+    "wind moves the trees",
+    "food makes us strong",
+    "sleep makes us rested",
+    "ice makes the drink cold",
+    "soap makes hands clean",
+    "a fall can hurt",
+    "a smile makes friends happy",
+    "a gift makes people glad",
+    "a lie breaks trust"
+   ]
+  },
+  {
+   "level": 4,
+   "name": "questions",
+   "items": [
+    {
+     "q": "what is a cat",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a dog",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a cow",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a horse",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a sheep",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a pig",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a goat",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a bear",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a lion",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a frog",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a duck",
+     "a": "an animal"
+    },
+    {
+     "q": "what is a hen",
+     "a": "an animal"
+    },
+    {
+     "q": "what is an apple",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a pear",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a plum",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a grape",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a lemon",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a peach",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a mango",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a cherry",
+     "a": "a fruit"
+    },
+    {
+     "q": "what is a hammer",
+     "a": "a tool"
+    },
+    {
+     "q": "what is a saw",
+     "a": "a tool"
+    },
+    {
+     "q": "what is a spade",
+     "a": "a tool"
+    },
+    {
+     "q": "what is a drill",
+     "a": "a tool"
+    },
+    {
+     "q": "what is a brush",
+     "a": "a tool"
+    },
+    {
+     "q": "what is a knife",
+     "a": "a tool"
+    },
+    {
+     "q": "what is a car",
+     "a": "a vehicle"
+    },
+    {
+     "q": "what is a bus",
+     "a": "a vehicle"
+    },
+    {
+     "q": "what is a train",
+     "a": "a vehicle"
+    },
+    {
+     "q": "what is a boat",
+     "a": "a vehicle"
+    },
+    {
+     "q": "what is a truck",
+     "a": "a vehicle"
+    },
+    {
+     "q": "what is a bike",
+     "a": "a vehicle"
+    },
+    {
+     "q": "what is a water",
+     "a": "a drink"
+    },
+    {
+     "q": "what is a milk",
+     "a": "a drink"
+    },
+    {
+     "q": "what is a juice",
+     "a": "a drink"
+    },
+    {
+     "q": "what is a tea",
+     "a": "a drink"
+    },
+    {
+     "q": "what is a house",
+     "a": "a place"
+    },
+    {
+     "q": "what is a school",
+     "a": "a place"
+    },
+    {
+     "q": "what is a park",
+     "a": "a place"
+    },
+    {
+     "q": "what is a farm",
+     "a": "a place"
+    },
+    {
+     "q": "what is a shop",
+     "a": "a place"
+    },
+    {
+     "q": "what is a beach",
+     "a": "a place"
+    },
+    {
+     "q": "is fire hot",
+     "a": "yes"
+    },
+    {
+     "q": "is ice cold",
+     "a": "yes"
+    },
+    {
+     "q": "is snow white",
+     "a": "yes"
+    },
+    {
+     "q": "is grass green",
+     "a": "yes"
+    },
+    {
+     "q": "is sky blue",
+     "a": "yes"
+    },
+    {
+     "q": "is sun bright",
+     "a": "yes"
+    },
+    {
+     "q": "is night dark",
+     "a": "yes"
+    },
+    {
+     "q": "is stone hard",
+     "a": "yes"
+    },
+    {
+     "q": "is pillow soft",
+     "a": "yes"
+    },
+    {
+     "q": "is sugar sweet",
+     "a": "yes"
+    },
+    {
+     "q": "is lemon sour",
+     "a": "yes"
+    },
+    {
+     "q": "is water wet",
+     "a": "yes"
+    },
+    {
+     "q": "is sand dry",
+     "a": "yes"
+    },
+    {
+     "q": "is feather light",
+     "a": "yes"
+    },
+    {
+     "q": "is rock heavy",
+     "a": "yes"
+    },
+    {
+     "q": "is honey sweet",
+     "a": "yes"
+    },
+    {
+     "q": "is mouse small",
+     "a": "yes"
+    },
+    {
+     "q": "is whale big",
+     "a": "yes"
+    },
+    {
+     "q": "is turtle slow",
+     "a": "yes"
+    },
+    {
+     "q": "is cheetah fast",
+     "a": "yes"
+    },
+    {
+     "q": "can a fish swim",
+     "a": "yes"
+    },
+    {
+     "q": "can a bird fly",
+     "a": "yes"
+    },
+    {
+     "q": "can a dog run",
+     "a": "yes"
+    },
+    {
+     "q": "can a frog jump",
+     "a": "yes"
+    },
+    {
+     "q": "can a snake slide",
+     "a": "yes"
+    },
+    {
+     "q": "can a duck swim",
+     "a": "yes"
+    },
+    {
+     "q": "can a horse run",
+     "a": "yes"
+    },
+    {
+     "q": "can a bee fly",
+     "a": "yes"
+    },
+    {
+     "q": "can a cat climb",
+     "a": "yes"
+    },
+    {
+     "q": "can a monkey climb",
+     "a": "yes"
+    },
+    {
+     "q": "can a fish walk",
+     "a": "no"
+    },
+    {
+     "q": "can a dog fly",
+     "a": "no"
+    },
+    {
+     "q": "can a cow fly",
+     "a": "no"
+    },
+    {
+     "q": "can a snake run",
+     "a": "no"
+    },
+    {
+     "q": "can a cat fly",
+     "a": "no"
+    },
+    {
+     "q": "can a pig fly",
+     "a": "no"
+    },
+    {
+     "q": "can a horse fly",
+     "a": "no"
+    },
+    {
+     "q": "what does a cat say",
+     "a": "meows"
+    },
+    {
+     "q": "what does a dog say",
+     "a": "barks"
+    },
+    {
+     "q": "what does a cow say",
+     "a": "moos"
+    },
+    {
+     "q": "what does a duck say",
+     "a": "quacks"
+    },
+    {
+     "q": "what does a horse say",
+     "a": "neighs"
+    },
+    {
+     "q": "what does a sheep say",
+     "a": "bleats"
+    },
+    {
+     "q": "what does a pig say",
+     "a": "oinks"
+    },
+    {
+     "q": "what does a hen say",
+     "a": "clucks"
+    },
+    {
+     "q": "what does a lion say",
+     "a": "roars"
+    },
+    {
+     "q": "what does a frog say",
+     "a": "croaks"
+    }
+   ]
+  },
+  {
+   "level": 5,
+   "name": "stories",
+   "items": [
+    [
+     "mia has a red ball",
+     "the ball rolls away",
+     "tom finds the ball",
+     "tom gives the ball to mia",
+     "mia is happy"
+    ],
+    [
+     "sam is hungry",
+     "ana has two apples",
+     "ana gives sam one apple",
+     "sam says thank you",
+     "they are friends"
+    ],
+    [
+     "leo falls in the park",
+     "leo hurts his knee",
+     "zoe helps leo up",
+     "zoe brings water",
+     "leo feels better"
+    ],
+    [
+     "the cat is lost",
+     "the cat is cold and sad",
+     "mia finds the cat",
+     "mia takes the cat home",
+     "the cat is warm"
+    ],
+    [
+     "tom breaks a cup",
+     "tom tells the truth",
+     "mom is not angry",
+     "they fix the cup",
+     "tom feels good"
+    ],
+    [
+     "zoe has a new kite",
+     "sam has no kite",
+     "zoe shares her kite",
+     "they fly the kite together",
+     "both are happy"
+    ],
+    [
+     "the duck is in the pond",
+     "the duck can swim",
+     "the duck finds bread",
+     "the duck eats the bread",
+     "the duck is full"
+    ],
+    [
+     "it is cold",
+     "snow falls on the farm",
+     "the cow stays in the barn",
+     "the farmer brings hay",
+     "the cow is warm"
+    ]
+   ]
+  },
+  {
+   "level": 6,
+   "name": "virtues",
+   "good": [
+    "helping is good",
+    "sharing is good",
+    "telling the truth is good",
+    "being kind is good",
+    "saying thank you is good",
+    "saying sorry is good",
+    "being fair is good",
+    "listening is good",
+    "caring for animals is good",
+    "being gentle is good"
+   ],
+   "bad": [
+    "hurting is bad",
+    "lying is bad",
+    "stealing is bad",
+    "being mean is bad",
+    "hitting is bad",
+    "breaking things on purpose is bad",
+    "cheating is bad",
+    "teasing is bad",
+    "being cruel to animals is bad",
+    "shouting at friends is bad"
+   ],
+   "situations": [
+    {
+     "situation": "a friend is sad",
+     "action": "you help your friend",
+     "consequence": "your friend feels better"
+    },
+    {
+     "situation": "a child falls down",
+     "action": "you help the child up",
+     "consequence": "the child is safe"
+    },
+    {
+     "situation": "you have two apples",
+     "action": "you share one apple",
+     "consequence": "your friend is happy"
+    },
+    {
+     "situation": "you break a cup",
+     "action": "you tell the truth",
+     "consequence": "people trust you"
+    },
+    {
+     "situation": "a cat is hungry",
+     "action": "you feed the cat",
+     "consequence": "the cat is fed"
+    },
+    {
+     "situation": "someone gives you a gift",
+     "action": "you say thank you",
+     "consequence": "they feel glad"
+    },
+    {
+     "situation": "you bump into someone",
+     "action": "you say sorry",
+     "consequence": "they forgive you"
+    },
+    {
+     "situation": "it is your turn to wait",
+     "action": "you wait your turn",
+     "consequence": "the game is fair"
+    },
+    {
+     "situation": "a friend is talking",
+     "action": "you listen",
+     "consequence": "your friend feels heard"
+    },
+    {
+     "situation": "a bird is hurt",
+     "action": "you are gentle with the bird",
+     "consequence": "the bird can heal"
+    }
+   ],
+   "judged": [
+    {
+     "action": "tom shares his cake",
+     "judgement": "kind"
+    },
+    {
+     "action": "sam takes a toy from ana",
+     "judgement": "unkind"
+    },
+    {
+     "action": "zoe tells the truth",
+     "judgement": "honest"
+    },
+    {
+     "action": "leo lies to his mom",
+     "judgement": "dishonest"
+    },
+    {
+     "action": "mia helps an old man",
+     "judgement": "kind"
+    },
+    {
+     "action": "tom hits his friend",
+     "judgement": "unkind"
+    },
+    {
+     "action": "ana waits her turn",
+     "judgement": "fair"
+    },
+    {
+     "action": "sam cheats at the game",
+     "judgement": "unfair"
+    },
+    {
+     "action": "zoe feeds the dog",
+     "judgement": "caring"
+    },
+    {
+     "action": "leo kicks the dog",
+     "judgement": "cruel"
+    }
+   ]
+  }
+ ]
+}

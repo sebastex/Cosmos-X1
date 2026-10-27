@@ -36,12 +36,36 @@ def ending_choice(score, endings):
     return picks
 
 
+def ask_margins(score, asks, choices):
+    """Each question in order: the answer's likeness minus the best other choice's (silence after the cue)."""
+    got = score.get('asks', [])
+    out = []
+    for q, g in zip(asks, got):
+        sims = g['sims']
+        a = q['a']
+        other = max((sims.get(c, -1.0) for c in choices if c != a), default=-1.0)
+        out.append(dict(q=q['q'], a=a, heard=g['last'], margin=round(sims.get(a, -1.0) - other, 4),
+                        pick=max(choices, key=lambda c: sims.get(c, -1.0))))
+    return out
+
+
 def main():
     pid, result, report = sys.argv[1], sys.argv[2], sys.argv[3]
     puzzles = {p['id']: p for p in json.load(open(os.path.join(HERE, 'puzzles.json')))['puzzles']}
     p = puzzles[pid]
+    kind = p.get('kind', pid)
     out = dict(puzzle=pid, name=p['name'])
-    if pid in ('complete', 'keep', 'sleep'):
+    if kind == 'ask':
+        sc = labscores(report)
+        learner = ask_margins(sc[0], p['asks'], p['choices'])
+        twin = ask_margins(sc[1], p['asks'], p['choices']) if len(sc) > 1 else []
+        tm = [t['margin'] for t in twin] + [-9] * (len(learner) - len(twin))
+        right = [l['q'] for l, t in zip(learner, tm) if l['margin'] > 0 and l['margin'] > t]
+        out.update(score=len(right) / max(1, len(p['asks'])), right=right,
+                   picked=sum(l['pick'] == l['a'] for l in learner) / max(1, len(p['asks'])),
+                   twin_picked=sum(t['pick'] == t['a'] for t in twin) / max(1, len(p['asks'])) if twin else None,
+                   chance=round(1 / len(p['choices']), 3), learner=learner, twin=twin)
+    elif kind in ('complete', 'keep', 'sleep'):
         sc = labscores(report)
         learner = cue_margins(sc[0])
         twin = cue_margins(sc[1]) if len(sc) > 1 else {}

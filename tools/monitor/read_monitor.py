@@ -322,6 +322,16 @@ def lab_scores(head, r, vox, window=25):
         return dense(Sparse.total(x[a0:a1]), size) - background, full
 
     rows = []
+    # Every question asked (a cue's last word, followed by silence): how alike the silence after it is to
+    # every known word, so a puzzle can score any expected answer.
+    asks = []
+    for k, e in enumerate(cues):
+        nxt = cues[k + 1]['start'] if k + 1 < len(cues) else n
+        if nxt - e['end'] < 20:
+            continue  # more of the same cue follows
+        aft, _ = after(e)
+        sims = {w: round(ccos(aft, centred[w]), 4) for w in words if w != e['word']}
+        asks.append(dict(last=e['word'], tick=int(r['tick'][e['start']]), sims=dict(sorted(sims.items(), key=lambda kv: -kv[1]))))
     print(f'  lab scores (centred shapes, after-window {window} ticks, margin = target minus best other known word):')
     for e in cues:
         cw = e['word']
@@ -357,7 +367,7 @@ def lab_scores(head, r, vox, window=25):
     at_once = [round(float(strong[sound][:, s * per_slice:(s + 1) * per_slice].sum(axis=1).mean()), 2) if sound.any() else 0.0
                for s in range(head['fields'])]
     print(f'    4D cells carrying activity (>= 10% of voxels firing), per slice from the senses: ever {strict}, at once during sound {at_once}')
-    score = dict(cues=rows, glow=glow, strict4d=strict, strict4d_at_once=at_once,
+    score = dict(cues=rows, asks=asks, glow=glow, strict4d=strict, strict4d_at_once=at_once,
                  mt=int(r['mtc'][-1]) if head['version'] >= 3 else 0)
     print('LABSCORE ' + json.dumps(score))
     return score

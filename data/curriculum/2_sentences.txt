@@ -1,0 +1,68 @@
+ana finds the small ball
+ana has the new toy
+ana holds the old kite
+ana likes the new ball
+ana sees the blue cake
+ana wants the old book
+leo finds the old cake
+leo has the big cake
+leo holds the new kite
+leo likes the blue toy
+leo sees the blue apple
+leo wants the old hat
+mia finds the small kite
+mia has the old cup
+mia holds the red kite
+mia likes the big cake
+mia sees the big cake
+mia wants the red cup
+sam finds the big kite
+sam has the blue cake
+sam holds the blue hat
+sam likes the blue book
+sam sees the red cake
+sam wants the new cake
+the bear sees the toy
+the bee can fly
+the bird can fly
+the cat can climb
+the cat meows
+the cat sees the book
+the cow moos
+the cow sees the book
+the dog barks
+the dog can run
+the dog sees the cup
+the duck can swim
+the duck quacks
+the duck sees the toy
+the fish can swim
+the frog can jump
+the frog croaks
+the frog sees the hat
+the goat sees the cake
+the hen clucks
+the hen sees the book
+the horse can run
+the horse neighs
+the horse sees the kite
+the lion roars
+the lion sees the ball
+the monkey can climb
+the pig oinks
+the pig sees the book
+the sheep bleats
+the sheep sees the cake
+the snake can slide
+tom finds the red cake
+tom has the big hat
+tom holds the big cup
+tom likes the old cup
+tom sees the old book
+tom wants the small hat
+zoe finds the small hat
+zoe has the blue kite
+zoe holds the big apple
+zoe likes the new cake
+zoe sees the old hat
+zoe wants the red ball

@@ -26,7 +26,7 @@ def main():
                     if f == 'arena.json':
                         a = json.load(open(os.path.join(root, f)))
                         variants.setdefault(a['variant'], []).extend(a['scores'])
-    board = dict(puzzles=[dict(id=p['id'], name=p['name'], tests=p['tests']) for p in puzzles], variants=[])
+    board = dict(puzzles=[dict(id=p['id'], name=p['name'], tests=p['tests'], probes=p.get('probes', ''), if_fails=p.get('if_fails', ''), chance=round(1 / len(p['choices']), 3) if p.get('choices') else 0) for p in puzzles], variants=[])
     for v in sorted(variants, key=lambda x: ORDER.index(x) if x in ORDER else 99):
         rows = variants[v]
         per = {}

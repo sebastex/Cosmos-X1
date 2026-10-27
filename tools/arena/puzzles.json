@@ -6,7 +6,9 @@
       "name": "Finish the word",
       "tests": "5 words, each learned on its own; hear the first half, does the silence after it bring back the right word (better than the untrained twin's echo)?",
       "twin": true,
-      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;rest:300;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60"
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;rest:300;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60",
+      "probes": "word memory",
+      "if_fails": "a word does not settle into its own lasting shape"
     },
     {
       "id": "speak",
@@ -14,37 +16,363 @@
       "tests": "Same 5 words; hear the first half, then let it speak: is what it says the rest of the word?",
       "twin": false,
       "env": "NCM_SPEAK_RISING=1",
-      "words": {"app": "apple", "riv": "river", "sto": "storm", "can": "candy", "lig": "light"},
-      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;voice;rest:200;cue:app:0;speak:6;rest:80;cue:riv:0;speak:6;rest:80;cue:sto:0;speak:6;rest:80;cue:can:0;speak:6;rest:80;cue:lig:0;speak:6"
+      "words": {
+        "app": "apple",
+        "riv": "river",
+        "sto": "storm",
+        "can": "candy",
+        "lig": "light"
+      },
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;voice;rest:200;cue:app:0;speak:6;rest:80;cue:riv:0;speak:6;rest:80;cue:sto:0;speak:6;rest:80;cue:can:0;speak:6;rest:80;cue:lig:0;speak:6",
+      "probes": "speech",
+      "if_fails": "it cannot turn a held shape back into the right sounds"
     },
     {
       "id": "sentence",
       "name": "Continue the sentence",
       "tests": "Learn three sentences; hear the start of each, does the silence after it bring the word that ended that sentence?",
       "twin": true,
-      "sentences": [["the", "cat", "sees", "the", "dog"], ["a", "bird", "eats", "the", "seed"], ["my", "fish", "likes", "the", "sea"]],
-      "script": "seq:the,cat,sees,the,dog:3:60;seq:a,bird,eats,the,seed:3:60;seq:my,fish,likes,the,sea:3:60;seq:the,cat,sees,the,dog:3:60;seq:a,bird,eats,the,seed:3:60;seq:my,fish,likes,the,sea:3:60;rest:300;cue:the_cat_sees_the:80;rest:150;cue:a_bird_eats_the:80;rest:150;cue:my_fish_likes_the:80"
+      "sentences": [
+        [
+          "the",
+          "cat",
+          "sees",
+          "the",
+          "dog"
+        ],
+        [
+          "a",
+          "bird",
+          "eats",
+          "the",
+          "seed"
+        ],
+        [
+          "my",
+          "fish",
+          "likes",
+          "the",
+          "sea"
+        ]
+      ],
+      "script": "seq:the,cat,sees,the,dog:3:60;seq:a,bird,eats,the,seed:3:60;seq:my,fish,likes,the,sea:3:60;seq:the,cat,sees,the,dog:3:60;seq:a,bird,eats,the,seed:3:60;seq:my,fish,likes,the,sea:3:60;rest:300;cue:the_cat_sees_the:80;rest:150;cue:a_bird_eats_the:80;rest:150;cue:my_fish_likes_the:80",
+      "probes": "order in time",
+      "if_fails": "it does not link one word to the next"
     },
     {
       "id": "choice",
       "name": "Make a real choice",
       "tests": "Two sentences taught equally (the cat sees the dog / bird); asked 8 times, does it really choose, sometimes dog and sometimes bird, each time one answer?",
       "twin": false,
-      "script": "seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,dog:2:60;rest:300;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80"
+      "script": "seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,dog:2:60;rest:300;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80",
+      "probes": "real choice",
+      "if_fails": "it cannot settle on one of two equal answers"
     },
     {
       "id": "keep",
       "name": "Keep it after new words",
       "tests": "Learn 5 words, then 10 more, then a long silence; are the first 5 still completed from their first half?",
       "twin": true,
-      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;say:mouse:8:40;say:green:8:40;say:house:8:40;say:plant:8:40;say:water:8:40;say:smile:8:40;say:dream:8:40;say:cloud:8:40;say:tiger:8:40;say:fruit:8:40;rest:800;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60"
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;say:mouse:8:40;say:green:8:40;say:house:8:40;say:plant:8:40;say:water:8:40;say:smile:8:40;say:dream:8:40;say:cloud:8:40;say:tiger:8:40;say:fruit:8:40;rest:800;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60",
+      "probes": "lasting memory",
+      "if_fails": "new learning writes over old learning"
     },
     {
       "id": "sleep",
       "name": "Sleep on it",
       "tests": "The 15 words of 'Keep it', then sleep (replay and unlearning), then the same cues: does sleep help keep them?",
       "twin": true,
-      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;say:mouse:8:40;say:green:8:40;say:house:8:40;say:plant:8:40;say:water:8:40;say:smile:8:40;say:dream:8:40;say:cloud:8:40;say:tiger:8:40;say:fruit:8:40;sleep:800;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60"
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;say:mouse:8:40;say:green:8:40;say:house:8:40;say:plant:8:40;say:water:8:40;say:smile:8:40;say:dream:8:40;say:cloud:8:40;say:tiger:8:40;say:fruit:8:40;sleep:800;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60",
+      "probes": "sleep that helps",
+      "if_fails": "sleep does not clean up or replay what matters"
+    },
+    {
+      "id": "complete50",
+      "name": "Finish the word (50)",
+      "kind": "complete",
+      "twin": true,
+      "tests": "50 words, each learned on its own; 10 of them cued by their first 3 letters. Does the silence bring back the right word, better than the untrained twin?",
+      "script": "say:night:8:40;say:hard:8:40;say:tadpole:8:40;say:pink:8:40;say:foal:8:40;say:brush:8:40;say:dark:8:40;say:house:8:40;say:kitten:8:40;say:mango:8:40;say:beach:8:40;say:horse:8:40;say:pillow:8:40;say:green:8:40;say:ball:8:40;say:bright:8:40;say:fire:8:40;say:mouse:8:40;say:piglet:8:40;say:feather:8:40;say:chick:8:40;say:heavy:8:40;say:cherry:8:40;say:white:8:40;say:duck:8:40;say:bear:8:40;say:water:8:40;say:fast:8:40;say:peach:8:40;say:spade:8:40;say:light:8:40;say:frog:8:40;say:boat:8:40;say:calf:8:40;say:juice:8:40;say:book:8:40;say:grass:8:40;say:truck:8:40;say:sugar:8:40;say:shop:8:40;say:blue:8:40;say:whale:8:40;say:cold:8:40;say:park:8:40;say:slow:8:40;say:apple:8:40;say:school:8:40;say:lamb:8:40;say:pear:8:40;say:sand:8:40;rest:300;cue:nig:60;cue:tad:60;cue:bru:60;cue:hou:60;cue:kit:60;cue:man:60;cue:hor:60;cue:pil:60;cue:gre:60;cue:bri:60",
+      "probes": "room for many words",
+      "if_fails": "word shapes overlap and crowd each other out"
+    },
+    {
+      "id": "sleep50",
+      "name": "Sleep on 50 words",
+      "kind": "complete",
+      "twin": true,
+      "tests": "The same 50 words, then sleep (replay and unlearning), then the same 10 cues.",
+      "script": "say:night:8:40;say:hard:8:40;say:tadpole:8:40;say:pink:8:40;say:foal:8:40;say:brush:8:40;say:dark:8:40;say:house:8:40;say:kitten:8:40;say:mango:8:40;say:beach:8:40;say:horse:8:40;say:pillow:8:40;say:green:8:40;say:ball:8:40;say:bright:8:40;say:fire:8:40;say:mouse:8:40;say:piglet:8:40;say:feather:8:40;say:chick:8:40;say:heavy:8:40;say:cherry:8:40;say:white:8:40;say:duck:8:40;say:bear:8:40;say:water:8:40;say:fast:8:40;say:peach:8:40;say:spade:8:40;say:light:8:40;say:frog:8:40;say:boat:8:40;say:calf:8:40;say:juice:8:40;say:book:8:40;say:grass:8:40;say:truck:8:40;say:sugar:8:40;say:shop:8:40;say:blue:8:40;say:whale:8:40;say:cold:8:40;say:park:8:40;say:slow:8:40;say:apple:8:40;say:school:8:40;say:lamb:8:40;say:pear:8:40;say:sand:8:40;sleep:800;cue:nig:60;cue:tad:60;cue:bru:60;cue:hou:60;cue:kit:60;cue:man:60;cue:hor:60;cue:pil:60;cue:gre:60;cue:bri:60",
+      "probes": "sleep that helps (many words)",
+      "if_fails": "sleep does not untangle crowded words"
+    },
+    {
+      "id": "next",
+      "name": "What comes next",
+      "tests": "Count from one to seven a few times; hear one number, does the silence bring the next one?",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven"
+      ],
+      "asks": [
+        {
+          "q": "six",
+          "a": "seven"
+        },
+        {
+          "q": "two",
+          "a": "three"
+        },
+        {
+          "q": "five",
+          "a": "six"
+        },
+        {
+          "q": "four",
+          "a": "five"
+        }
+      ],
+      "script": "say:five:6:40;say:four:6:40;say:one:6:40;say:seven:6:40;say:six:6:40;say:three:6:40;say:two:6:40;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;seq:one,two,three,four,five,six,seven:3:60;rest:300;cue:six:80;rest:150;cue:two:80;rest:150;cue:five:80;rest:150;cue:four:80",
+      "probes": "order (first step)",
+      "if_fails": "it does not hold which item follows which"
+    },
+    {
+      "id": "pattern",
+      "name": "Continue the pattern",
+      "tests": "Hear red blue green and pink blue white. After \"blue\" the answer depends on what came before it, like a pattern test.",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "green",
+        "white"
+      ],
+      "asks": [
+        {
+          "q": "pink blue",
+          "a": "white"
+        },
+        {
+          "q": "pink blue",
+          "a": "white"
+        },
+        {
+          "q": "red blue",
+          "a": "green"
+        },
+        {
+          "q": "red blue",
+          "a": "green"
+        }
+      ],
+      "script": "say:blue:6:40;say:green:6:40;say:pink:6:40;say:red:6:40;say:white:6:40;seq:red,blue,green:3:60;seq:pink,blue,white:3:60;seq:pink,blue,white:3:60;seq:red,blue,green:3:60;seq:red,blue,green:3:60;seq:pink,blue,white:3:60;seq:pink,blue,white:3:60;seq:red,blue,green:3:60;seq:red,blue,green:3:60;seq:pink,blue,white:3:60;seq:pink,blue,white:3:60;seq:red,blue,green:3:60;rest:300;cue:pink_blue:80;rest:150;cue:pink_blue:80;rest:150;cue:red_blue:80;rest:150;cue:red_blue:80",
+      "probes": "context, two back",
+      "if_fails": "it only knows the last word, not what came before it"
+    },
+    {
+      "id": "category",
+      "name": "What fits where",
+      "tests": "Learn which group each thing belongs to (cats are animals, apples are fruit...); asked \"cats are\", does it pick the right group?",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "animals",
+        "fruit",
+        "vehicles"
+      ],
+      "asks": [
+        {
+          "q": "cats are",
+          "a": "animals"
+        },
+        {
+          "q": "buses are",
+          "a": "vehicles"
+        },
+        {
+          "q": "dogs are",
+          "a": "animals"
+        },
+        {
+          "q": "cars are",
+          "a": "vehicles"
+        },
+        {
+          "q": "pears are",
+          "a": "fruit"
+        },
+        {
+          "q": "apples are",
+          "a": "fruit"
+        }
+      ],
+      "script": "say:animals:6:40;say:apples:6:40;say:are:6:40;say:buses:6:40;say:cars:6:40;say:cats:6:40;say:dogs:6:40;say:fruit:6:40;say:pears:6:40;say:vehicles:6:40;seq:cats,are,animals:3:60;seq:dogs,are,animals:3:60;seq:apples,are,fruit:3:60;seq:pears,are,fruit:3:60;seq:cars,are,vehicles:3:60;seq:buses,are,vehicles:3:60;seq:dogs,are,animals:3:60;seq:apples,are,fruit:3:60;seq:pears,are,fruit:3:60;seq:cars,are,vehicles:3:60;seq:buses,are,vehicles:3:60;seq:cats,are,animals:3:60;seq:apples,are,fruit:3:60;seq:pears,are,fruit:3:60;seq:cars,are,vehicles:3:60;seq:buses,are,vehicles:3:60;seq:cats,are,animals:3:60;seq:dogs,are,animals:3:60;seq:pears,are,fruit:3:60;seq:cars,are,vehicles:3:60;seq:buses,are,vehicles:3:60;seq:cats,are,animals:3:60;seq:dogs,are,animals:3:60;seq:apples,are,fruit:3:60;rest:300;cue:cats_are:80;rest:150;cue:buses_are:80;rest:150;cue:dogs_are:80;rest:150;cue:cars_are:80;rest:150;cue:pears_are:80;rest:150;cue:apples_are:80",
+      "probes": "grouping (what fits where)",
+      "if_fails": "it does not tie many things to one group word"
+    },
+    {
+      "id": "analogy",
+      "name": "Mother and baby",
+      "tests": "Learn the cat has a kitten, the dog has a puppy...; asked \"the cow has a\", does it bring calf (an analogy held in sentences)?",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "kitten",
+        "puppy",
+        "calf",
+        "chick"
+      ],
+      "asks": [
+        {
+          "q": "the cow has a",
+          "a": "calf"
+        },
+        {
+          "q": "the cat has a",
+          "a": "kitten"
+        },
+        {
+          "q": "the hen has a",
+          "a": "chick"
+        },
+        {
+          "q": "the dog has a",
+          "a": "puppy"
+        }
+      ],
+      "script": "say:a:6:40;say:calf:6:40;say:cat:6:40;say:chick:6:40;say:cow:6:40;say:dog:6:40;say:has:6:40;say:hen:6:40;say:kitten:6:40;say:puppy:6:40;say:the:6:40;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,cow,has,a,calf:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,hen,has,a,chick:3:60;seq:the,cat,has,a,kitten:3:60;seq:the,dog,has,a,puppy:3:60;seq:the,cow,has,a,calf:3:60;rest:300;cue:the_cow_has_a:80;rest:150;cue:the_cat_has_a:80;rest:150;cue:the_hen_has_a:80;rest:150;cue:the_dog_has_a:80",
+      "probes": "relations held in sentences",
+      "if_fails": "it loses the subject by the time the answer is due"
+    },
+    {
+      "id": "facts",
+      "name": "Know the facts",
+      "tests": "Learn six facts (fire is hot, ice is cold...); asked \"fire is\", does it bring the right word?",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "hot",
+        "cold",
+        "white",
+        "green",
+        "blue",
+        "sweet"
+      ],
+      "asks": [
+        {
+          "q": "ice is",
+          "a": "cold"
+        },
+        {
+          "q": "fire is",
+          "a": "hot"
+        },
+        {
+          "q": "grass is",
+          "a": "green"
+        },
+        {
+          "q": "sugar is",
+          "a": "sweet"
+        },
+        {
+          "q": "snow is",
+          "a": "white"
+        },
+        {
+          "q": "sky is",
+          "a": "blue"
+        }
+      ],
+      "script": "say:blue:6:40;say:cold:6:40;say:fire:6:40;say:grass:6:40;say:green:6:40;say:hot:6:40;say:ice:6:40;say:is:6:40;say:sky:6:40;say:snow:6:40;say:sugar:6:40;say:sweet:6:40;say:white:6:40;seq:fire,is,hot:3:60;seq:ice,is,cold:3:60;seq:snow,is,white:3:60;seq:grass,is,green:3:60;seq:sky,is,blue:3:60;seq:sugar,is,sweet:3:60;seq:ice,is,cold:3:60;seq:snow,is,white:3:60;seq:grass,is,green:3:60;seq:sky,is,blue:3:60;seq:sugar,is,sweet:3:60;seq:fire,is,hot:3:60;seq:snow,is,white:3:60;seq:grass,is,green:3:60;seq:sky,is,blue:3:60;seq:sugar,is,sweet:3:60;seq:fire,is,hot:3:60;seq:ice,is,cold:3:60;seq:grass,is,green:3:60;seq:sky,is,blue:3:60;seq:sugar,is,sweet:3:60;seq:fire,is,hot:3:60;seq:ice,is,cold:3:60;seq:snow,is,white:3:60;rest:300;cue:ice_is:80;rest:150;cue:fire_is:80;rest:150;cue:grass_is:80;rest:150;cue:sugar_is:80;rest:150;cue:snow_is:80;rest:150;cue:sky_is:80",
+      "probes": "facts",
+      "if_fails": "it does not tie a thing to its property"
+    },
+    {
+      "id": "yesno",
+      "name": "Yes or no",
+      "tests": "Learn questions with answers (is fire hot yes, is ice hot no...); asked one, does it answer yes or no correctly?",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "yes",
+        "no"
+      ],
+      "asks": [
+        {
+          "q": "is sun bright",
+          "a": "yes"
+        },
+        {
+          "q": "is lemon sweet",
+          "a": "no"
+        },
+        {
+          "q": "is ice hot",
+          "a": "no"
+        },
+        {
+          "q": "is night bright",
+          "a": "no"
+        },
+        {
+          "q": "is fire hot",
+          "a": "yes"
+        },
+        {
+          "q": "is sugar sweet",
+          "a": "yes"
+        }
+      ],
+      "script": "say:bright:6:40;say:fire:6:40;say:hot:6:40;say:ice:6:40;say:is:6:40;say:lemon:6:40;say:night:6:40;say:no:6:40;say:sugar:6:40;say:sun:6:40;say:sweet:6:40;say:yes:6:40;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,sun,bright,yes:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,night,bright,no:3:60;seq:is,sugar,sweet,yes:3:60;seq:is,lemon,sweet,no:3:60;seq:is,fire,hot,yes:3:60;seq:is,ice,hot,no:3:60;seq:is,sun,bright,yes:3:60;rest:300;cue:is_sun_bright:80;rest:150;cue:is_lemon_sweet:80;rest:150;cue:is_ice_hot:80;rest:150;cue:is_night_bright:80;rest:150;cue:is_fire_hot:80;rest:150;cue:is_sugar_sweet:80",
+      "probes": "true or false",
+      "if_fails": "it cannot use the whole question to pick yes or no"
+    },
+    {
+      "id": "virtue",
+      "name": "Good or bad",
+      "tests": "Learn sharing is good, hitting is bad...; asked \"sharing is\", does it say good or bad correctly?",
+      "kind": "ask",
+      "twin": true,
+      "choices": [
+        "good",
+        "bad"
+      ],
+      "asks": [
+        {
+          "q": "caring is",
+          "a": "good"
+        },
+        {
+          "q": "sharing is",
+          "a": "good"
+        },
+        {
+          "q": "stealing is",
+          "a": "bad"
+        },
+        {
+          "q": "hitting is",
+          "a": "bad"
+        },
+        {
+          "q": "lying is",
+          "a": "bad"
+        },
+        {
+          "q": "helping is",
+          "a": "good"
+        }
+      ],
+      "script": "say:bad:6:40;say:caring:6:40;say:good:6:40;say:helping:6:40;say:hitting:6:40;say:is:6:40;say:lying:6:40;say:sharing:6:40;say:stealing:6:40;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:caring,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:lying,is,bad:3:60;seq:hitting,is,bad:3:60;seq:stealing,is,bad:3:60;seq:sharing,is,good:3:60;seq:helping,is,good:3:60;seq:caring,is,good:3:60;rest:300;cue:caring_is:80;rest:150;cue:sharing_is:80;rest:150;cue:stealing_is:80;rest:150;cue:hitting_is:80;rest:150;cue:lying_is:80;rest:150;cue:helping_is:80",
+      "probes": "good and bad (first step of virtue)",
+      "if_fails": "it does not tie acts to good or bad; next it needs a sense of approval"
     }
   ]
 }

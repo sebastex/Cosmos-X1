@@ -1,0 +1,111 @@
+a cat is an animal
+a dog is an animal
+a cow is an animal
+a horse is an animal
+a sheep is an animal
+a pig is an animal
+a goat is an animal
+a bear is an animal
+a lion is an animal
+a frog is an animal
+a duck is an animal
+a hen is an animal
+an apple is a fruit
+a pear is a fruit
+a plum is a fruit
+a grape is a fruit
+a lemon is a fruit
+a peach is a fruit
+a mango is a fruit
+a cherry is a fruit
+red is a color
+blue is a color
+green is a color
+yellow is a color
+white is a color
+black is a color
+pink is a color
+brown is a color
+a hammer is a tool
+a saw is a tool
+a spade is a tool
+a drill is a tool
+a brush is a tool
+a knife is a tool
+a car is a vehicle
+a bus is a vehicle
+a train is a vehicle
+a boat is a vehicle
+a truck is a vehicle
+a bike is a vehicle
+a water is a drink
+a milk is a drink
+a juice is a drink
+a tea is a drink
+a house is a place
+a school is a place
+a park is a place
+a farm is a place
+a shop is a place
+a beach is a place
+fire is hot
+ice is cold
+snow is white
+grass is green
+sky is blue
+sun is bright
+night is dark
+stone is hard
+pillow is soft
+sugar is sweet
+lemon is sour
+water is wet
+sand is dry
+feather is light
+rock is heavy
+honey is sweet
+mouse is small
+whale is big
+turtle is slow
+cheetah is fast
+a fish can swim
+a bird can fly
+a dog can run
+a frog can jump
+a snake can slide
+a duck can swim
+a horse can run
+a bee can fly
+a cat can climb
+a monkey can climb
+a fish can not walk
+a dog can not fly
+a cow can not fly
+a snake can not run
+a cat can not fly
+a pig can not fly
+a horse can not fly
+a baby cat is a kitten
+a baby dog is a puppy
+a baby cow is a calf
+a baby duck is a duckling
+a baby horse is a foal
+a baby sheep is a lamb
+a baby goat is a kid
+a baby bear is a cub
+a baby lion is a cub
+a baby pig is a piglet
+a baby hen is a chick
+a baby frog is a tadpole
+rain makes the grass wet
+fire makes smoke
+sun makes the day warm
+wind moves the trees
+food makes us strong
+sleep makes us rested
+ice makes the drink cold
+soap makes hands clean
+a fall can hurt
+a smile makes friends happy
+a gift makes people glad
+a lie breaks trust
