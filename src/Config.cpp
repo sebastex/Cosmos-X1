@@ -312,4 +312,37 @@ void applyEvolvedRule(Config& cfg) {
     for (const auto& a : evolvedRule()) applySetting(cfg, a);
 }
 
+// Named Pharmakon variants (Greek letters), applied on top of the default rule. Each letter adds to
+// the one before; the default rule itself is Delta. Alpha-Gamma restore the earlier builds as far as
+// settings allow (code that changed between them, e.g. the sensory spread over the w = 0 slice in
+// Beta, cannot be switched back exactly, so Alpha keeps it off with input_depth_spread=0).
+const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() {
+    static const std::vector<std::pair<std::string, std::vector<std::string>>> v = {
+        {"alpha", {"lattice4d=1", "lattice_scramble=0", "input_depth_spread=0", "lattice_sep0=1", "lattice_exc_only=0",
+                   "lattice_link=0.0276", "lattice_back=1", "lattice_sweep=0"}},                 // 4D lattice, first build
+        {"beta", {"lattice4d=1", "lattice_scramble=1", "lattice_sep0=1", "lattice_exc_only=0", "lattice_link=0.0276",
+                  "lattice_back=1", "lattice_sweep=0"}},                                        // + senses spread, shuffled links
+        {"gamma", {"lattice4d=1", "lattice_scramble=1", "lattice_sep0=0", "lattice_exc_only=0", "lattice_link=0.0276",
+                   "lattice_back=1", "lattice_sweep=0"}},                                       // + no separation at the senses
+        {"delta", {}},                                                                          // + working 4D surface (default)
+        {"epsilon", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1"}}, // + roots, one rule
+        {"zeta", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
+                  "mt_orch=1", "mt_gain=1"}},                                                   // + microtubules, tubular inception
+        {"eta", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
+                 "mt_orch=1", "mt_gain=1", "predict_surprise=1", "familiarity=1"}},              // + learning by predicting
+    };
+    return v;
+}
+
+void applyVariant(Config& cfg, const std::string& name) {
+    for (const auto& [n, settings] : variants())
+        if (n == name) {
+            for (const auto& s : settings) applySetting(cfg, s);
+            return;
+        }
+    std::string names;
+    for (const auto& [n, s] : variants()) names += (names.empty() ? "" : ", ") + n;
+    throw std::invalid_argument("unknown variant '" + name + "' (use " + names + ")");
+}
+
 } // namespace ncm

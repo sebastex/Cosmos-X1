@@ -2166,12 +2166,12 @@ int runVocabPassTest(const Config& cfg) {
             shape[k].assign(acc.begin(), acc.end());
             s.silence(40, false);
         }
-        // The rest of each word as heard inside the word: the ticks from its second half on (+3).
-        // The first half's echo is not in it, so only a real completion can match it.
+        // The rest of each word heard alone after silence (+3). Recorded inside the whole word it still
+        // carried the first half's echo (the untrained twin scored 88% on it).
         std::vector<std::vector<float>> rest(n);
         for (size_t k = 0; k < n; ++k) {
-            const std::string ws = words[k] + " ";
-            std::vector<double> acc = s.present(ws, ws.size(), 1.0f, true, half(words[k]));
+            const std::string ws = words[k].substr(half(words[k])) + " ";
+            std::vector<double> acc = s.present(ws, ws.size(), 1.0f, true, 0);
             for (int t = 0; t < 3; ++t) {
                 s.silence(1, false);
                 s.accumulate(acc);

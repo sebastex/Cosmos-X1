@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace ncm {
 
@@ -439,6 +441,9 @@ Config makePreset(const std::string& name);
 // Sets one tunable parameter from "name=value" (e.g. "upward_gain=1.0").
 // These are the values rule evolution will search over (spec Section 5E).
 void applySetting(Config& cfg, const std::string& assignment);
+// Named Pharmakon variants (alpha, beta, gamma, delta = default, epsilon, zeta, eta).
+void applyVariant(Config& cfg, const std::string& name);
+const std::vector<std::pair<std::string, std::vector<std::string>>>& variants();
 
 // The evolved rule: the best settings found by rule evolution, applied on top of a preset.
 void applyEvolvedRule(Config& cfg);

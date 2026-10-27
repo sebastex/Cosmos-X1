@@ -44,6 +44,7 @@ struct Options {
     double timeScale = 1.0;     // tests: multiplies storing, gap and cue durations
     std::vector<std::string> patterns; // empty = the recall test's default
     std::vector<std::string> settings;
+    std::string variant; // Pharmakon variant (Greek letter), applied before --set
 };
 
 // Every test by name: main() runs it, --help lists it.
@@ -124,7 +125,7 @@ std::string testNames() {
 void usage() {
     std::cout << "usage: cosmos_x1 [--test NAME] [--preset tiny|small|dev|full] [--ticks N] [--input-ticks N]\n"
                  "                 [--snap N] [--out DIR] [--text \"...\"] [--seed N] [--quiet]\n"
-                 "                 [--set name=value]...\n"
+                 "                 [--set name=value]... [--variant alpha..eta]\n"
                  "tests: "
               << testNames() << "\n"
               << "settings: " << ncm::settingNames() << "\n";
@@ -146,6 +147,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--text") o.text = value();
         else if (a == "--seed") { o.seed = std::stoull(value()); o.seedSet = true; }
         else if (a == "--set") o.settings.push_back(value());
+        else if (a == "--variant") o.variant = value();
         else if (a == "--quiet") o.quiet = true;
         else if (a == "--test") o.test = value();
         else if (a == "--clear-gaps") o.clearGaps = true;
@@ -217,6 +219,7 @@ int main(int argc, char** argv) {
         cfg = ncm::makePreset(opt.preset);
         if (opt.rule == "evolved") ncm::applyEvolvedRule(cfg);
         else if (opt.rule != "starting") throw std::invalid_argument("unknown rule '" + opt.rule + "' (use evolved or starting)");
+        if (!opt.variant.empty()) ncm::applyVariant(cfg, opt.variant);
         for (const auto& s : opt.settings) ncm::applySetting(cfg, s);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\n";
