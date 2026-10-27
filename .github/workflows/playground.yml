@@ -1,0 +1,176 @@
+# The playground: one brain learns the whole curriculum (tools/playground/lesson.py) without end,
+# in runs of about 3 hours, and is tested on everything at every run. Each run:
+#   1. restore the brain the run before saved,
+#   2. quiz: what it has been taught so far (an untrained twin answers too, as the baseline),
+#   3. IQ battery: every arena puzzle (tools/arena/puzzles.json) played fresh on a copy of the grown
+#      brain (how well it learns something new now; the copy is thrown away),
+#   4. go on with the lessons exactly where the last run stopped, save the brain just before the
+#      time is up, and start the next run.
+# Start one lane:  gh workflow run playground.yml --ref cosmos-pharmakon -f variant=epsilon -f runs=4
+# All lanes:       bash tools/playground/lanes.sh   (one lane per Greek variant)
+# Stop: cancel a lane's newest run, or let "runs" count down. Growth log: artifact pg-log-<variant>-<seed>.
+name: playground
+run-name: playground ${{ inputs.variant }} ${{ inputs.seed }} run ${{ inputs.step }}
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Brain (seed)
+        default: "3004"
+      variant:
+        description: Pharmakon variant
+        default: "epsilon"
+      preset:
+        description: Brain size
+        default: "dev"
+      runs:
+        description: Runs left, this one included (each about 3 hours)
+        default: "4"
+      hours:
+        description: Hours per run
+        default: "3"
+      step:
+        description: This run's number (1 = a new brain)
+        default: "1"
+      op:
+        description: Lesson step to go on from (0 = the start)
+        default: "0"
+      prev_run:
+        description: Run that saved the brain (empty for a new brain)
+        default: ""
+permissions:
+  contents: read
+  actions: write
+env:
+  LANE: ${{ inputs.variant }}-${{ inputs.seed }}
+  IQ: complete choice speak next pattern category analogy facts yesno virtue
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 230
+    steps:
+      - name: Start the clock
+        run: echo "BEGAN=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh && pip install -q numpy
+      - name: Restore the brain
+        if: inputs.prev_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: pg-brain-${{ env.LANE }}
+          run-id: ${{ inputs.prev_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore the growth log
+        if: inputs.prev_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: pg-log-${{ env.LANE }}
+          path: log
+          run-id: ${{ inputs.prev_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Unpack
+        run: |
+          mkdir -p log/twin out
+          if [ -f brain.bin.zst ]; then zstd -d -q --rm brain.bin.zst; fi
+          ls -la
+      - name: Quiz on what it has learned so far
+        if: inputs.op != '0'
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          python3 tools/playground/lesson.py quiz ${{ inputs.op }} ${{ inputs.step }} > out/quiz.json
+          python3 -c "import json; print(json.load(open('out/quiz.json'))['puzzles'][0]['script'])" > quiz.txt
+          NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=quiz.txt NCM_SCRIPT_TWIN=1 NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+            ./build/cosmos_x1 --test script --preset ${{ inputs.preset }} --variant ${{ inputs.variant }} --seed ${{ inputs.seed }} > out/quiz_result.txt
+          : > report.txt
+          for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> report.txt; done
+          rm -rf monitor
+          python3 tools/arena/score.py quiz out/quiz_result.txt report.txt out/quiz.json > out/quiz_score.json
+          python3 -c "import json; d = json.load(open('out/quiz_score.json')); print('quiz', round(d['score'], 3), {k: v['score'] for k, v in d['levels'].items()})"
+      - name: IQ battery (each puzzle on a copy of the grown brain)
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          for P in $IQ; do
+            eval "$(python3 -c "
+          import json, shlex
+          p = {q['id']: q for q in json.load(open('tools/arena/puzzles.json'))['puzzles']}['$P']
+          print('SCRIPT=' + shlex.quote(p['script']))
+          print('HASTWIN=' + ('1' if p.get('twin') else '0'))
+          print('PENV=' + shlex.quote(p.get('env', '')))
+          ")"
+            TW=0; [ "$HASTWIN" = 1 ] && [ ! -f "log/twin/$P.json" ] && TW=1  # the twin plays once per lane
+            IN=""; [ -f brain.bin ] && IN=brain.bin
+            env $PENV NCM_STATE_IN=$IN NCM_SCRIPT="$SCRIPT" NCM_SCRIPT_TWIN=$TW NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+              ./build/cosmos_x1 --test script --preset ${{ inputs.preset }} --variant ${{ inputs.variant }} --seed ${{ inputs.seed }} > "out/iq_${P}_result.txt"
+            : > report.txt
+            for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> report.txt; done
+            rm -rf monitor
+            TWIN_FROM="log/twin/$P.json" python3 tools/arena/score.py "$P" "out/iq_${P}_result.txt" report.txt > "out/iq_$P.json"
+            [ "$TW" = 1 ] && cp "out/iq_$P.json" "log/twin/$P.json"
+            python3 -c "import json; d = json.load(open('out/iq_$P.json')); print('$P', round(d['score'], 3))"
+          done
+      - name: Lesson until just before the time is up
+        id: lesson
+        env:
+          OP: ${{ inputs.op }}
+          HOURS: ${{ inputs.hours }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          python3 tools/playground/lesson.py lesson "$OP" 60000 > lesson.txt
+          # Leave 20 minutes for saving, packing and uploading the brain.
+          left=$(python3 -c "import time, os; print(int(float(os.environ['HOURS']) * 3600 - (time.time() - $BEGAN) - 1200))")
+          if [ "$left" -lt 600 ]; then left=600; fi
+          echo "lesson time: $left s, from step $OP"
+          IN=""; [ -f brain.bin ] && IN=brain.bin
+          NCM_STATE_IN=$IN NCM_STATE_OUT=brain-next.bin NCM_SCRIPT_FILE=lesson.txt NCM_DEADLINE_SEC=$left \
+            ./build/cosmos_x1 --test script --preset ${{ inputs.preset }} --variant ${{ inputs.variant }} --seed ${{ inputs.seed }} > out/lesson_result.txt
+          tail -4 out/lesson_result.txt
+          did=$(grep -oE '(STOPPED_AT|SCRIPT_DONE) [0-9]+' out/lesson_result.txt | tail -1 | awk '{print $2}')
+          next=$((OP + did))
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          rm -f brain.bin
+          mv brain-next.bin brain.bin
+          zstd -3 -T0 -q --rm brain.bin
+          python3 - <<EOF
+          import glob, json, os, subprocess
+          path = 'log/growth.json'
+          log = json.load(open(path)) if os.path.exists(path) else dict(variant='${{ inputs.variant }}', seed='${{ inputs.seed }}', runs=[])
+          where = json.loads(subprocess.check_output(['python3', 'tools/playground/lesson.py', 'where', str($next)]))
+          row = dict(run=${{ inputs.step }}, github_run='${{ github.run_id }}', from_op=$OP, to_op=$next, now=where, iq={})
+          if os.path.exists('out/quiz_score.json'):
+              q = json.load(open('out/quiz_score.json'))
+              row['quiz'] = dict(score=round(q['score'], 3), levels=q['levels'], taught=q.get('taught'))
+          for f in sorted(glob.glob('out/iq_*.json')):
+              d = json.load(open(f))
+              row['iq'][d['puzzle']] = round(d['score'], 3)
+          log['runs'].append(row)
+          json.dump(log, open(path, 'w'), indent=1)
+          print(json.dumps(row))
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pg-brain-${{ env.LANE }}
+          path: brain.bin.zst
+          compression-level: 0
+          retention-days: 5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pg-log-${{ env.LANE }}
+          path: log
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pg-run-${{ env.LANE }}-${{ inputs.step }}
+          path: out
+          retention-days: 30
+      - name: Start the next run
+        if: fromJSON(inputs.runs) > 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run playground.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
+            -f seed=${{ inputs.seed }} -f variant=${{ inputs.variant }} -f preset=${{ inputs.preset }} \
+            -f runs=$(( ${{ inputs.runs }} - 1 )) -f hours=${{ inputs.hours }} -f step=$(( ${{ inputs.step }} + 1 )) \
+            -f op=${{ steps.lesson.outputs.next }} -f prev_run=${{ github.run_id }}
