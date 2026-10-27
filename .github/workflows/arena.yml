@@ -1,0 +1,99 @@
+# The Pharmakon puzzle arena: one variant (Greek letter) through every puzzle in
+# tools/arena/puzzles.json, on several brains, each puzzle on a fresh brain and its own machine.
+# Start:  gh workflow run arena.yml -f variant=zeta -f seeds="[3004,3005,3006,3007]"
+# The last job collects every score into one artifact, arena-<variant>.
+name: arena
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Pharmakon variant (alpha, beta, gamma, delta, epsilon, zeta, eta)
+        default: "delta"
+      seeds:
+        description: Brains, as a list like [3004,3005]
+        default: "[3004,3005,3006,3007]"
+      puzzles:
+        description: Puzzles, as a list (empty = all in tools/arena/puzzles.json)
+        default: '["complete","speak","sentence","choice","keep","sleep"]'
+      preset:
+        description: Brain size
+        default: "dev"
+permissions:
+  contents: read
+jobs:
+  puzzle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        puzzle: ${{ fromJSON(inputs.puzzles) }}
+        seed: ${{ fromJSON(inputs.seeds) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh
+      - name: Play the puzzle
+        env:
+          PUZZLE: ${{ matrix.puzzle }}
+          SEED: ${{ matrix.seed }}
+          VARIANT: ${{ inputs.variant }}
+          PRESET: ${{ inputs.preset }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          eval "$(python3 -c "
+          import json, shlex
+          p = {q['id']: q for q in json.load(open('tools/arena/puzzles.json'))['puzzles']}['$PUZZLE']
+          print('export NCM_SCRIPT=' + shlex.quote(p['script']))
+          print('export NCM_SCRIPT_TWIN=' + ('1' if p.get('twin') else '0'))
+          for kv in p.get('env', '').split():
+              print('export ' + kv)
+          ")"
+          export NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1
+          ./build/cosmos_x1 --test script --preset "$PRESET" --variant "$VARIANT" --seed "$SEED" | tee result.txt
+          pip install -q numpy
+          : > report.txt
+          for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> report.txt; done
+          python3 tools/arena/score.py "$PUZZLE" result.txt report.txt > "score_${PUZZLE}_${SEED}.json"
+          cat "score_${PUZZLE}_${SEED}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: score-${{ matrix.puzzle }}-${{ matrix.seed }}
+          path: |
+            score_*.json
+            result.txt
+            report.txt
+  board:
+    needs: puzzle
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: scores
+      - name: Collect
+        env:
+          VARIANT: ${{ inputs.variant }}
+        run: |
+          python3 - <<'EOF'
+          import glob, json, os
+          rows = []
+          for f in glob.glob('scores/*/score_*.json'):
+              try:
+                  s = json.load(open(f))
+              except Exception:
+                  continue
+              s['seed'] = f.rsplit('_', 1)[1].split('.')[0]
+              rows.append(s)
+          json.dump(dict(variant=os.environ['VARIANT'], scores=rows), open('arena.json', 'w'))
+          by = {}
+          for s in rows:
+              by.setdefault(s['puzzle'], []).append(s['score'])
+          for p, v in sorted(by.items()):
+              print(f"{p:10s} {sum(v) / len(v):.2f}  ({len(v)} brains)")
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arena-${{ inputs.variant }}
+          path: arena.json
