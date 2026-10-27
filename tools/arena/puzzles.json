@@ -1,0 +1,50 @@
+{
+  "about": "The Pharmakon puzzle arena: each puzzle is a stimulus script for --test script on a fresh brain, scored by tools/arena/score.py from the monitor report. Words are always learned on their own; relations between words come only from sentences.",
+  "puzzles": [
+    {
+      "id": "complete",
+      "name": "Finish the word",
+      "tests": "5 words, each learned on its own; hear the first half, does the silence after it bring back the right word (better than the untrained twin's echo)?",
+      "twin": true,
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;rest:300;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60"
+    },
+    {
+      "id": "speak",
+      "name": "Say the rest",
+      "tests": "Same 5 words; hear the first half, then let it speak: is what it says the rest of the word?",
+      "twin": false,
+      "env": "NCM_SPEAK_RISING=1",
+      "words": {"app": "apple", "riv": "river", "sto": "storm", "can": "candy", "lig": "light"},
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;voice;rest:200;cue:app:0;speak:6;rest:80;cue:riv:0;speak:6;rest:80;cue:sto:0;speak:6;rest:80;cue:can:0;speak:6;rest:80;cue:lig:0;speak:6"
+    },
+    {
+      "id": "sentence",
+      "name": "Continue the sentence",
+      "tests": "Learn three sentences; hear the start of each, does the silence after it bring the word that ended that sentence?",
+      "twin": true,
+      "sentences": [["the", "cat", "sees", "the", "dog"], ["a", "bird", "eats", "the", "seed"], ["my", "fish", "likes", "the", "sea"]],
+      "script": "seq:the,cat,sees,the,dog:3:60;seq:a,bird,eats,the,seed:3:60;seq:my,fish,likes,the,sea:3:60;seq:the,cat,sees,the,dog:3:60;seq:a,bird,eats,the,seed:3:60;seq:my,fish,likes,the,sea:3:60;rest:300;cue:the_cat_sees_the:80;rest:150;cue:a_bird_eats_the:80;rest:150;cue:my_fish_likes_the:80"
+    },
+    {
+      "id": "choice",
+      "name": "Make a real choice",
+      "tests": "Two sentences taught equally (the cat sees the dog / bird); asked 8 times, does it really choose, sometimes dog and sometimes bird, each time one answer?",
+      "twin": false,
+      "script": "seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,dog:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,bird:2:60;seq:the,cat,sees,the,dog:2:60;rest:300;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80;rest:200;cue:the_cat_sees_the:80"
+    },
+    {
+      "id": "keep",
+      "name": "Keep it after new words",
+      "tests": "Learn 5 words, then 10 more, then a long silence; are the first 5 still completed from their first half?",
+      "twin": true,
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;say:mouse:8:40;say:green:8:40;say:house:8:40;say:plant:8:40;say:water:8:40;say:smile:8:40;say:dream:8:40;say:cloud:8:40;say:tiger:8:40;say:fruit:8:40;rest:800;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60"
+    },
+    {
+      "id": "sleep",
+      "name": "Sleep on it",
+      "tests": "The 15 words of 'Keep it', then sleep (replay and unlearning), then the same cues: does sleep help keep them?",
+      "twin": true,
+      "script": "say:apple:10:40;say:river:10:40;say:storm:10:40;say:candy:10:40;say:light:10:40;say:mouse:8:40;say:green:8:40;say:house:8:40;say:plant:8:40;say:water:8:40;say:smile:8:40;say:dream:8:40;say:cloud:8:40;say:tiger:8:40;say:fruit:8:40;sleep:800;cue:app:60;cue:riv:60;cue:sto:60;cue:can:60;cue:lig:60"
+    }
+  ]
+}
