@@ -13,8 +13,12 @@ REPO = 'sebastex/Cosmos-X1'
 
 
 def main():
-    arts = json.loads(subprocess.check_output(['gh', 'api', '--paginate', f'repos/{REPO}/actions/artifacts?per_page=100',
-                                               '--jq', '[.artifacts[] | select(.name | startswith("pg-log-")) | select(.expired | not)]']))
+    arts = []
+    for line in subprocess.check_output(['gh', 'api', '--paginate', f'repos/{REPO}/actions/artifacts?per_page=100',
+                                         '--jq', '[.artifacts[] | select(.name | startswith("pg-log-")) | select(.expired | not)]'],
+                                        text=True).splitlines():  # one json list per page
+        if line.strip():
+            arts += json.loads(line)
     newest = {}
     for a in arts:
         if a['name'] not in newest or a['created_at'] > newest[a['name']]['created_at']:

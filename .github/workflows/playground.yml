@@ -90,7 +90,12 @@ jobs:
       - name: IQ battery (each puzzle on a copy of the grown brain)
         run: |
           export OMP_NUM_THREADS=$(nproc)
-          for P in $IQ; do
+          # Testing may use at most 45% of the run, so slow brains still get their lessons. The puzzles
+          # start at a different one each run, so every puzzle keeps being played over the runs.
+          budget=$(python3 -c "print(int(float('${{ inputs.hours }}') * 3600 * 0.45))")
+          ORDER=$(python3 -c "l = '$IQ'.split(); k = (${{ inputs.step }} - 1) % len(l); print(' '.join(l[k:] + l[:k]))")
+          for P in $ORDER; do
+            if [ $(( $(date +%s) - BEGAN )) -gt "$budget" ]; then echo "testing time is up; $P waits for a later run"; break; fi
             eval "$(python3 -c "
           import json, shlex
           p = {q['id']: q for q in json.load(open('tools/arena/puzzles.json'))['puzzles']}['$P']
