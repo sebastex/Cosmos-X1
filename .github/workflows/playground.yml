@@ -145,9 +145,21 @@ jobs:
           if os.path.exists('out/quiz_score.json'):
               q = json.load(open('out/quiz_score.json'))
               row['quiz'] = dict(score=round(q['score'], 3), levels=q['levels'], taught=q.get('taught'))
+          # Right or wrong, answer by answer: what was asked, the right answer, what it said.
+          row['answers'] = []
+          def marks(src, items):
+              tw = {t['q']: t for t in items.get('twin', []) if isinstance(t, dict)}
+              for l in items.get('learner', []):
+                  if isinstance(l, dict) and 'pick' in l:
+                      t = tw.get(l['q'], {})
+                      row['answers'].append(dict(test=src, level=l.get('level', src), q=l['q'], want=l['a'], said=l['pick'],
+                                                 right=l['pick'] == l['a'], beat_twin=l['margin'] > 0 and l['margin'] > t.get('margin', -9)))
+          if os.path.exists('out/quiz_score.json'):
+              marks('quiz', json.load(open('out/quiz_score.json')))
           for f in sorted(glob.glob('out/iq_*.json')):
               d = json.load(open(f))
               row['iq'][d['puzzle']] = round(d['score'], 3)
+              marks(d['puzzle'], d)
           log['runs'].append(row)
           json.dump(log, open(path, 'w'), indent=1)
           print(json.dumps(row))

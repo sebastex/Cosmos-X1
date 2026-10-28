@@ -199,6 +199,11 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"silence_gate", &c.learning.silence_gate},
+        {"context_tau", &c.learning.context_tau},
+        {"context_gain", &c.learning.context_gain},
+        {"context_learn", &c.learning.context_learn},
+        {"join_gain", &c.learning.join_gain},
+        {"protect", &c.learning.protect},
         {"field_roles", &c.learning.field_roles},
         {"channel_balance", &c.learning.channel_balance},
         {"inner_up", &c.learning.inner_up},
@@ -358,6 +363,15 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"upsilon", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "microtubule=1",
                      "mt_orch=1", "mt_gain=1", "predict_surprise=1", "familiarity=1", "plastic_budget=11.3566",
                      "assembly_inhibition=0.00642"}},                                           // Eta + more room, shapes further apart
+        // The three parts the playground showed missing (2026-10-28), on Epsilon.
+        {"phi", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "context_tau=8", "context_learn=2", "context_gain=4"}},                                        // Epsilon + holding a clue longer
+        {"chi", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4"}},                         // Phi + joining two clues
+        {"psi", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "protect=0.8"}},                                                               // Epsilon + protecting what is learned
+        {"omega", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4", "protect=0.8"}},        // all three
     };
     return v;
 }

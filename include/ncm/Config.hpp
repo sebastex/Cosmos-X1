@@ -141,6 +141,22 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Holding a clue longer (context_tau, in 3D steps; 0 = off): every voxel keeps a second, slow
+    // trace of its recent firing (a few words long, where the order trace lasts about one). The
+    // slow trace learns through the same links as the fast one (what fired a few words ago, before
+    // what fires now, at context_learn of the normal rate) and drives through them at context_gain,
+    // so a clue heard earlier (fire in "fire is ...") still steers what comes after a shared word.
+    float context_tau = 0.0f;
+    float context_gain = 1.0f;
+    float context_learn = 1.0f;
+    // Joining two clues (join_gain; 0 = off): a channel driven both by its learned links from what
+    // fires now and by the held clues gets an extra push, the geometric mean of the two, so the
+    // answer that fits both clues wins over answers that fit only one.
+    float join_gain = 0.0f;
+    // Protecting what is learned (protect, 0..1; needs consolidation): when a channel's learned
+    // input is over budget, the consolidated share of each link (up to its slow part) is kept and
+    // only the rest is scaled down, so new learning makes room from fresh links, not settled ones.
+    float protect = 0.0f;
     // Field roles: the Memory field holds vocabulary (each word on its own), the other fields hold
     // what happens between words. At every word boundary (a space, or input after a pause) the
     // Memory field's order window is cleared and its learning pauses for field_roles 3D steps, so

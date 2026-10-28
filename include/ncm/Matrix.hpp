@@ -222,6 +222,8 @@ private:
     // sheets skipped in the current 2D step.
     std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
     AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
+    AVec<float> ctx3_;        // per voxel channel: slow trace of recent firing (held clues; context_tau)
+    AVec<float> hold4Ctx_;    // per voxel channel: learned 4D drive from the partners' held clues
     AVec<float> chanTheta3_;  // per voxel channel: threshold offset (channel balance); empty when off
 
     LearningStats learnStats_;

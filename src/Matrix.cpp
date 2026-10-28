@@ -201,6 +201,13 @@ inline bool isSilent(const float* x, size_t n) {
     return true;
 }
 
+// A held-clue trace too faint to matter (it decays toward zero but never reaches it).
+inline bool isFaint(const float* x) {
+    for (uint32_t i = 0; i < C3; ++i)
+        if (x[i] > 1e-3f) return false;
+    return true;
+}
+
 void fillNormal(AVec<float>& w, Rng& rng, double stddev) {
     for (float& v : w) v = float(rng.normal() * stddev);
 }
@@ -299,6 +306,10 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     orderTrace3_.assign(V_ * C3, 0.0f);
+    if (cfg.learning.context_tau > 0.0f) {
+        ctx3_.assign(V_ * C3, 0.0f);
+        hold4Ctx_.assign(V_ * C3, 0.0f);
+    }
     if (cfg.learning.channel_balance > 0.0f) chanTheta3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
     if (cfg_.separation > 0.0f) usage3_.assign(V_ * C3, 0.0f);
@@ -864,6 +875,18 @@ void NeuralCellularMatrix::step3D() {
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
             std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
+            if (!ctx3_.empty()) { // held clues reach through the same learned 4D links
+                float cx[C3] = {};
+                for (uint32_t k = 0; k < KH; ++k) {
+                    const size_t vg = lattice4Partner(x, y, z, w, k);
+                    if (vg == SIZE_MAX || inhib3_[vg]) continue;
+                    const float* cs = ctx3_.data() + vg * C3;
+                    if (isFaint(cs)) continue;
+                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, cs, cx, C3, C3, latDir_[k]);
+                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, cs, cx, C3, C3, latDir_[k]);
+                }
+                std::copy(cx, cx + C3, hold4Ctx_.data() + v * C3);
+            }
             if (probe_) probeExc_[v] = pexc, probeInh_[v] = pinh;
         }
     }
@@ -928,6 +951,31 @@ void NeuralCellularMatrix::step3D() {
         }
 
         const float cLong = sumIn();
+        // Held clues: the same learned links, driven by each source's slow trace (a few words back).
+        float plc[C3] = {};
+        if (!ctx3_.empty()) {
+            for (int dz = -1; dz <= 1; ++dz)
+                for (int dy = -1; dy <= 1; ++dy)
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        const int nx = int(x) + dx, ny = int(y) + dy, nz = int(z) + dz;
+                        if (nx < 0 || ny < 0 || nz < 0 || nx >= int(N) || ny >= int(N) || nz >= int(N)) continue;
+                        const uint32_t o = uint32_t((dz + 1) * 9 + (dy + 1) * 3 + (dx + 1));
+                        const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
+                        if (o == 13 || inhib3_[vn]) continue;
+                        const float* cs = ctx3_.data() + vn * C3;
+                        if (isFaint(cs)) continue;
+                        matvecAdd(w + size_t(o) * C3 * C3, cs, plc, C3, C3, rec);
+                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, cs, plc, C3, C3, rec);
+                    }
+            for (uint32_t l = 0; l < K; ++l) {
+                const size_t t = lrTarget_[v * K + l];
+                if (inhib3_[t]) continue;
+                const float* cs = ctx3_.data() + t * C3;
+                if (isFaint(cs)) continue;
+                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, cs, plc, C3, C3, rec);
+                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, cs, plc, C3, C3, rec);
+            }
+        }
         // The 4D link is the path input takes between fields, so encoding mode does not
         // suppress it: acetylcholine turns down a region's internal loops, not its input.
         if (lattice_) {
@@ -1089,6 +1137,20 @@ void NeuralCellularMatrix::step3D() {
                 plSum += learned;
                 inSum += std::max(0.0f, in[c]);
             }
+            if (!ctx3_.empty()) {
+                // Held clues drive at context_gain; a channel both clues and the present point to
+                // gets the geometric mean of the two on top (joining two clues, join_gain).
+                const float* hc = hold4Ctx_.data() + v * C3;
+                const float kg = cfg_.learning.context_gain, kj = cfg_.learning.join_gain;
+                for (uint32_t c = 0; c < C3; ++c) {
+                    const float held = plScale * plc[c] + (lattice_ ? afferentGain * rec4 * hc[c] : 0.0f);
+                    const float now = plScale * pl[c] + pl4[c];
+                    float add = kg * held;
+                    if (kj > 0.0f && held > 0.0f && now > 0.0f) add += kj * std::sqrt(held * now);
+                    in[c] += add;
+                    plSum += add;
+                }
+            }
             // Microtubules: the pattern of the last objective reduction pushes the channels.
             if (mt3_.on()) mt3_.addPush(v, in, cfg_.mt_decay);
             diagPlastic3_[v] = plSum;
@@ -1155,6 +1217,12 @@ void NeuralCellularMatrix::step3D() {
             float* tr = orderTrace3_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / orderTau;
+        }
+        if (!ctx3_.empty()) {
+            float* cx = ctx3_.data() + v * C3;
+            const float* cell = out + v * C3;
+            const float tau = std::max(1.0f, cfg_.learning.context_tau);
+            for (uint32_t c = 0; c < C3; ++c) cx[c] += (cell[c] - cx[c]) / tau;
         }
     }
     } // fields (front-to-back sweep)
@@ -1535,6 +1603,27 @@ void NeuralCellularMatrix::learn(float modulator) {
                                         preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
         }, !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f); // the 4D-lattice links learn on 4D steps
 
+        // Held clues learn through the same links: what a source fired a few words ago (its slow
+        // trace above its present firing) before what this voxel fires now.
+        if (!ctx3_.empty() && cfg_.learning.context_learn > 0.0f) {
+            const float kc = vrate * cfg_.learning.context_learn;
+            forEachLearnedBlock(v, [&](float* block, size_t src) {
+                const float* cs = ctx3_.data() + src * C3;
+                if (isFaint(cs)) return;
+                const float* sp = post + src * C3;
+                for (uint32_t a = 0; a < C3; ++a) {
+                    if (pi[a] <= 0.0f) continue;
+                    for (uint32_t b = 0; b < C3; ++b) {
+                        const float d = cs[b] - sp[b];
+                        if (d <= 0.0f) continue;
+                        float& wv = block[size_t(a) * C3 + b];
+                        const float room = linkMax > 0.0f ? std::max(0.0f, 1.0f - wv / linkMax) : 1.0f;
+                        wv += kc * pi[a] * d * room;
+                    }
+                }
+            }, !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f);
+        }
+
         // Synaptic scaling: cap each output channel's total learned excitatory input.
         // Oja's term alone cannot bound a cell whose output saturates and competes.
         float total[C3] = {};
@@ -1548,14 +1637,35 @@ void NeuralCellularMatrix::learn(float modulator) {
                     for (uint32_t b = 0; b < C3; ++b) block[size_t(a) * C3 + b] *= factor[a];
         };
         forEachLearnedBlock(v, [&](float* block, size_t) { addRows(block); });
+        // Protecting what is learned: the consolidated share of each link is kept out of the
+        // scaling, as long as the kept shares alone fit the budget.
+        const float prot = consolidate > 0.0f ? std::clamp(cfg_.learning.protect, 0.0f, 1.0f) : 0.0f;
+        float kept[C3] = {};
+        if (prot > 0.0f)
+            forEachLearnedBlock(v, [&](float* block, size_t) {
+                if (const float* sl = slowOf(block))
+                    for (size_t i = 0; i < size_t(C3) * C3; ++i) kept[i / C3] += prot * std::min(block[i], sl[i]);
+            });
         float factor[C3];
-        bool scale = false;
+        bool scale = false, keep[C3];
         for (uint32_t a = 0; a < C3; ++a) {
-            factor[a] = total[a] > budget ? budget / total[a] : 1.0f;
+            keep[a] = prot > 0.0f && total[a] > budget && kept[a] < budget && total[a] > kept[a];
+            factor[a] = total[a] > budget ? (keep[a] ? (budget - kept[a]) / (total[a] - kept[a]) : budget / total[a]) : 1.0f;
             scale = scale || factor[a] < 1.0f;
             scaled += double(total[a]) * (1.0 - double(factor[a]));
         }
-        if (scale) forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(block, factor); });
+        if (scale && prot > 0.0f)
+            forEachLearnedBlock(v, [&](float* block, size_t) {
+                const float* sl = slowOf(block);
+                for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                    const uint32_t a = uint32_t(i / C3);
+                    if (factor[a] >= 1.0f) continue;
+                    const float k = keep[a] && sl ? prot * std::min(block[i], sl[i]) : 0.0f;
+                    block[i] = k + (block[i] - k) * factor[a];
+                }
+            });
+        else if (scale)
+            forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(block, factor); });
 
         // Consolidation: the slow part follows the fast part upward, then its own budget.
         if (consolidate > 0.0f) {
@@ -1726,6 +1836,8 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(fatigue2_.begin(), fatigue2_.end(), 0.0f);
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
+    std::fill(ctx3_.begin(), ctx3_.end(), 0.0f);
+    std::fill(hold4Ctx_.begin(), hold4Ctx_.end(), 0.0f);
     std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
     std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
     std::fill(sheetQuietCur_.begin(), sheetQuietCur_.end(), uint8_t(1));
@@ -1845,6 +1957,10 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(motorDrive_, "motor drive");
     st.value(sensoryOn_);
     st.value(motorOn_);
+    if (!ctx3_.empty()) { // only brains that hold clues (older brains load unchanged)
+        st.vec(ctx3_, "held clues");
+        st.vec(hold4Ctx_, "held clues 4D");
+    }
 }
 
 size_t NeuralCellularMatrix::memoryBytes() const {
