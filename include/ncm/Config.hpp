@@ -149,6 +149,10 @@ struct LearningParams {
     float context_tau = 0.0f;
     float context_gain = 1.0f;
     float context_learn = 1.0f;
+    // A pause ends what is held: when input starts again after at least context_reset 3D steps of
+    // silence, the held clues are cleared, so they tie words only inside one sentence, never one
+    // separately heard word to the next. 0 = never cleared.
+    float context_reset = 0.0f;
     // Joining two clues (join_gain; 0 = off): a channel driven both by its learned links from what
     // fires now and by the held clues gets an extra push, the geometric mean of the two, so the
     // answer that fits both clues wins over answers that fit only one.

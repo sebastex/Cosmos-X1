@@ -202,6 +202,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"context_tau", &c.learning.context_tau},
         {"context_gain", &c.learning.context_gain},
         {"context_learn", &c.learning.context_learn},
+        {"context_reset", &c.learning.context_reset},
         {"join_gain", &c.learning.join_gain},
         {"protect", &c.learning.protect},
         {"field_roles", &c.learning.field_roles},
@@ -390,6 +391,17 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"gimel", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4", "protect=0.8", "soma=1",
                    "soma_mode=2"}},                                                             // Bet, classical somatic (control)
+        // Held clues cleared at a pause (2026-10-29): they tie words only inside one sentence.
+        {"dalet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8"}},   // Phi + pause reset
+        {"he", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8"}}, // Omega + pause reset
+        {"vav", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                 "soma=1"}},                                                                    // He + somatic network
+        {"zayin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                   "soma=1", "soma_mode=2"}},                                                   // Vav, classical somatic (control)
     };
     return v;
 }

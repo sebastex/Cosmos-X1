@@ -824,6 +824,17 @@ void NeuralCellularMatrix::step3D() {
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
     const size_t SS = SS_;
+    if (!ctx3_.empty()) { // a pause ends what is held: input after a pause starts with no held clues
+        if (sensoryOn_) {
+            if (cfg_.learning.context_reset > 0.0f && quietSteps_ >= uint32_t(cfg_.learning.context_reset)) {
+                std::fill(ctx3_.begin(), ctx3_.end(), 0.0f);
+                std::fill(hold4Ctx_.begin(), hold4Ctx_.end(), 0.0f);
+            }
+            quietSteps_ = 0;
+        } else {
+            ++quietSteps_;
+        }
+    }
 
     const int64_t voxels = int64_t(V_);
     // Front-to-back sweep (field_sweep): one field at a time, earlier fields' new states feed
