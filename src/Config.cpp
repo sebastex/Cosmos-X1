@@ -386,6 +386,10 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // The somatic network (one network wired to every cell, quantum decisions), 2026-10-28.
         {"alef", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "soma=1"}},                                                                   // Epsilon + somatic network
+        {"tet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "soma=1", "soma_mode=2"}},                                                     // Alef, classical somatic (control)
+        {"yod", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "soma=1", "soma_mode=1"}},                                                     // Alef, expected value, no chance (control)
         {"bet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                  "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4", "protect=0.8", "soma=1"}}, // Omega + somatic
         {"gimel", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
