@@ -80,6 +80,48 @@ def line_got(said, path):
     return k
 
 
+def judge(score, stm):
+    """Each statement: what it expected before the last word, its surprise when the word came, how busy it stayed.
+    It says false when its surprise is above its own middle surprise."""
+    got = score.get('asks', [])
+    rows = []
+    for k, st in enumerate(stm):
+        if 2 * k + 1 >= len(got):
+            break
+        pre, post = got[2 * k], got[2 * k + 1]
+        sims = pre['sims']
+        other = max(sims.get(c, -1.0) for c in ('trees', 'bushes', 'vines') if c != st['said'])
+        rows.append(dict(st, expect=round(sims.get(st['said'], -1.0) - other, 4), turn=post.get('turn'),
+                         busy=round(sum(post.get('busy', [])), 2), heard=post['last']))
+    # The same ending word is compared only with itself (its echo is the same), so the middle is per word.
+    mid = {}
+    for w in {r['said'] for r in rows}:
+        ts = sorted(r['turn'] for r in rows if r['said'] == w and r['turn'] is not None)
+        mid[w] = (ts[(len(ts) - 1) // 2] + ts[len(ts) // 2]) / 2 if ts else 0
+    for r in rows:
+        r['answer'] = r['turn'] is None or r['turn'] <= mid[r['said']]  # True = it takes it as true
+        r['right'] = r['answer'] == r['truth']
+    return rows, {w: round(v, 4) for w, v in mid.items()}
+
+
+def judge_summary(rows):
+    out = {}
+    for lv in sorted({r['level'] for r in rows}):
+        rs = [r for r in rows if r['level'] == lv]
+        # pairs: the same ending word, once where it is true and once where it is wrong
+        both = [(t, f) for t in rs for f in rs if t['truth'] and not f['truth'] and t['said'] == f['said']
+                and t['turn'] is not None and f['turn'] is not None]
+        mean = lambda xs: round(sum(xs) / len(xs), 4) if xs else None
+        out[lv] = dict(n=len(rs), right=round(sum(r['right'] for r in rs) / len(rs), 3),
+                       wrong_more_surprising=round(sum(f['turn'] > t['turn'] for t, f in both) / max(1, len(both)), 3),
+                       expected_true=round(sum(r['expect'] > 0 for r in rs if r['truth']) / max(1, sum(r['truth'] for r in rs)), 3),
+                       surprise_true=mean([r['turn'] for r in rs if r['truth'] and r['turn'] is not None]),
+                       surprise_false=mean([r['turn'] for r in rs if not r['truth'] and r['turn'] is not None]),
+                       busy_true=mean([r['busy'] for r in rs if r['truth']]),
+                       busy_false=mean([r['busy'] for r in rs if not r['truth']]))
+    return out
+
+
 def main():
     pid, result, report = sys.argv[1], sys.argv[2], sys.argv[3]
     pfile = sys.argv[4] if len(sys.argv) > 4 else os.path.join(HERE, 'puzzles.json')
@@ -119,6 +161,14 @@ def main():
             r['score'] = round(r['right'] / r['n'], 3)
         out.update(score=sum(r['right'] for r in levels.values()) / max(1, len(p['items'])), levels=levels,
                    taught=p.get('taught'), learner=learner, twin=twin)
+    elif kind == 'judge':
+        sc = labscores(report)
+        learner, mid = judge(sc[0], p['statements']) if sc else ([], 0)
+        twin, tmid = judge(sc[1], p['statements']) if len(sc) > 1 else ([], 0)
+        out.update(score=sum(r['right'] for r in learner) / max(1, len(p['statements'])), middle=mid,
+                   levels=judge_summary(learner), twin_levels=judge_summary(twin) if twin else None,
+                   twin_score=sum(r['right'] for r in twin) / max(1, len(p['statements'])) if twin else None,
+                   learner=learner, twin=twin)
     elif kind == 'ask':
         sc = labscores(report)
         learner = ask_margins(sc[0], p['asks'], p['choices'])

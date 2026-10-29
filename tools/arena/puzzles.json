@@ -916,6 +916,198 @@
       "script": "say:apples:6:40;say:apricots:6:40;say:are:6:40;say:bees:6:40;say:berries:6:40;say:blackberries:6:40;say:blueberries:6:40;say:bushes:6:40;say:cherries:6:40;say:come:6:40;say:comes:6:40;say:cows:6:40;say:cucumbers:6:40;say:currants:6:40;say:eggs:6:40;say:from:6:40;say:fruits:6:40;say:gooseberries:6:40;say:gourds:6:40;say:grapes:6:40;say:grow:6:40;say:hens:6:40;say:honey:6:40;say:kiwis:6:40;say:melons:6:40;say:milk:6:40;say:on:6:40;say:peaches:6:40;say:pears:6:40;say:pumpkins:6:40;say:raspberries:6:40;say:stone:6:40;say:trees:6:40;say:vines:6:40;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;rest:300;cue:gooseberries:80;rest:150;cue:grapes_come_from:80;rest:150;cue:blueberries_grow_on:80;rest:150;cue:bushes:80;rest:150;cue:blueberries:80;rest:150;cue:apples_come_from:80;rest:150;cue:kiwis_grow_on:80;rest:150;cue:grapes_grow_on:80;rest:150;cue:apples:80;rest:150;cue:peaches_grow_on:80;rest:150;cue:vines:80;rest:150;cue:grapes:80;rest:150;cue:vines:80;rest:150;cue:trees:80;rest:150;cue:raspberries_grow_on:80;rest:150;cue:bushes:80;rest:150;cue:bushes:80;rest:150;cue:pumpkins_grow_on:80;rest:150;cue:vines:80;rest:150;cue:gooseberries_grow_on:80;rest:150;cue:currants_grow_on:80;rest:150;cue:pears_grow_on:80;rest:150;cue:cherries:80;rest:150;cue:kiwis:80;rest:150;cue:trees:80;rest:150;cue:apricots_grow_on:80;rest:150;cue:cherries_grow_on:80;rest:150;cue:melons_come_from:80;rest:150;cue:melons:80;rest:150;cue:cucumbers_grow_on:80;rest:150;cue:cherries_come_from:80;rest:150;cue:pears:80;rest:150;cue:apples_grow_on:80;rest:150;cue:blackberries_grow_on:80;rest:150;cue:melons_grow_on:80;rest:150;cue:blueberries_come_from:80;rest:150;cue:raspberries:80;rest:150;cue:trees:80",
       "probes": "understanding: what grows where",
       "if_fails": "it repeats what it heard but cannot work out where a fruit grows"
+    },
+    {
+      "id": "truefalse",
+      "name": "True or false (surprise)",
+      "kind": "judge",
+      "twin": true,
+      "statements": [
+        {
+          "level": "work it out",
+          "fruit": "peaches",
+          "said": "vines",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "blueberries",
+          "said": "trees",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "grapes",
+          "said": "trees",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "grapes",
+          "said": "vines",
+          "truth": true
+        },
+        {
+          "level": "work it out",
+          "fruit": "blackberries",
+          "said": "bushes",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "gooseberries",
+          "said": "vines",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "cucumbers",
+          "said": "vines",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "raspberries",
+          "said": "vines",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "apricots",
+          "said": "bushes",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "apples",
+          "said": "trees",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "gooseberries",
+          "said": "bushes",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "blueberries",
+          "said": "bushes",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "apples",
+          "said": "bushes",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "pears",
+          "said": "trees",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "cherries",
+          "said": "trees",
+          "truth": true
+        },
+        {
+          "level": "work it out",
+          "fruit": "pumpkins",
+          "said": "vines",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "pears",
+          "said": "vines",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "apricots",
+          "said": "trees",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "kiwis",
+          "said": "bushes",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "blackberries",
+          "said": "vines",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "cherries",
+          "said": "bushes",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "raspberries",
+          "said": "bushes",
+          "truth": true
+        },
+        {
+          "level": "work it out",
+          "fruit": "peaches",
+          "said": "trees",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "melons",
+          "said": "vines",
+          "truth": true
+        },
+        {
+          "level": "work it out",
+          "fruit": "currants",
+          "said": "trees",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "cucumbers",
+          "said": "trees",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "currants",
+          "said": "bushes",
+          "truth": true
+        },
+        {
+          "level": "remember",
+          "fruit": "melons",
+          "said": "trees",
+          "truth": false
+        },
+        {
+          "level": "work it out",
+          "fruit": "pumpkins",
+          "said": "bushes",
+          "truth": false
+        },
+        {
+          "level": "remember",
+          "fruit": "kiwis",
+          "said": "vines",
+          "truth": true
+        }
+      ],
+      "tests": "After the orchard lessons: 30 statements, half wrong. Does a wrong ending surprise it more than the true one?",
+      "script": "say:apples:6:40;say:apricots:6:40;say:are:6:40;say:bees:6:40;say:berries:6:40;say:blackberries:6:40;say:blueberries:6:40;say:bushes:6:40;say:cherries:6:40;say:come:6:40;say:comes:6:40;say:cows:6:40;say:cucumbers:6:40;say:currants:6:40;say:eggs:6:40;say:from:6:40;say:fruits:6:40;say:gooseberries:6:40;say:gourds:6:40;say:grapes:6:40;say:grow:6:40;say:hens:6:40;say:honey:6:40;say:kiwis:6:40;say:melons:6:40;say:milk:6:40;say:on:6:40;say:peaches:6:40;say:pears:6:40;say:pumpkins:6:40;say:raspberries:6:40;say:stone:6:40;say:trees:6:40;say:vines:6:40;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;rest:300;cue:peaches_grow_on:32;cue:vines:90;rest:120;cue:blueberries_grow_on:32;cue:trees:90;rest:120;cue:grapes_grow_on:32;cue:trees:90;rest:120;cue:grapes_grow_on:32;cue:vines:90;rest:120;cue:blackberries_grow_on:32;cue:bushes:90;rest:120;cue:gooseberries_grow_on:32;cue:vines:90;rest:120;cue:cucumbers_grow_on:32;cue:vines:90;rest:120;cue:raspberries_grow_on:32;cue:vines:90;rest:120;cue:apricots_grow_on:32;cue:bushes:90;rest:120;cue:apples_grow_on:32;cue:trees:90;rest:120;cue:gooseberries_grow_on:32;cue:bushes:90;rest:120;cue:blueberries_grow_on:32;cue:bushes:90;rest:120;cue:apples_grow_on:32;cue:bushes:90;rest:120;cue:pears_grow_on:32;cue:trees:90;rest:120;cue:cherries_grow_on:32;cue:trees:90;rest:120;cue:pumpkins_grow_on:32;cue:vines:90;rest:120;cue:pears_grow_on:32;cue:vines:90;rest:120;cue:apricots_grow_on:32;cue:trees:90;rest:120;cue:kiwis_grow_on:32;cue:bushes:90;rest:120;cue:blackberries_grow_on:32;cue:vines:90;rest:120;cue:cherries_grow_on:32;cue:bushes:90;rest:120;cue:raspberries_grow_on:32;cue:bushes:90;rest:120;cue:peaches_grow_on:32;cue:trees:90;rest:120;cue:melons_grow_on:32;cue:vines:90;rest:120;cue:currants_grow_on:32;cue:trees:90;rest:120;cue:cucumbers_grow_on:32;cue:trees:90;rest:120;cue:currants_grow_on:32;cue:bushes:90;rest:120;cue:melons_grow_on:32;cue:trees:90;rest:120;cue:pumpkins_grow_on:32;cue:bushes:90;rest:120;cue:kiwis_grow_on:32;cue:vines:90",
+      "probes": "understanding: noticing a wrong statement",
+      "if_fails": "a wrong ending does not surprise it more than a true one"
     }
   ]
 }

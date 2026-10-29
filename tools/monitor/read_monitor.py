@@ -337,8 +337,16 @@ def lab_scores(head, r, vox, window=25):
             win = dense(Sparse.total(x[w0:min(n, w0 + 6, nxt)]), size) - background
             ss = {w: ccos(win, centred[w]) for w in words if w != e['word']}
             steps.append({w: round(v, 4) for w, v in sorted(ss.items(), key=lambda kv: -kv[1])[:6]})
+        # Surprise: how much the brain's pattern turned when this word came, against what it held in the
+        # silence just before it (the previous ask, if it ended right before); and how much it stays busy
+        # afterwards (raw activity in 10-tick slices), which may be confusion or the work of making sense.
+        turn = None
+        if asks and e['start'] - asks[-1]['_cend'] <= 40:
+            turn = round(1.0 - ccos(aft, asks[-1]['_vec']), 4)
+        busy = [round(float(np.linalg.norm(dense(Sparse.total(x[t0:min(n, t0 + 10, nxt)]), size))), 3)
+                for t0 in range(e['end'], min(n, e['end'] + 80, nxt), 10)]
         asks.append(dict(last=e['word'], tick=int(r['tick'][e['start']]), sims=dict(sorted(sims.items(), key=lambda kv: -kv[1])),
-                         steps=steps))
+                         steps=steps, turn=turn, busy=busy, _vec=aft, _cend=e['end']))
     print(f'  lab scores (centred shapes, after-window {window} ticks, margin = target minus best other known word):')
     for e in cues:
         cw = e['word']
@@ -374,6 +382,9 @@ def lab_scores(head, r, vox, window=25):
     at_once = [round(float(strong[sound][:, s * per_slice:(s + 1) * per_slice].sum(axis=1).mean()), 2) if sound.any() else 0.0
                for s in range(head['fields'])]
     print(f'    4D cells carrying activity (>= 10% of voxels firing), per slice from the senses: ever {strict}, at once during sound {at_once}')
+    for a in asks:
+        a.pop('_vec', None)
+        a.pop('_cend', None)
     score = dict(cues=rows, asks=asks, glow=glow, strict4d=strict, strict4d_at_once=at_once,
                  mt=int(r['mtc'][-1]) if head['version'] >= 3 else 0)
     print('LABSCORE ' + json.dumps(score))

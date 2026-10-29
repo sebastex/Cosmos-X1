@@ -31,14 +31,13 @@ PROBES = {
     'facts': ('facts', 'it does not tie a thing to its property'),
     'yesno': ('true or false', 'it cannot use the whole question to pick yes or no'),
     'virtue': ('good and bad (first step of virtue)', 'it does not tie acts to good or bad; next it needs a sense of approval'),
+    'truefalse': ('understanding: noticing a wrong statement', 'a wrong ending does not surprise it more than a true one'),
     'orchard': ('understanding: what grows where', 'it repeats what it heard but cannot work out where a fruit grows'),
 }
 
 
-def orchard():
-    """The orchard: which fruit grows on a tree, a bush or a vine. Three levels of understanding:
-    remember (taught directly), work it out (only 'X are berries' and 'berries grow on bushes' are
-    taught), and same meaning in new words (asked 'come from' after learning 'grow on')."""
+def orchard_world():
+    """What the orchard teaches: fruits taught straight, fruits known only by their kind, and the sentences."""
     direct = {'apples': 'trees', 'pears': 'trees', 'cherries': 'trees',
               'raspberries': 'bushes', 'blueberries': 'bushes', 'gooseberries': 'bushes',
               'grapes': 'vines', 'kiwis': 'vines', 'melons': 'vines'}
@@ -49,6 +48,14 @@ def orchard():
     sents += ['stone fruits grow on trees', 'berries grow on bushes', 'gourds grow on vines']
     sents += [f'{f} are {k}' for f, (k, _) in kinds.items()]
     sents += ['milk comes from cows', 'eggs come from hens', 'honey comes from bees']  # what 'come from' means
+    return direct, kinds, sents
+
+
+def orchard():
+    """The orchard: which fruit grows on a tree, a bush or a vine. Three levels of understanding:
+    remember (taught directly), work it out (only 'X are berries' and 'berries grow on bushes' are
+    taught), and same meaning in new words (asked 'come from' after learning 'grow on')."""
+    direct, kinds, sents = orchard_world()
     where = ['trees', 'bushes', 'vines']
     items = [dict(level='remember', q=f'{f} grow on', a=w, choices=where) for f, w in direct.items()]
     items += [dict(level='work it out', q=f'{f} grow on', a=w, choices=where) for f, (_, w) in kinds.items()]
@@ -69,6 +76,30 @@ def orchard():
     return dict(id='orchard', name='The orchard', kind='quiz', twin=True, items=items,
                 tests='Which fruit grows where (tree, bush or vine). Origin: hear only "apples", is "trees" closest. Turned around: hear only "bushes", which fruit. Remember: taught directly. Work it out: only "blackberries are berries" and "berries grow on bushes" were taught. New words: asked "apples come from" after learning "grow on".',
                 script=';'.join(script))
+def truefalse():
+    """True or false: after the orchard lessons it hears statements, half of them wrong
+    ("apples grow on bushes"). It is never told which. Its answer is its own surprise: how far its
+    pattern turns when the last word comes, against what it held a moment before. Above its own
+    middle surprise = it says false. How long it stays busy afterwards is kept too (confusion,
+    or the work of making sense)."""
+    direct, kinds, sents = orchard_world()
+    where = ['trees', 'bushes', 'vines']
+    stm = []
+    for k, (f, w) in enumerate(list(direct.items()) + [(f, w) for f, (_, w) in kinds.items()]):
+        level = 'remember' if f in direct else 'work it out'
+        wrong = [x for x in where if x != w][k % 2]
+        stm += [dict(level=level, fruit=f, said=w, truth=True), dict(level=level, fruit=f, said=wrong, truth=False)]
+    random.Random(11).shuffle(stm)
+    vocab = sorted({w for t in sents for w in t.split()})
+    ops = []
+    for st in stm:
+        ops += [f"cue:{st['fruit']}_grow_on:32", f"cue:{st['said']}:90", 'rest:120']
+    script = words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + ops[:-1]
+    return dict(id='truefalse', name='True or false (surprise)', kind='judge', twin=True, statements=stm,
+                tests='After the orchard lessons: 30 statements, half wrong. Does a wrong ending surprise it more than the true one?',
+                script=';'.join(script))
+
+
 # Taught harder: the same questions after better teaching (short steps first, pairs that differ by one
 # word, more rounds). If a score rises it was a lesson; if it stays flat the brain is missing a part.
 for _k in ('next', 'analogy', 'yesno', 'virtue'):
@@ -195,6 +226,7 @@ def main():
                             asks=p['asks'], tests=p['tests'] + ' Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.',
                             script=';'.join(script)))
     new.append(orchard())
+    new.append(truefalse())
     old['puzzles'] = keep + new
     for p in old['puzzles']:
         p['probes'], p['if_fails'] = PROBES[p['id']]
