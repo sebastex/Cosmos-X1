@@ -61,6 +61,25 @@ def quiz_margins(score, items):
     return out
 
 
+def said_line(steps):
+    """The words it says by itself, one per window, repeats joined."""
+    out = []
+    for st in steps:
+        w = next(iter(st), None) if st and max(st.values()) > 0 else None
+        if w and (not out or out[-1] != w):
+            out.append(w)
+    return out
+
+
+def line_got(said, path):
+    """How many words of the path it said in the right order."""
+    k = 0
+    for w in said:
+        if k < len(path) and w == path[k]:
+            k += 1
+    return k
+
+
 def main():
     pid, result, report = sys.argv[1], sys.argv[2], sys.argv[3]
     pfile = sys.argv[4] if len(sys.argv) > 4 else os.path.join(HERE, 'puzzles.json')
@@ -76,6 +95,20 @@ def main():
         learner = quiz_margins(sc[0], p['items']) if sc else []
         twin = quiz_margins(sc[1], p['items']) if len(sc) > 1 else []
         tm = [t['margin'] for t in twin] + [-9] * (len(learner) - len(twin))
+        # The whole line: what it says by itself after the cue, and how much of the path is in it, in order.
+        asks = [sc[0].get('asks', []), sc[1].get('asks', []) if len(sc) > 1 else []]
+        for k, it in enumerate(p['items']):
+            if 'path' not in it or k >= len(learner):
+                continue
+            said = said_line(asks[0][k].get('steps', []))
+            tsaid = said_line(asks[1][k].get('steps', [])) if k < len(asks[1]) else []
+            learner[k].update(path=it['path'], said=said, got=line_got(said, it['path']),
+                              exact=said[:len(it['path'])] == it['path'])
+            if k < len(twin):
+                twin[k].update(said=tsaid, got=line_got(tsaid, it['path']))
+            # right only when the whole line comes out in order and the twin does not do the same
+            learner[k]['margin'] = round(learner[k]['got'] / len(it['path']) - 1 + 1e-3, 4) if learner[k]['got'] == len(it['path']) else -1.0
+            tm[k] = (twin[k]['got'] / len(it['path']) - 1 + 1e-3) if k < len(twin) and twin[k]['got'] == len(it['path']) else -9
         levels = {}
         for l, t in zip(learner, tm):
             r = levels.setdefault(l['level'], dict(n=0, right=0, picked=0))

@@ -331,7 +331,14 @@ def lab_scores(head, r, vox, window=25):
             continue  # more of the same cue follows
         aft, _ = after(e)
         sims = {w: round(ccos(aft, centred[w]), 4) for w in words if w != e['word']}
-        asks.append(dict(last=e['word'], tick=int(r['tick'][e['start']]), sims=dict(sorted(sims.items(), key=lambda kv: -kv[1]))))
+        # The line it says by itself: the silence cut into short word-length windows, the best known word in each.
+        steps = []
+        for w0 in range(min(n, e['end'] + 1), min(n, e['end'] + 1 + 8 * 6, nxt), 6):
+            win = dense(Sparse.total(x[w0:min(n, w0 + 6, nxt)]), size) - background
+            ss = {w: ccos(win, centred[w]) for w in words if w != e['word']}
+            steps.append({w: round(v, 4) for w, v in sorted(ss.items(), key=lambda kv: -kv[1])[:6]})
+        asks.append(dict(last=e['word'], tick=int(r['tick'][e['start']]), sims=dict(sorted(sims.items(), key=lambda kv: -kv[1])),
+                         steps=steps))
     print(f'  lab scores (centred shapes, after-window {window} ticks, margin = target minus best other known word):')
     for e in cues:
         cw = e['word']

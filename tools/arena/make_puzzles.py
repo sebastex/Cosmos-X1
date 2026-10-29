@@ -53,6 +53,8 @@ def orchard():
     items = [dict(level='remember', q=f'{f} grow on', a=w, choices=where) for f, w in direct.items()]
     items += [dict(level='work it out', q=f'{f} grow on', a=w, choices=where) for f, (_, w) in kinds.items()]
     items += [dict(level='new words', q=f'{f} come from', a=w, choices=where) for f, w in list(direct.items())[::2]]
+    # The whole line: hear only the fruit and say the rest by itself (apples -> grow on -> trees).
+    items += [dict(level='whole line', q=f, a=w, choices=where, path=['grow', 'on', w]) for f, w in direct.items()]
     random.Random(9).shuffle(items)
     vocab = sorted({w for t in sents for w in t.split()})
     qops = []
@@ -60,7 +62,7 @@ def orchard():
         qops += [f"cue:{'_'.join(it['q'].split())}:80", 'rest:150']
     script = words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + qops[:-1]
     return dict(id='orchard', name='The orchard', kind='quiz', twin=True, items=items,
-                tests='Which fruit grows where (tree, bush or vine). Remember: taught directly. Work it out: only "blackberries are berries" and "berries grow on bushes" were taught. New words: asked "apples come from" after learning "grow on".',
+                tests='Which fruit grows where (tree, bush or vine). Whole line: hear only "apples", say "grow on trees". Remember: taught directly. Work it out: only "blackberries are berries" and "berries grow on bushes" were taught. New words: asked "apples come from" after learning "grow on".',
                 script=';'.join(script))
 # Taught harder: the same questions after better teaching (short steps first, pairs that differ by one
 # word, more rounds). If a score rises it was a lesson; if it stays flat the brain is missing a part.
