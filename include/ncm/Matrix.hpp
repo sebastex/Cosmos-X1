@@ -8,6 +8,7 @@
 #include "ncm/Buffer.hpp"
 #include "ncm/Config.hpp"
 #include "ncm/Microtubule.hpp"
+#include "ncm/Somatic.hpp"
 #include "ncm/State.hpp"
 
 namespace ncm {
@@ -150,6 +151,8 @@ public:
     // Firing probe (env NCM_PROBE=1): per w-slice, sound and silence, why voxels fire or not.
     std::string probeReport() const;
     uint64_t microtubuleCollapses() const { return mt1_.collapses() + mt2_.collapses() + mt3_.collapses(); }
+    uint64_t somaticReductions() const { return soma_.reductions(); }
+    bool somaticOn() const { return soma_.on(); }
     size_t microtubules() const { return mt1_.tubes() + mt2_.tubes() + mt3_.tubes(); }
     size_t memoryBytes() const;
     // Save or restore everything that changes while the brain runs (one brain across runs).
@@ -328,6 +331,8 @@ private:
     AVec<float> parentShare2_;
     // Microtubules in every cell (microtubule, mt_levels): one layer per level.
     MicrotubuleLayer mt1_, mt2_, mt3_;
+    SomaticNetwork soma_;
+    SomaticNetwork::Params somaParams() const;
     MicrotubuleLayer::Params mtParams() const;
     std::vector<uint32_t> mtActive_; // scratch: cells with any activity
     // Sheet cell next to q at offset (dy, dx), or SIZE_MAX at the edge; with sheet_continuous the

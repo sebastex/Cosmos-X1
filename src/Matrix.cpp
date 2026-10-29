@@ -394,6 +394,11 @@ void NeuralCellularMatrix::initVoxelWeights() {
             }
         }
     }
+    if (cfg_.soma > 0.5f) { // the somatic network: one node per 4D cell (per field without the lattice)
+        std::vector<uint32_t> node(V_);
+        for (size_t v = 0; v < V_; ++v) node[v] = uint32_t(lattice_ ? cell4Of(v) : v / Vf_);
+        soma_.init(V_, C3, std::move(node), uint32_t(lattice_ ? cellGain_.size() : kFields), cfg_.seed);
+    }
     lrTarget_.resize(V_ * K);
 
     // Long-range targets: random voxels in the same field, fixed for life (spec Section 3C).
@@ -1153,6 +1158,8 @@ void NeuralCellularMatrix::step3D() {
             }
             // Microtubules: the pattern of the last objective reduction pushes the channels.
             if (mt3_.on()) mt3_.addPush(v, in, cfg_.mt_decay);
+            // The somatic network: the different part of this cell's firing up, the usual part down.
+            if (soma_.on()) soma_.addPush(v, s3, in, somaParams());
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
         }
@@ -1318,6 +1325,7 @@ void NeuralCellularMatrix::step3D() {
             if (!isSilent(s + v * C3, C3)) mtActive_.push_back(uint32_t(v));
         mt3_.step(s, mtActive_, mtParams());
     }
+    if (soma_.on()) soma_.step(s3_.cur.data(), somaParams()); // the somatic network senses the new state
 }
 
 template <class Fn>
@@ -1410,6 +1418,14 @@ std::string NeuralCellularMatrix::probeReport() const {
         s += "\n";
     }
     return s;
+}
+
+SomaticNetwork::Params NeuralCellularMatrix::somaParams() const {
+    SomaticNetwork::Params p;
+    p.gain = cfg_.soma_gain, p.quiet = cfg_.soma_quiet, p.tau = cfg_.soma_tau, p.drive = cfg_.soma_drive;
+    p.couple = cfg_.soma_couple, p.bias = cfg_.soma_bias, p.threshold = cfg_.soma_threshold, p.decay = cfg_.soma_decay;
+    p.mode = int(cfg_.soma_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
+    return p;
 }
 
 MicrotubuleLayer::Params NeuralCellularMatrix::mtParams() const {
@@ -1961,6 +1977,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
         st.vec(ctx3_, "held clues");
         st.vec(hold4Ctx_, "held clues 4D");
     }
+    if (soma_.on()) soma_.state(st); // only brains with the somatic network
 }
 
 size_t NeuralCellularMatrix::memoryBytes() const {

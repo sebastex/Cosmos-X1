@@ -253,6 +253,16 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"mt_orch", &c.mt_orch},
         {"mt_orch_couple", &c.mt_orch_couple},
         {"mt_orch_threshold", &c.mt_orch_threshold},
+        {"soma", &c.soma},
+        {"soma_gain", &c.soma_gain},
+        {"soma_quiet", &c.soma_quiet},
+        {"soma_tau", &c.soma_tau},
+        {"soma_drive", &c.soma_drive},
+        {"soma_couple", &c.soma_couple},
+        {"soma_bias", &c.soma_bias},
+        {"soma_threshold", &c.soma_threshold},
+        {"soma_decay", &c.soma_decay},
+        {"soma_mode", &c.soma_mode},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},
@@ -372,6 +382,14 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                  "protect=0.8"}},                                                               // Epsilon + protecting what is learned
         {"omega", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4", "protect=0.8"}},        // all three
+        // The somatic network (one network wired to every cell, quantum decisions), 2026-10-28.
+        {"alef", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "soma=1"}},                                                                   // Epsilon + somatic network
+        {"bet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4", "protect=0.8", "soma=1"}}, // Omega + somatic
+        {"gimel", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "context_tau=8", "context_learn=2", "context_gain=4", "join_gain=4", "protect=0.8", "soma=1",
+                   "soma_mode=2"}},                                                             // Bet, classical somatic (control)
     };
     return v;
 }

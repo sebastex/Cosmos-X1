@@ -400,6 +400,22 @@ struct Config {
     float mt_orch = 0.0f;
     float mt_orch_couple = 0.3f;
     float mt_orch_threshold = 300.0f;
+    // The somatic network (include/ncm/Somatic.hpp): one network wired to every voxel, one node per
+    // 4D cell (or per field without the lattice). It remembers what each cell usually does over
+    // soma_tau 3D steps, senses what is different now, settles which differences matter with the
+    // microtubules' quantum rule (all nodes reduce together with one shared draw), and tells every
+    // cell: the different part of its firing is pushed (soma_gain), the usual part turned down
+    // (soma_quiet). soma_mode: 0 quantum, 1 expected value, 2 classical (controls). 0 = off.
+    float soma = 0.0f;
+    float soma_gain = 1.0f;
+    float soma_quiet = 0.5f;
+    float soma_tau = 2000.0f;
+    float soma_drive = 2.0f;
+    float soma_couple = 0.3f;
+    float soma_bias = 0.2f;
+    float soma_threshold = 3.0f;
+    float soma_decay = 0.9f;
+    float soma_mode = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input
