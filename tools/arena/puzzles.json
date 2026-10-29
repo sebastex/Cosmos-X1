@@ -532,134 +532,9 @@
       "twin": true,
       "items": [
         {
-          "level": "remember",
-          "q": "raspberries grow on",
-          "a": "bushes",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ]
-        },
-        {
-          "level": "whole line",
-          "q": "blueberries",
-          "a": "bushes",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "bushes"
-          ]
-        },
-        {
-          "level": "whole line",
-          "q": "kiwis",
-          "a": "vines",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "vines"
-          ]
-        },
-        {
-          "level": "work it out",
-          "q": "peaches grow on",
-          "a": "trees",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ]
-        },
-        {
-          "level": "whole line",
-          "q": "raspberries",
-          "a": "bushes",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "bushes"
-          ]
-        },
-        {
-          "level": "whole line",
-          "q": "cherries",
-          "a": "trees",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "trees"
-          ]
-        },
-        {
-          "level": "new words",
-          "q": "apples come from",
-          "a": "trees",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ]
-        },
-        {
-          "level": "whole line",
+          "level": "origin",
           "q": "gooseberries",
           "a": "bushes",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "bushes"
-          ]
-        },
-        {
-          "level": "work it out",
-          "q": "currants grow on",
-          "a": "bushes",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ]
-        },
-        {
-          "level": "work it out",
-          "q": "pumpkins grow on",
-          "a": "vines",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ]
-        },
-        {
-          "level": "remember",
-          "q": "kiwis grow on",
-          "a": "vines",
           "choices": [
             "trees",
             "bushes",
@@ -677,9 +552,49 @@
           ]
         },
         {
-          "level": "new words",
-          "q": "blueberries come from",
+          "level": "remember",
+          "q": "blueberries grow on",
           "a": "bushes",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "bushes",
+          "a": "blueberries",
+          "choices": [
+            "pears",
+            "blueberries",
+            "kiwis"
+          ]
+        },
+        {
+          "level": "origin",
+          "q": "blueberries",
+          "a": "bushes",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "new words",
+          "q": "apples come from",
+          "a": "trees",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "remember",
+          "q": "kiwis grow on",
+          "a": "vines",
           "choices": [
             "trees",
             "bushes",
@@ -697,17 +612,132 @@
           ]
         },
         {
-          "level": "whole line",
+          "level": "origin",
+          "q": "apples",
+          "a": "trees",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "work it out",
+          "q": "peaches grow on",
+          "a": "trees",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "vines",
+          "a": "kiwis",
+          "choices": [
+            "pears",
+            "blueberries",
+            "kiwis"
+          ]
+        },
+        {
+          "level": "origin",
           "q": "grapes",
           "a": "vines",
           "choices": [
             "trees",
             "bushes",
             "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "vines",
+          "a": "grapes",
+          "choices": [
+            "apples",
+            "raspberries",
+            "grapes"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "trees",
+          "a": "pears",
+          "choices": [
+            "pears",
+            "blueberries",
+            "kiwis"
+          ]
+        },
+        {
+          "level": "remember",
+          "q": "raspberries grow on",
+          "a": "bushes",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "bushes",
+          "a": "raspberries",
+          "choices": [
+            "apples",
+            "raspberries",
+            "grapes"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "bushes",
+          "a": "gooseberries",
+          "choices": [
+            "cherries",
+            "gooseberries",
+            "melons"
+          ]
+        },
+        {
+          "level": "work it out",
+          "q": "pumpkins grow on",
+          "a": "vines",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "vines",
+          "a": "melons",
+          "choices": [
+            "cherries",
+            "gooseberries",
+            "melons"
+          ]
+        },
+        {
+          "level": "remember",
+          "q": "gooseberries grow on",
+          "a": "bushes",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "work it out",
+          "q": "currants grow on",
+          "a": "bushes",
+          "choices": [
+            "trees",
+            "bushes",
             "vines"
           ]
         },
@@ -722,18 +752,43 @@
           ]
         },
         {
-          "level": "whole line",
-          "q": "apples",
+          "level": "origin",
+          "q": "cherries",
           "a": "trees",
           "choices": [
             "trees",
             "bushes",
             "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "trees"
+          ]
+        },
+        {
+          "level": "origin",
+          "q": "kiwis",
+          "a": "vines",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "turned around",
+          "q": "trees",
+          "a": "cherries",
+          "choices": [
+            "cherries",
+            "gooseberries",
+            "melons"
+          ]
+        },
+        {
+          "level": "work it out",
+          "q": "apricots grow on",
+          "a": "trees",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
           ]
         },
         {
@@ -747,17 +802,32 @@
           ]
         },
         {
-          "level": "whole line",
+          "level": "new words",
+          "q": "melons come from",
+          "a": "vines",
+          "choices": [
+            "trees",
+            "bushes",
+            "vines"
+          ]
+        },
+        {
+          "level": "origin",
           "q": "melons",
           "a": "vines",
           "choices": [
             "trees",
             "bushes",
             "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
+          ]
+        },
+        {
+          "level": "work it out",
+          "q": "cucumbers grow on",
+          "a": "vines",
+          "choices": [
+            "trees",
+            "bushes",
             "vines"
           ]
         },
@@ -772,8 +842,8 @@
           ]
         },
         {
-          "level": "work it out",
-          "q": "apricots grow on",
+          "level": "origin",
+          "q": "pears",
           "a": "trees",
           "choices": [
             "trees",
@@ -792,33 +862,8 @@
           ]
         },
         {
-          "level": "whole line",
-          "q": "pears",
-          "a": "trees",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ],
-          "path": [
-            "grow",
-            "on",
-            "trees"
-          ]
-        },
-        {
-          "level": "remember",
-          "q": "gooseberries grow on",
-          "a": "bushes",
-          "choices": [
-            "trees",
-            "bushes",
-            "vines"
-          ]
-        },
-        {
-          "level": "remember",
-          "q": "blueberries grow on",
+          "level": "work it out",
+          "q": "blackberries grow on",
           "a": "bushes",
           "choices": [
             "trees",
@@ -837,8 +882,8 @@
           ]
         },
         {
-          "level": "work it out",
-          "q": "blackberries grow on",
+          "level": "new words",
+          "q": "blueberries come from",
           "a": "bushes",
           "choices": [
             "trees",
@@ -847,9 +892,9 @@
           ]
         },
         {
-          "level": "new words",
-          "q": "melons come from",
-          "a": "vines",
+          "level": "origin",
+          "q": "raspberries",
+          "a": "bushes",
           "choices": [
             "trees",
             "bushes",
@@ -857,18 +902,18 @@
           ]
         },
         {
-          "level": "work it out",
-          "q": "cucumbers grow on",
-          "a": "vines",
+          "level": "turned around",
+          "q": "trees",
+          "a": "apples",
           "choices": [
-            "trees",
-            "bushes",
-            "vines"
+            "apples",
+            "raspberries",
+            "grapes"
           ]
         }
       ],
-      "tests": "Which fruit grows where (tree, bush or vine). Whole line: hear only \"apples\", say \"grow on trees\". Remember: taught directly. Work it out: only \"blackberries are berries\" and \"berries grow on bushes\" were taught. New words: asked \"apples come from\" after learning \"grow on\".",
-      "script": "say:apples:6:40;say:apricots:6:40;say:are:6:40;say:bees:6:40;say:berries:6:40;say:blackberries:6:40;say:blueberries:6:40;say:bushes:6:40;say:cherries:6:40;say:come:6:40;say:comes:6:40;say:cows:6:40;say:cucumbers:6:40;say:currants:6:40;say:eggs:6:40;say:from:6:40;say:fruits:6:40;say:gooseberries:6:40;say:gourds:6:40;say:grapes:6:40;say:grow:6:40;say:hens:6:40;say:honey:6:40;say:kiwis:6:40;say:melons:6:40;say:milk:6:40;say:on:6:40;say:peaches:6:40;say:pears:6:40;say:pumpkins:6:40;say:raspberries:6:40;say:stone:6:40;say:trees:6:40;say:vines:6:40;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;rest:300;cue:raspberries_grow_on:80;rest:150;cue:blueberries:80;rest:150;cue:kiwis:80;rest:150;cue:peaches_grow_on:80;rest:150;cue:raspberries:80;rest:150;cue:cherries:80;rest:150;cue:apples_come_from:80;rest:150;cue:gooseberries:80;rest:150;cue:currants_grow_on:80;rest:150;cue:pumpkins_grow_on:80;rest:150;cue:kiwis_grow_on:80;rest:150;cue:grapes_come_from:80;rest:150;cue:blueberries_come_from:80;rest:150;cue:grapes_grow_on:80;rest:150;cue:grapes:80;rest:150;cue:pears_grow_on:80;rest:150;cue:apples:80;rest:150;cue:cherries_grow_on:80;rest:150;cue:melons:80;rest:150;cue:cherries_come_from:80;rest:150;cue:apricots_grow_on:80;rest:150;cue:apples_grow_on:80;rest:150;cue:pears:80;rest:150;cue:gooseberries_grow_on:80;rest:150;cue:blueberries_grow_on:80;rest:150;cue:melons_grow_on:80;rest:150;cue:blackberries_grow_on:80;rest:150;cue:melons_come_from:80;rest:150;cue:cucumbers_grow_on:80",
+      "tests": "Which fruit grows where (tree, bush or vine). Origin: hear only \"apples\", is \"trees\" closest. Turned around: hear only \"bushes\", which fruit. Remember: taught directly. Work it out: only \"blackberries are berries\" and \"berries grow on bushes\" were taught. New words: asked \"apples come from\" after learning \"grow on\".",
+      "script": "say:apples:6:40;say:apricots:6:40;say:are:6:40;say:bees:6:40;say:berries:6:40;say:blackberries:6:40;say:blueberries:6:40;say:bushes:6:40;say:cherries:6:40;say:come:6:40;say:comes:6:40;say:cows:6:40;say:cucumbers:6:40;say:currants:6:40;say:eggs:6:40;say:from:6:40;say:fruits:6:40;say:gooseberries:6:40;say:gourds:6:40;say:grapes:6:40;say:grow:6:40;say:hens:6:40;say:honey:6:40;say:kiwis:6:40;say:melons:6:40;say:milk:6:40;say:on:6:40;say:peaches:6:40;say:pears:6:40;say:pumpkins:6:40;say:raspberries:6:40;say:stone:6:40;say:trees:6:40;say:vines:6:40;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:raspberries,grow,on,bushes:3:60;seq:blueberries,grow,on,bushes:3:60;seq:gooseberries,grow,on,bushes:3:60;seq:grapes,grow,on,vines:3:60;seq:kiwis,grow,on,vines:3:60;seq:melons,grow,on,vines:3:60;seq:stone,fruits,grow,on,trees:3:60;seq:berries,grow,on,bushes:3:60;seq:gourds,grow,on,vines:3:60;seq:peaches,are,stone,fruits:3:60;seq:apricots,are,stone,fruits:3:60;seq:blackberries,are,berries:3:60;seq:currants,are,berries:3:60;seq:pumpkins,are,gourds:3:60;seq:cucumbers,are,gourds:3:60;seq:milk,comes,from,cows:3:60;seq:eggs,come,from,hens:3:60;seq:honey,comes,from,bees:3:60;seq:apples,grow,on,trees:3:60;seq:pears,grow,on,trees:3:60;seq:cherries,grow,on,trees:3:60;rest:300;cue:gooseberries:80;rest:150;cue:grapes_come_from:80;rest:150;cue:blueberries_grow_on:80;rest:150;cue:bushes:80;rest:150;cue:blueberries:80;rest:150;cue:apples_come_from:80;rest:150;cue:kiwis_grow_on:80;rest:150;cue:grapes_grow_on:80;rest:150;cue:apples:80;rest:150;cue:peaches_grow_on:80;rest:150;cue:vines:80;rest:150;cue:grapes:80;rest:150;cue:vines:80;rest:150;cue:trees:80;rest:150;cue:raspberries_grow_on:80;rest:150;cue:bushes:80;rest:150;cue:bushes:80;rest:150;cue:pumpkins_grow_on:80;rest:150;cue:vines:80;rest:150;cue:gooseberries_grow_on:80;rest:150;cue:currants_grow_on:80;rest:150;cue:pears_grow_on:80;rest:150;cue:cherries:80;rest:150;cue:kiwis:80;rest:150;cue:trees:80;rest:150;cue:apricots_grow_on:80;rest:150;cue:cherries_grow_on:80;rest:150;cue:melons_come_from:80;rest:150;cue:melons:80;rest:150;cue:cucumbers_grow_on:80;rest:150;cue:cherries_come_from:80;rest:150;cue:pears:80;rest:150;cue:apples_grow_on:80;rest:150;cue:blackberries_grow_on:80;rest:150;cue:melons_grow_on:80;rest:150;cue:blueberries_come_from:80;rest:150;cue:raspberries:80;rest:150;cue:trees:80",
       "probes": "understanding: what grows where",
       "if_fails": "it repeats what it heard but cannot work out where a fruit grows"
     }
