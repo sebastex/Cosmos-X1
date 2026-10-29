@@ -31,7 +31,37 @@ PROBES = {
     'facts': ('facts', 'it does not tie a thing to its property'),
     'yesno': ('true or false', 'it cannot use the whole question to pick yes or no'),
     'virtue': ('good and bad (first step of virtue)', 'it does not tie acts to good or bad; next it needs a sense of approval'),
+    'orchard': ('understanding: what grows where', 'it repeats what it heard but cannot work out where a fruit grows'),
 }
+
+
+def orchard():
+    """The orchard: which fruit grows on a tree, a bush or a vine. Three levels of understanding:
+    remember (taught directly), work it out (only 'X are berries' and 'berries grow on bushes' are
+    taught), and same meaning in new words (asked 'come from' after learning 'grow on')."""
+    direct = {'apples': 'trees', 'pears': 'trees', 'cherries': 'trees',
+              'raspberries': 'bushes', 'blueberries': 'bushes', 'gooseberries': 'bushes',
+              'grapes': 'vines', 'kiwis': 'vines', 'melons': 'vines'}
+    kinds = {'peaches': ('stone fruits', 'trees'), 'apricots': ('stone fruits', 'trees'),
+             'blackberries': ('berries', 'bushes'), 'currants': ('berries', 'bushes'),
+             'pumpkins': ('gourds', 'vines'), 'cucumbers': ('gourds', 'vines')}
+    sents = [f'{f} grow on {w}' for f, w in direct.items()]
+    sents += ['stone fruits grow on trees', 'berries grow on bushes', 'gourds grow on vines']
+    sents += [f'{f} are {k}' for f, (k, _) in kinds.items()]
+    sents += ['milk comes from cows', 'eggs come from hens', 'honey comes from bees']  # what 'come from' means
+    where = ['trees', 'bushes', 'vines']
+    items = [dict(level='remember', q=f'{f} grow on', a=w, choices=where) for f, w in direct.items()]
+    items += [dict(level='work it out', q=f'{f} grow on', a=w, choices=where) for f, (_, w) in kinds.items()]
+    items += [dict(level='new words', q=f'{f} come from', a=w, choices=where) for f, w in list(direct.items())[::2]]
+    random.Random(9).shuffle(items)
+    vocab = sorted({w for t in sents for w in t.split()})
+    qops = []
+    for it in items:
+        qops += [f"cue:{'_'.join(it['q'].split())}:80", 'rest:150']
+    script = words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + qops[:-1]
+    return dict(id='orchard', name='The orchard', kind='quiz', twin=True, items=items,
+                tests='Which fruit grows where (tree, bush or vine). Remember: taught directly. Work it out: only "blackberries are berries" and "berries grow on bushes" were taught. New words: asked "apples come from" after learning "grow on".',
+                script=';'.join(script))
 # Taught harder: the same questions after better teaching (short steps first, pairs that differ by one
 # word, more rounds). If a score rises it was a lesson; if it stays flat the brain is missing a part.
 for _k in ('next', 'analogy', 'yesno', 'virtue'):
@@ -157,6 +187,7 @@ def main():
             new.append(dict(id=p['id'] + '_t', name=p['name'] + ' (taught harder)', kind='ask', twin=True, choices=p['choices'],
                             asks=p['asks'], tests=p['tests'] + ' Taught harder: short steps first, pairs that differ by one word next to each other, more rounds.',
                             script=';'.join(script)))
+    new.append(orchard())
     old['puzzles'] = keep + new
     for p in old['puzzles']:
         p['probes'], p['if_fails'] = PROBES[p['id']]
