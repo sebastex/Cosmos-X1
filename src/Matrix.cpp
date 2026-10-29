@@ -310,6 +310,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         ctx3_.assign(V_ * C3, 0.0f);
         hold4Ctx_.assign(V_ * C3, 0.0f);
     }
+    if (cfg.learning.feedback_tau > 0.0f) fbTrace_.assign(V_ * C3, 0.0f);
     if (cfg.learning.channel_balance > 0.0f) chanTheta3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.assembly_inhibition > 0.0f) asmInh_.assign(V_ * size_t(cfg_.long_range_links), 0.0f);
     if (cfg_.separation > 0.0f) usage3_.assign(V_ * C3, 0.0f);
@@ -1242,6 +1243,12 @@ void NeuralCellularMatrix::step3D() {
             const float tau = std::max(1.0f, cfg_.learning.context_tau);
             for (uint32_t c = 0; c < C3; ++c) cx[c] += (cell[c] - cx[c]) / tau;
         }
+        if (!fbTrace_.empty()) {
+            float* fb = fbTrace_.data() + v * C3;
+            const float* cell = out + v * C3;
+            const float tau = std::max(1.0f, cfg_.learning.feedback_tau);
+            for (uint32_t c = 0; c < C3; ++c) fb[c] += (cell[c] - fb[c]) / tau;
+        }
     }
     } // fields (front-to-back sweep)
 
@@ -1465,6 +1472,30 @@ void NeuralCellularMatrix::learnSleep(float eta) {
                 for (uint32_t b = 0; b < C3; ++b)
                     if (sp[b] != 0.0f) block[size_t(a) * C3 + b] = std::max(0.0f, block[size_t(a) * C3 + b] - eta * pi[a] * sp[b]);
             }
+        });
+    }
+}
+
+void NeuralCellularMatrix::feedback(float signal) {
+    if (fbTrace_.empty() || signal == 0.0f) return;
+    const float k = cfg_.learning.feedback_rate * signal;
+    const float linkMax = std::max(0.0f, cfg_.learning.link_bound);
+    const float* tr = fbTrace_.data();
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        const float* pi = tr + v * C3;
+        if (isFaint(pi)) continue;
+        forEachLearnedBlock(v, [&](float* block, size_t src) {
+            const float* sp = tr + src * C3;
+            if (isFaint(sp)) return;
+            for (uint32_t a = 0; a < C3; ++a)
+                for (uint32_t b = 0; b < C3; ++b) {
+                    float& w = block[size_t(a) * C3 + b];
+                    w = std::max(0.0f, w + k * pi[a] * sp[b]);
+                    if (linkMax > 0.0f) w = std::min(w, linkMax);
+                }
         });
     }
 }
@@ -1864,6 +1895,7 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
     std::fill(ctx3_.begin(), ctx3_.end(), 0.0f);
+    std::fill(fbTrace_.begin(), fbTrace_.end(), 0.0f);
     std::fill(hold4Ctx_.begin(), hold4Ctx_.end(), 0.0f);
     std::fill(lineQuietCur_.begin(), lineQuietCur_.end(), uint8_t(1));
     std::fill(lineQuietNext_.begin(), lineQuietNext_.end(), uint8_t(1));
@@ -1989,6 +2021,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
         st.vec(hold4Ctx_, "held clues 4D");
     }
     if (soma_.on()) soma_.state(st); // only brains with the somatic network
+    if (!fbTrace_.empty()) st.vec(fbTrace_, "right/wrong trace"); // only brains that learn from right and wrong
 }
 
 size_t NeuralCellularMatrix::memoryBytes() const {

@@ -83,6 +83,8 @@ public:
     // weakened by eta x (their product); the slow consolidated part is left alone, so what is stored
     // stays while over-strong attractors (magnets) are trimmed most.
     void learnSleep(float eta);
+    // Learning from right and wrong (feedback_tau): good (+1) or bad (-1) for what was just done.
+    void feedback(float signal);
     // 2D learning (sheet_learn), applied right after step2D().
     void learn2D(float modulator);
 
@@ -226,6 +228,7 @@ private:
     std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
     AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
     AVec<float> ctx3_;        // per voxel channel: slow trace of recent firing (held clues; context_tau)
+    AVec<float> fbTrace_;     // per voxel channel: what it did lately, for right/wrong (feedback_tau)
     AVec<float> hold4Ctx_;    // per voxel channel: learned 4D drive from the partners' held clues
     uint32_t quietSteps_ = 0; // 3D steps since the last input (a pause clears the held clues)
     AVec<float> chanTheta3_;  // per voxel channel: threshold offset (channel balance); empty when off

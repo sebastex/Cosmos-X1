@@ -83,7 +83,7 @@ def line_got(said, path):
 def judge(score, stm):
     """Each statement: what it expected before the last word, its surprise when the word came, how busy it stayed.
     It says false when its surprise is above its own middle surprise."""
-    got = score.get('asks', [])
+    got = score.get('asks', [])[-2 * len(stm):]  # the test comes last (lessons before it may ask too)
     rows = []
     for k, st in enumerate(stm):
         if 2 * k + 1 >= len(got):

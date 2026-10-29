@@ -32,6 +32,7 @@ PROBES = {
     'yesno': ('true or false', 'it cannot use the whole question to pick yes or no'),
     'virtue': ('good and bad (first step of virtue)', 'it does not tie acts to good or bad; next it needs a sense of approval'),
     'truefalse': ('understanding: noticing a wrong statement', 'a wrong ending does not surprise it more than a true one'),
+    'truefalse_t': ('understanding, after a teacher said right and wrong', 'being told right and wrong does not change what surprises it'),
     'orchard': ('understanding: what grows where', 'it repeats what it heard but cannot work out where a fruit grows'),
 }
 
@@ -76,7 +77,7 @@ def orchard():
     return dict(id='orchard', name='The orchard', kind='quiz', twin=True, items=items,
                 tests='Which fruit grows where (tree, bush or vine). Origin: hear only "apples", is "trees" closest. Turned around: hear only "bushes", which fruit. Remember: taught directly. Work it out: only "blackberries are berries" and "berries grow on bushes" were taught. New words: asked "apples come from" after learning "grow on".',
                 script=';'.join(script))
-def truefalse():
+def truefalse(taught=False):
     """True or false: after the orchard lessons it hears statements, half of them wrong
     ("apples grow on bushes"). It is never told which. Its answer is its own surprise: how far its
     pattern turns when the last word comes, against what it held a moment before. Above its own
@@ -95,6 +96,21 @@ def truefalse():
     for st in stm:
         ops += [f"cue:{st['fruit']}_grow_on:32", f"cue:{st['said']}:90", 'rest:120']
     script = words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + ops[:-1]
+    if taught:  # a teacher: whole statements, true and false, each followed by good or bad (no other learning)
+        lesson = []
+        direct_st = [(f, w) for f, w in direct.items()]
+        for r in range(3):
+            row = []
+            for k, (f, w) in enumerate(direct_st):
+                wrong = [x for x in where if x != w][(k + r) % 2]
+                row += [(f, w, 'good'), (f, wrong, 'bad')]
+            random.Random(20 + r).shuffle(row)
+            for f, w, sig in row:
+                lesson += [f"cue:{f}_grow_on_{w}:20", sig, 'rest:100']
+        script = words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + lesson + ['rest:300'] + ops[:-1]
+        return dict(id='truefalse_t', name='True or false, after a teacher said right and wrong', kind='judge', twin=True,
+                    statements=stm, tests='As truefalse, but first a teacher: the 9 taught fruits, each said once rightly (good) and once wrongly (bad), three rounds. The work-it-out fruits never get a teacher.',
+                    script=';'.join(script))
     return dict(id='truefalse', name='True or false (surprise)', kind='judge', twin=True, statements=stm,
                 tests='After the orchard lessons: 30 statements, half wrong. Does a wrong ending surprise it more than the true one?',
                 script=';'.join(script))
@@ -227,6 +243,7 @@ def main():
                             script=';'.join(script)))
     new.append(orchard())
     new.append(truefalse())
+    new.append(truefalse(True))
     old['puzzles'] = keep + new
     for p in old['puzzles']:
         p['probes'], p['if_fails'] = PROBES[p['id']]

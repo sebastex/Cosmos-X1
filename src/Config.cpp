@@ -205,6 +205,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"context_reset", &c.learning.context_reset},
         {"join_gain", &c.learning.join_gain},
         {"protect", &c.learning.protect},
+        {"feedback_tau", &c.learning.feedback_tau},
+        {"feedback_rate", &c.learning.feedback_rate},
         {"field_roles", &c.learning.field_roles},
         {"channel_balance", &c.learning.channel_balance},
         {"inner_up", &c.learning.inner_up},
@@ -406,6 +408,17 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"zayin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
                    "soma=1", "soma_mode=2"}},                                                   // Vav, classical somatic (control)
+        // Learning from right and wrong (2026-10-29): a brain-wide good/bad signal after an answer.
+        {"chet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "soma=1", "feedback_tau=40"}},                                                // Alef + right and wrong
+        {"kaf", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "feedback_tau=40"}},                                                           // Epsilon + right and wrong
+        {"mem", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "feedback_tau=40", "feedback_rate=0.2"}},                                      // Kaf, signal 10x stronger
+        {"nun", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "feedback_tau=40", "feedback_rate=1"}},                                        // Kaf, signal 50x stronger
+        {"lamed", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "feedback_tau=40"}}, // Dalet + right and wrong
     };
     return v;
 }

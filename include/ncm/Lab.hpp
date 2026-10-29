@@ -172,6 +172,8 @@ public:
         m_->setNoise(0.0f, 0.0f);
         wasSilent_ = true;
     }
+    // Right or wrong for what was just done (+1 good, -1 bad), brain-wide; only while learning.
+    void feedback(float signal) { if (learning_) m_->feedback(signal); }
     void setLearning(bool on) { learning_ = on; } // diagnostic: pause learning, keep the mode
     double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
     const NeuralCellularMatrix& matrix() const { return *m_; }

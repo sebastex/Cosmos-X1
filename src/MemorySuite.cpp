@@ -1949,6 +1949,7 @@ int runAlphabetTest(const Config& cfg) {
 //   learn:1 | learn:0       learning on (default) or off for the following steps
 //   sleep:T[:ETA[:LEVEL]]   sleep T ticks: faint random nudges (LEVEL, default 0.1) replay what it knows,
 //                           links firing together weakened by ETA (default 0.002) - unlearning
+//   good | bad              right or wrong for what was just done (feedback_tau brains; only while learning)
 //   voice                   record every letter's shape (heard alone) for speaking
 //   speak:N[:H]             say N letters: each time the letter the brain now expects most (held H
 //                           ticks), heard back by the brain itself; '_' = nothing expected
@@ -2122,6 +2123,8 @@ int runScriptTest(const Config& cfg) {
             const uint64_t t = num(f, 2, 20);
             s.present(std::string(1, ch), t, 1.0f, learn, UINT64_MAX);
             tick += t;
+        } else if (op == "good" || op == "bad") {
+            if (learn) s.feedback(op == "good" ? 1.0f : -1.0f);
         } else if (op == "rest") {
             const uint64_t t = num(f, 1, 100);
             s.silence(t, learn);

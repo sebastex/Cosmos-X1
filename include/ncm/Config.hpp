@@ -161,6 +161,12 @@ struct LearningParams {
     // input is over budget, the consolidated share of each link (up to its slow part) is kept and
     // only the rest is scaled down, so new learning makes room from fresh links, not settled ones.
     float protect = 0.0f;
+    // Learning from right and wrong (feedback_tau, in 3D steps; 0 = off): every voxel channel keeps a
+    // trace of what it did lately (the question and the answer). A brain-wide signal after an answer
+    // (good = +1, bad = -1) changes every learned link between two traced channels by
+    // feedback_rate x signal x (their traces): good keeps what led to the answer, bad weakens it.
+    float feedback_tau = 0.0f;
+    float feedback_rate = 0.02f;
     // Field roles: the Memory field holds vocabulary (each word on its own), the other fields hold
     // what happens between words. At every word boundary (a space, or input after a pause) the
     // Memory field's order window is cleared and its learning pauses for field_roles 3D steps, so
