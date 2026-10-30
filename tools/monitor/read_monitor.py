@@ -346,7 +346,7 @@ def lab_scores(head, r, vox, window=25):
         busy = [round(float(np.linalg.norm(dense(Sparse.total(x[t0:min(n, t0 + 10, nxt)]), size))), 3)
                 for t0 in range(e['end'], min(n, e['end'] + 80, nxt), 10)]
         asks.append(dict(last=e['word'], tick=int(r['tick'][e['start']]), sims=dict(sorted(sims.items(), key=lambda kv: -kv[1])),
-                         steps=steps, turn=turn, busy=busy, _vec=aft, _cend=e['end']))
+                         steps=steps, turn=turn, busy=busy, jolt=round(float(r['mod'][e['start']:min(n, e['end'] + 3)].mean()), 4), _vec=aft, _cend=e['end']))
     print(f'  lab scores (centred shapes, after-window {window} ticks, margin = target minus best other known word):')
     for e in cues:
         cw = e['word']

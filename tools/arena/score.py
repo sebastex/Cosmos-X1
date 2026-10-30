@@ -91,7 +91,7 @@ def judge(score, stm):
         pre, post = got[2 * k], got[2 * k + 1]
         sims = pre['sims']
         other = max(sims.get(c, -1.0) for c in ('trees', 'bushes', 'vines') if c != st['said'])
-        rows.append(dict(st, expect=round(sims.get(st['said'], -1.0) - other, 4), turn=post.get('turn'),
+        rows.append(dict(st, expect=round(sims.get(st['said'], -1.0) - other, 4), turn=post.get('turn'), jolt=post.get('jolt'),
                          busy=round(sum(post.get('busy', [])), 2), heard=post['last']))
     # The same ending word is compared only with itself (its echo is the same), so the middle is per word.
     mid = {}
@@ -101,6 +101,15 @@ def judge(score, stm):
     for r in rows:
         r['answer'] = r['turn'] is None or r['turn'] <= mid[r['said']]  # True = it takes it as true
         r['right'] = r['answer'] == r['truth']
+    # The same again with its own measure of what it did not predict, and with what it expected beforehand.
+    for w in {r['said'] for r in rows}:
+        js = sorted(r['jolt'] or 0 for r in rows if r['said'] == w)
+        j = (js[(len(js) - 1) // 2] + js[len(js) // 2]) / 2
+        for r in rows:
+            if r['said'] == w:
+                r['jolt_right'] = ((r['jolt'] or 0) <= j) == r['truth']
+    for r in rows:
+        r['expect_right'] = (r['expect'] > 0) == r['truth']
     return rows, {w: round(v, 4) for w, v in mid.items()}
 
 
@@ -115,6 +124,10 @@ def judge_summary(rows):
         out[lv] = dict(n=len(rs), right=round(sum(r['right'] for r in rs) / len(rs), 3),
                        wrong_more_surprising=round(sum(f['turn'] > t['turn'] for t, f in both) / max(1, len(both)), 3),
                        expected_true=round(sum(r['expect'] > 0 for r in rs if r['truth']) / max(1, sum(r['truth'] for r in rs)), 3),
+                       jolt_right=round(sum(r['jolt_right'] for r in rs) / len(rs), 3),
+                       expect_right=round(sum(r['expect_right'] for r in rs) / len(rs), 3),
+                       jolt_true=mean([r['jolt'] or 0 for r in rs if r['truth']]),
+                       jolt_false=mean([r['jolt'] or 0 for r in rs if not r['truth']]),
                        surprise_true=mean([r['turn'] for r in rs if r['truth'] and r['turn'] is not None]),
                        surprise_false=mean([r['turn'] for r in rs if not r['truth'] and r['turn'] is not None]),
                        busy_true=mean([r['busy'] for r in rs if r['truth']]),

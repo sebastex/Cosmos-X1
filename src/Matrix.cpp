@@ -1505,6 +1505,7 @@ float NeuralCellularMatrix::predictSurprise() {
     const float* post = s3_.cur.data();
     const float* prev = s3_.next.data();
     const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
+    const float kc = cfg_.learning.context_gain;
     const int64_t voxels = int64_t(V_);
     double fired = 0.0, explained = 0.0;
 #pragma omp parallel for schedule(dynamic, 64) reduction(+ : fired, explained)
@@ -1517,6 +1518,12 @@ float NeuralCellularMatrix::predictSurprise() {
             const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
             for (uint32_t a = 0; a < C3; ++a)
                 for (uint32_t b = 0; b < C3; ++b) pred[a] += block[size_t(a) * C3 + b] * sq[b];
+            if (!ctx3_.empty()) { // what is held predicts too, through the same links
+                const float* cs = ctx3_.data() + src * C3;
+                if (isFaint(cs)) return;
+                for (uint32_t a = 0; a < C3; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) pred[a] += kc * block[size_t(a) * C3 + b] * cs[b];
+            }
         });
         for (uint32_t a = 0; a < C3; ++a) {
             fired += pi[a];

@@ -408,6 +408,15 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"zayin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
                    "soma=1", "soma_mode=2"}},                                                   // Vav, classical somatic (control)
+        // Prediction turned on (2026-10-30): held clues predict too, and what was not predicted is learned harder.
+        {"samekh", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                    "soma=1", "predict_surprise=1", "familiarity=1"}},                                 // Vav + prediction
+        {"ayin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8",
+                  "predict_surprise=1", "familiarity=1"}},                                             // Dalet + prediction
+        {"pe", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                "soma=1", "predict_surprise=1", "familiarity=1"}},                                     // Alef + prediction
         // Learning from right and wrong (2026-10-29): a brain-wide good/bad signal after an answer.
         {"chet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "soma=1", "feedback_tau=40"}},                                                // Alef + right and wrong
