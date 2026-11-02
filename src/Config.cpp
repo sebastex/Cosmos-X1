@@ -242,6 +242,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"inner_rules", &c.inner_rules},
         {"familiarity", &c.familiarity},
         {"predict_surprise", &c.predict_surprise},
+        {"predict_watch", &c.predict_watch},
         {"microtubule", &c.microtubule},
         {"mt_len", &c.mt_len},
         {"mt_couple", &c.mt_couple},
@@ -417,6 +418,13 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                   "predict_surprise=1", "familiarity=1"}},                                             // Dalet + prediction
         {"pe", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                 "soma=1", "predict_surprise=1", "familiarity=1"}},                                     // Alef + prediction
+        // Prediction only watching (2026-11-02): learning stays as it was.
+        {"tsadi", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                   "soma=1", "predict_watch=1"}},                                                      // Vav, watching its predictions
+        {"qof", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8",
+                 "predict_watch=1"}},                                                                  // Dalet, watching its predictions
         // Learning from right and wrong (2026-10-29): a brain-wide good/bad signal after an answer.
         {"chet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "soma=1", "feedback_tau=40"}},                                                // Alef + right and wrong

@@ -33,6 +33,7 @@ PROBES = {
     'virtue': ('good and bad (first step of virtue)', 'it does not tie acts to good or bad; next it needs a sense of approval'),
     'truefalse': ('understanding: noticing a wrong statement', 'a wrong ending does not surprise it more than a true one'),
     'truefalse_t': ('understanding, after a teacher said right and wrong', 'being told right and wrong does not change what surprises it'),
+    'truefalse_s': ('understanding: noticing a wrong statement as it is said', 'a wrong ending does not surprise it more than a true one'),
     'orchard': ('understanding: what grows where', 'it repeats what it heard but cannot work out where a fruit grows'),
 }
 
@@ -77,7 +78,7 @@ def orchard():
     return dict(id='orchard', name='The orchard', kind='quiz', twin=True, items=items,
                 tests='Which fruit grows where (tree, bush or vine). Origin: hear only "apples", is "trees" closest. Turned around: hear only "bushes", which fruit. Remember: taught directly. Work it out: only "blackberries are berries" and "berries grow on bushes" were taught. New words: asked "apples come from" after learning "grow on".',
                 script=';'.join(script))
-def truefalse(taught=False):
+def truefalse(taught=False, straight=False):
     """True or false: after the orchard lessons it hears statements, half of them wrong
     ("apples grow on bushes"). It is never told which. Its answer is its own surprise: how far its
     pattern turns when the last word comes, against what it held a moment before. Above its own
@@ -96,6 +97,13 @@ def truefalse(taught=False):
     for st in stm:
         ops += [f"cue:{st['fruit']}_grow_on:32", f"cue:{st['said']}:90", 'rest:120']
     script = words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + ops[:-1]
+    if straight:  # the whole statement without a pause, so what is held is still held when the last word comes
+        ops = []
+        for st in stm:
+            ops += [f"cue:{st['fruit']}_grow_on_{st['said']}:90", 'rest:120']
+        return dict(id='truefalse_s', name='True or false, said straight through', kind='judge', straight=True, twin=True,
+                    statements=stm, tests='As truefalse, with no pause before the last word.',
+                    script=';'.join(words_alone(vocab) + sentences(sents, 4) + ['rest:300'] + ops[:-1]))
     if taught:  # a teacher: whole statements, true and false, each followed by good or bad (no other learning)
         lesson = []
         direct_st = [(f, w) for f, w in direct.items()]
@@ -244,6 +252,7 @@ def main():
     new.append(orchard())
     new.append(truefalse())
     new.append(truefalse(True))
+    new.append(truefalse(straight=True))
     old['puzzles'] = keep + new
     for p in old['puzzles']:
         p['probes'], p['if_fails'] = PROBES[p['id']]

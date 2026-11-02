@@ -80,18 +80,19 @@ def line_got(said, path):
     return k
 
 
-def judge(score, stm):
+def judge(score, stm, straight=False):
     """Each statement: what it expected before the last word, its surprise when the word came, how busy it stayed.
     It says false when its surprise is above its own middle surprise."""
-    got = score.get('asks', [])[-2 * len(stm):]  # the test comes last (lessons before it may ask too)
+    per = 1 if straight else 2
+    got = score.get('asks', [])[-per * len(stm):]  # the test comes last (lessons before it may ask too)
     rows = []
     for k, st in enumerate(stm):
-        if 2 * k + 1 >= len(got):
+        if per * k + per - 1 >= len(got):
             break
-        pre, post = got[2 * k], got[2 * k + 1]
+        pre, post = got[per * k], got[per * k + per - 1]
         sims = pre['sims']
         other = max(sims.get(c, -1.0) for c in ('trees', 'bushes', 'vines') if c != st['said'])
-        rows.append(dict(st, expect=round(sims.get(st['said'], -1.0) - other, 4), turn=post.get('turn'), jolt=post.get('jolt'),
+        rows.append(dict(st, expect=round(sims.get(st['said'], -1.0) - other, 4), turn=post.get('turn'), jolt=post.get('jolt1'),
                          busy=round(sum(post.get('busy', [])), 2), heard=post['last']))
     # The same ending word is compared only with itself (its echo is the same), so the middle is per word.
     mid = {}
@@ -176,11 +177,12 @@ def main():
                    taught=p.get('taught'), learner=learner, twin=twin)
     elif kind == 'judge':
         sc = labscores(report)
-        learner, mid = judge(sc[0], p['statements']) if sc else ([], 0)
-        twin, tmid = judge(sc[1], p['statements']) if len(sc) > 1 else ([], 0)
-        out.update(score=sum(r['right'] for r in learner) / max(1, len(p['statements'])), middle=mid,
+        learner, mid = judge(sc[0], p['statements'], p.get('straight')) if sc else ([], 0)
+        twin, tmid = judge(sc[1], p['statements'], p.get('straight')) if len(sc) > 1 else ([], 0)
+        key = 'jolt_right' if p.get('straight') else 'right'
+        out.update(score=sum(r[key] for r in learner) / max(1, len(p['statements'])), middle=mid,
                    levels=judge_summary(learner), twin_levels=judge_summary(twin) if twin else None,
-                   twin_score=sum(r['right'] for r in twin) / max(1, len(p['statements'])) if twin else None,
+                   twin_score=sum(r[key] for r in twin) / max(1, len(p['statements'])) if twin else None,
                    learner=learner, twin=twin)
     elif kind == 'ask':
         sc = labscores(report)

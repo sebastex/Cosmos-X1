@@ -92,7 +92,7 @@ public:
         if (t.voxel) {
             m_->setTick4D(t.fourD);
             m_->step3D();
-            if (cfg_.predict_surprise > 0.5f) m_->predictSurprise();
+            if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) m_->predictSurprise();
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
@@ -106,7 +106,7 @@ public:
         if (monitor_) {
             monitorEvent_.tick = clock_.ticks1D();
             // While only listening, the record shows its surprise (nothing is being learned from it).
-            monitorEvent_.modulator = !allowLearning && cfg_.predict_surprise > 0.5f ? m_->lastSurprise() : lastModulator_;
+            monitorEvent_.modulator = !allowLearning && (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) ? m_->lastSurprise() : lastModulator_;
             monitor_->record(*m_, monitorEvent_);
         }
         heard_ = 0;
