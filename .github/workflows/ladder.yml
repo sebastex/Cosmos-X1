@@ -1,0 +1,151 @@
+# The word ladder (tools/ladder/ladder.py): one brain learns 1000 words in stages of 50, 100, 200,
+# 500, 1000, in relays of about 3 hours (save before the time is up, the next run goes on), and after
+# every stage it is tested on words from all stages so far, with a full report: recall by the stage a
+# word was learned in, what wrongly won (magnets), how crowded the word shapes are, and the state of
+# the learned links per field.
+# Start one lane:  gh workflow run ladder.yml --ref cosmos-pharmakon -f variant=vav -f seed=3004
+# Log: artifact ladder-log-<variant>-<seed> (growth.json; python tools/ladder/ladder.py table growth.json)
+name: ladder
+run-name: ladder ${{ inputs.variant }} ${{ inputs.seed }} run ${{ inputs.step }}
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Brain (seed)
+        default: "3004"
+      variant:
+        description: Pharmakon variant
+        default: "vav"
+      preset:
+        description: Brain size
+        default: "dev"
+      hours:
+        description: Hours per run
+        default: "3"
+      runs:
+        description: Most runs left (a safety stop; the ladder ends by itself)
+        default: "30"
+      step:
+        description: This run's number (1 = a new brain)
+        default: "1"
+      op:
+        description: Lesson op to go on from
+        default: "0"
+      prev_run:
+        description: Run that saved the brain (empty for a new brain)
+        default: ""
+permissions:
+  contents: read
+  actions: write
+env:
+  LANE: ${{ inputs.variant }}-${{ inputs.seed }}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 230
+    steps:
+      - name: Start the clock
+        run: echo "BEGAN=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh && pip install -q numpy
+      - name: Restore the brain
+        if: inputs.prev_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ladder-brain-${{ env.LANE }}
+          run-id: ${{ inputs.prev_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore the log
+        if: inputs.prev_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ladder-log-${{ env.LANE }}
+          path: log
+          run-id: ${{ inputs.prev_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Learn and test, stage by stage, until the time is up
+        id: ladder
+        env:
+          OP: ${{ inputs.op }}
+          HOURS: ${{ inputs.hours }}
+          VARIANT: ${{ inputs.variant }}
+          SEED: ${{ inputs.seed }}
+          PRESET: ${{ inputs.preset }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          mkdir -p log out
+          if [ -f brain.bin.zst ]; then zstd -d -q --rm brain.bin.zst; fi
+          [ -f log/growth.json ] || echo "{\"variant\": \"$VARIANT\", \"seed\": \"$SEED\", \"stages\": []}" > log/growth.json
+          BOUNDS=$(python3 tools/ladder/ladder.py bounds)
+          END=$(python3 -c "print($BOUNDS[-1])")
+          left() { python3 -c "import time; print(int(float('$HOURS') * 3600 - (time.time() - $BEGAN) - 1200))"; }
+          op=$OP
+          while true; do
+            # The test after a stage (once), when the lessons have just reached its end.
+            stage=$(python3 -c "b = $BOUNDS; s = [50, 100, 200, 500, 1000]; print(s[b.index($op)] if $op in b else 0)")
+            tested=$(python3 -c "import json; print(any(r['stage'] == $stage for r in json.load(open('log/growth.json'))['stages']))")
+            if [ "$stage" != 0 ] && [ "$tested" = False ]; then
+              if [ "$(left)" -lt 2400 ]; then echo "too little time to test $stage; the next run tests first"; break; fi
+              python3 tools/ladder/ladder.py test $stage > out/test$stage.json
+              python3 -c "import json; print(json.load(open('out/test$stage.json'))['puzzles'][0]['script'])" > test.txt
+              NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=test.txt NCM_SCRIPT_TWIN=1 NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+                ./build/cosmos_x1 --test script --preset $PRESET --variant $VARIANT --seed $SEED > out/test${stage}_result.txt
+              : > out/test${stage}_report.txt
+              for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> out/test${stage}_report.txt; done
+              rm -rf monitor
+              python3 tools/arena/score.py ladder$stage out/test${stage}_result.txt out/test${stage}_report.txt out/test$stage.json > out/test${stage}_score.json
+              python3 tools/ladder/ladder.py row $stage out/test${stage}_score.json out/test${stage}_report.txt out/test${stage}_result.txt > out/row$stage.json
+              python3 -c "
+          import json
+          log = json.load(open('log/growth.json')); row = json.load(open('out/row$stage.json'))
+          row['github_run'] = '${{ github.run_id }}'; log['stages'].append(row)
+          json.dump(log, open('log/growth.json', 'w'), indent=1)
+          print(json.dumps({k: row[k] for k in ('stage', 'score', 'by_stage', 'wrong_winners')}))"
+              python3 tools/ladder/ladder.py table log/growth.json
+            fi
+            if [ "$op" -ge "$END" ]; then echo "the ladder is done"; echo "done=1" >> "$GITHUB_OUTPUT"; break; fi
+            # Lessons up to the next stage's end, or until the time is up.
+            to=$(python3 -c "print(min(b for b in $BOUNDS if b > $op))")
+            t=$(left)
+            if [ "$t" -lt 600 ]; then break; fi
+            python3 tools/ladder/ladder.py lesson $op $to > lesson.txt
+            IN=""; [ -f brain.bin ] && IN=brain.bin
+            echo "lesson ops $op..$to, $t s left"
+            NCM_STATE_IN=$IN NCM_STATE_OUT=brain-next.bin NCM_SCRIPT_FILE=lesson.txt NCM_DEADLINE_SEC=$t \
+              ./build/cosmos_x1 --test script --preset $PRESET --variant $VARIANT --seed $SEED > out/lesson_${op}.txt
+            grep BRAINREPORT out/lesson_${op}.txt || true
+            did=$(grep -oE '(STOPPED_AT|SCRIPT_DONE) [0-9]+' out/lesson_${op}.txt | tail -1 | awk '{print $2}')
+            mv brain-next.bin brain.bin
+            op=$((op + did))
+            if [ "$op" -lt "$to" ]; then break; fi  # stopped by the deadline
+          done
+          echo "next=$op" >> "$GITHUB_OUTPUT"
+          zstd -3 -T0 -q --rm brain.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ladder-brain-${{ env.LANE }}
+          path: brain.bin.zst
+          compression-level: 0
+          retention-days: 5
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ladder-log-${{ env.LANE }}
+          path: log
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ladder-run-${{ env.LANE }}-${{ inputs.step }}
+          path: out
+          retention-days: 30
+      - name: Start the next run
+        if: steps.ladder.outputs.done != '1' && fromJSON(inputs.runs) > 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run ladder.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
+            -f seed=${{ inputs.seed }} -f variant=${{ inputs.variant }} -f preset=${{ inputs.preset }} \
+            -f hours=${{ inputs.hours }} -f runs=$(( ${{ inputs.runs }} - 1 )) -f step=$(( ${{ inputs.step }} + 1 )) \
+            -f op=${{ steps.ladder.outputs.next }} -f prev_run=${{ github.run_id }}
