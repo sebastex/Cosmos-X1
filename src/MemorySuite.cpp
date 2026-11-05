@@ -1949,6 +1949,8 @@ int runAlphabetTest(const Config& cfg) {
 //   learn:1 | learn:0       learning on (default) or off for the following steps
 //   sleep:T[:ETA[:LEVEL]]   sleep T ticks: faint random nudges (LEVEL, default 0.1) replay what it knows,
 //                           links firing together weakened by ETA (default 0.002) - unlearning
+//   report:TAG              print the learned links' state (BRAINREPORT json line)
+//   still:1 | still:0       lessons that change nothing (to show words for the record) / back to normal
 //   good | bad              right or wrong for what was just done (feedback_tau brains; only while learning)
 //   voice                   record every letter's shape (heard alone) for speaking
 //   speak:N[:H]             say N letters: each time the letter the brain now expects most (held H
@@ -2025,6 +2027,7 @@ int runScriptTest(const Config& cfg) {
         voice.push_back(mean); // last entry: the mean (to centre what is heard)
     };
     bool learn = true;
+    const bool learns = s.learning(); // the twin never learns, whatever the script says
     uint64_t tick = 0, index = 0;
     for (const std::string& step : split(script, ';')) {
         if (step.empty()) continue;
@@ -2123,6 +2126,31 @@ int runScriptTest(const Config& cfg) {
             const uint64_t t = num(f, 2, 20);
             s.present(std::string(1, ch), t, 1.0f, learn, UINT64_MAX);
             tick += t;
+        } else if (op == "report") { // report:TAG - the state of the learned links, one BRAINREPORT json line
+            auto& m = const_cast<NeuralCellularMatrix&>(s.matrix());
+            const auto health = m.weightHealth();
+            const auto stats = m.computeStats();
+            const auto& ls = m.learningStats();
+            std::string j = "{\"tag\":\"" + (f.size() > 1 ? f[1] : std::string()) + "\",\"tick\":" + std::to_string(tick) +
+                            ",\"plastic\":" + std::to_string(m.totalPlasticStrength()) + ",\"fields\":[";
+            for (uint32_t k = 0; k < kFields; ++k) {
+                char buf[400];
+                std::snprintf(buf, sizeof buf,
+                              "%s{\"fill\":%.5f,\"full\":%.5f,\"used\":%.5f,\"hubs\":%.5f,\"active3d\":%.5f,\"mean3d\":%.5f,"
+                              "\"active2d\":%.5f,\"active1d\":%.5f}",
+                              k ? "," : "", health[k].meanFill, health[k].shareFull, health[k].shareUsed, health[k].topSourceShare,
+                              stats.voxel.active_fraction[k], stats.voxel.mean[k], stats.sheet.active_fraction[k],
+                              stats.line.active_fraction[k]);
+                j += buf;
+            }
+            char tail[300];
+            std::snprintf(tail, sizeof tail, "],\"learn_calls\":%llu,\"learn_change\":%.4f,\"scaled\":%.4f,\"mt\":%llu,\"soma\":%llu}",
+                          (unsigned long long)ls.calls, ls.change, ls.scaled, (unsigned long long)m.microtubuleCollapses(),
+                          (unsigned long long)m.somaticReductions());
+            j += tail;
+            std::printf("BRAINREPORT %s\n", j.c_str());
+        } else if (op == "still") { // still:1 = hear as in a lesson (shapes are recorded) but change nothing
+            s.setLearning(learns && num(f, 1, 1) == 0);
         } else if (op == "good" || op == "bad") {
             if (learn) s.feedback(op == "good" ? 1.0f : -1.0f);
         } else if (op == "rest") {

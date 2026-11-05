@@ -266,6 +266,43 @@ def dense(sp, size):
     return v
 
 
+def crowding(mean, background, fields):
+    """How crowded the word shapes are: overlap between words (centred, so the shared background does
+    not count), how many independent directions they use, how much of each shape is only background,
+    how many voxel channels each word uses, and how each word's shape is spread over the fields."""
+    words = sorted(mean)
+    if len(words) < 3:
+        return None
+    raw = np.array([mean[w] for w in words])
+    cen = raw - background
+    norms = np.linalg.norm(cen, axis=1)
+    unit = cen / np.maximum(norms[:, None], 1e-12)
+    sim = unit @ unit.T
+    iu = np.triu_indices(len(words), 1)
+    pair = sim[iu]
+    np.fill_diagonal(sim, -2.0)
+    nn = sim.max(axis=1)
+    order = np.argsort(-pair)[:8]
+    closest = [[words[iu[0][k]], words[iu[1][k]], round(float(pair[k]), 3)] for k in order]
+    # Effective number of directions (participation ratio of the centred shapes' spectrum).
+    ev = np.linalg.svd(cen, compute_uv=False) ** 2
+    pr = float(ev.sum() ** 2 / max((ev ** 2).sum(), 1e-12))
+    # How many other words each word is a near-copy of (centred likeness above 0.5): the magnets.
+    near = (sim > 0.5).sum(axis=1)
+    magnets = sorted(zip(words, near.tolist()), key=lambda kv: -kv[1])[:6]
+    bg = float(np.linalg.norm(background) ** 2)
+    shape_e = float(np.mean(np.linalg.norm(raw, axis=1) ** 2))
+    used = (raw > 1e-3).mean(axis=1)
+    size = raw.shape[1] // fields
+    per_field = [round(float((cen[:, f * size:(f + 1) * size] ** 2).sum() / max((cen ** 2).sum(), 1e-12)), 3)
+                 for f in range(fields)]
+    return dict(words=len(words), pair_mean=round(float(pair.mean()), 4), pair_p95=round(float(np.percentile(pair, 95)), 4),
+                pair_max=round(float(pair.max()), 4), nearest_mean=round(float(nn.mean()), 4),
+                near_copies=round(float((nn > 0.5).mean()), 3), dims=round(pr, 2), dims_per_word=round(pr / len(words), 3),
+                background_share=round(bg / max(shape_e, 1e-12), 3), used_share=round(float(used.mean()), 4),
+                field_share=per_field, closest=closest, magnets=magnets)
+
+
 def lab_scores(head, r, vox, window=25):
     """Stricter scores (independent review): shapes are centred (the mean word shape, the
     always-on background, is removed), cue results are own-minus-best margins against every other
@@ -383,10 +420,13 @@ def lab_scores(head, r, vox, window=25):
     at_once = [round(float(strong[sound][:, s * per_slice:(s + 1) * per_slice].sum(axis=1).mean()), 2) if sound.any() else 0.0
                for s in range(head['fields'])]
     print(f'    4D cells carrying activity (>= 10% of voxels firing), per slice from the senses: ever {strict}, at once during sound {at_once}')
+    crowd = crowding(mean, background, head['fields'])
+    if crowd:
+        print('    crowding: ' + json.dumps({k: v for k, v in crowd.items() if k not in ('closest', 'magnets')}))
     for a in asks:
         a.pop('_vec', None)
         a.pop('_cend', None)
-    score = dict(cues=rows, asks=asks, glow=glow, strict4d=strict, strict4d_at_once=at_once,
+    score = dict(cues=rows, asks=asks, crowd=crowd, glow=glow, strict4d=strict, strict4d_at_once=at_once,
                  mt=int(r['mtc'][-1]) if head['version'] >= 3 else 0)
     print('LABSCORE ' + json.dumps(score))
     return score

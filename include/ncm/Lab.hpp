@@ -177,7 +177,8 @@ public:
     }
     // Right or wrong for what was just done (+1 good, -1 bad), brain-wide; only while learning.
     void feedback(float signal) { if (learning_) m_->feedback(signal); }
-    void setLearning(bool on) { learning_ = on; } // diagnostic: pause learning, keep the mode
+    void setLearning(bool on) { learning_ = on; }
+    bool learning() const { return learning_; } // diagnostic: pause learning, keep the mode
     double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
     const NeuralCellularMatrix& matrix() const { return *m_; }
     // Save or restore this session's brain and clocks (one brain across runs).
