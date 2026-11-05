@@ -166,6 +166,14 @@ struct LearningParams {
     // (good = +1, bad = -1) changes every learned link between two traced channels by
     // feedback_rate x signal x (their traces): good keeps what led to the answer, bad weakens it.
     float feedback_tau = 0.0f;
+    // Predictive learning (predictive > 0; replaces "fire together, wire together"): every voxel
+    // channel predicts its firing from what its sources did a moment before, through its learned
+    // links (pred = predictive_gain x sum W x earlier source activity), and each link changes only by
+    // the error: dW = rate x predictive x (fired - predicted) x earlier source activity. What is
+    // already predicted is not learned again; links that predict firing that does not come are
+    // weakened, including in cells that stay silent. Budgets and consolidation stay as they are.
+    float predictive = 0.0f;
+    float predictive_gain = 1.0f;
     float feedback_rate = 0.02f;
     // Field roles: the Memory field holds vocabulary (each word on its own), the other fields hold
     // what happens between words. At every word boundary (a space, or input after a pause) the

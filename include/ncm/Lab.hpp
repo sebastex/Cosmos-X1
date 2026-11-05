@@ -1,4 +1,7 @@
 #pragma once
+#include <chrono>
+#include <cstdlib>
+#include <string>
 // Shared machinery for memory experiments (Stage 1 tests): driving a matrix with text,
 // surprise-gated learning, and comparing activity patterns.
 
@@ -74,11 +77,15 @@ public:
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
 
+        auto t0 = Clock::now();
         m_->step1D();
+        lap(0, t0);
         const LevelScheduler::Tick t = clock_.advance();
         if (t.sheet) {
             m_->step2D();
+            lap(1, t0);
             if (learning_ && allowLearning) m_->learn2D(lastModulator_);
+            lap(2, t0);
         }
         if (monitor_) {
             monitorEvent_ = Monitor::Event{};
@@ -92,6 +99,7 @@ public:
         if (t.voxel) {
             m_->setTick4D(t.fourD);
             m_->step3D();
+            lap(t.fourD ? 4 : 3, t0);
             if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) m_->predictSurprise();
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
@@ -102,6 +110,7 @@ public:
                 m_->learn(modulator);
                 lastModulator_ = modulator;
             }
+            lap(5, t0);
         }
         if (monitor_) {
             monitorEvent_.tick = clock_.ticks1D();
@@ -177,6 +186,21 @@ public:
     }
     // Right or wrong for what was just done (+1 good, -1 bad), brain-wide; only while learning.
     void feedback(float signal) { if (learning_) m_->feedback(signal); }
+    // NCM_PROFILE=1: where the time goes (seconds per part of a tick), printed by profileReport().
+    using Clock = std::chrono::steady_clock;
+    void lap(int part, Clock::time_point& t0) {
+        if (!profile_) return;
+        const auto now = Clock::now();
+        prof_[part] += std::chrono::duration<double>(now - t0).count();
+        t0 = now;
+    }
+    std::string profileReport() const {
+        if (!profile_) return "";
+        const char* names[] = {"1D step", "2D step", "2D learn", "3D step", "3D step with 4D", "3D learn"};
+        std::string s = "PROFILE";
+        for (int k = 0; k < 6; ++k) s += std::string(" ") + names[k] + "=" + std::to_string(prof_[k]);
+        return s + "\n";
+    }
     void setLearning(bool on) { learning_ = on; }
     bool learning() const { return learning_; } // diagnostic: pause learning, keep the mode
     double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
@@ -210,6 +234,8 @@ public:
 private:
     Config cfg_;
     bool learning_;
+    bool profile_ = std::getenv("NCM_PROFILE") && std::atoi(std::getenv("NCM_PROFILE")) > 0;
+    double prof_[6] = {};
     bool silenceSuppressed_;
     std::unique_ptr<NeuralCellularMatrix> m_;
     CharacterCodebook codebook_;

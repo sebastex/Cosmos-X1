@@ -206,6 +206,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"join_gain", &c.learning.join_gain},
         {"protect", &c.learning.protect},
         {"feedback_tau", &c.learning.feedback_tau},
+        {"predictive", &c.learning.predictive},
+        {"predictive_gain", &c.learning.predictive_gain},
         {"feedback_rate", &c.learning.feedback_rate},
         {"field_roles", &c.learning.field_roles},
         {"channel_balance", &c.learning.channel_balance},
@@ -435,6 +437,16 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"shin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
                   "soma=1", "compare=1", "compare_gain=2"}},                                    // Resh + attention to what does not fit
+        // Predictive learning (2026-11-05): links change by the error of what they predicted.
+        {"tav", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                 "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                 "soma=1", "predictive=1"}},                                                    // Vav, learning by prediction error
+        {"tav2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                  "soma=1", "predictive=4"}},                                                   // Tav, learning 4x faster
+        {"tav3", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                  "soma=1", "predictive=1", "predictive_gain=0.5"}},                            // Tav, predictions counted at half
         // Learning from right and wrong (2026-10-29): a brain-wide good/bad signal after an answer.
         {"chet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "soma=1", "feedback_tau=40"}},                                                // Alef + right and wrong

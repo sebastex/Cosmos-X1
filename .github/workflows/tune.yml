@@ -1,0 +1,38 @@
+# The tuning layer (tools/tune/tune.sh): on several machines at once (GitHub hands out different
+# CPUs), find the fastest way to run the same brain - threads, pinning, waiting, build (LTO,
+# profile-guided, clang), two brains per machine - keeping only settings whose brain fingerprint is
+# identical to the plain build's.
+# Start: gh workflow run tune.yml --ref cosmos-pharmakon
+name: tune
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Pharmakon variant to time
+        default: "vav"
+      machines:
+        description: How many machines to tune on, as a list
+        default: "[1,2,3,4]"
+permissions:
+  contents: read
+jobs:
+  tune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: ${{ fromJSON(inputs.machines) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tune
+        env:
+          VARIANT: ${{ inputs.variant }}
+        run: |
+          bash tools/tune/tune.sh > tune_${{ matrix.machine }}.json
+          cat tune_${{ matrix.machine }}.json | head -30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tune-${{ matrix.machine }}
+          path: tune_${{ matrix.machine }}.json

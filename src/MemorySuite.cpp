@@ -2169,11 +2169,17 @@ int runScriptTest(const Config& cfg) {
     return 0;
     };
     if (int r = run(s)) return r;
+    std::fputs(s.profileReport().c_str(), stdout);
     std::fputs(s.matrix().probeReport().c_str(), stdout);
     std::printf("  microtubule reductions: %llu in %zu microtubules\n",
                 (unsigned long long)s.matrix().microtubuleCollapses(), s.matrix().microtubules());
     if (s.matrix().somaticOn())
         std::printf("  somatic network reductions: %llu\n", (unsigned long long)s.matrix().somaticReductions());
+    if (const char* h = std::getenv("NCM_HASH"); h && std::atoi(h) > 0) { // the brain's fingerprint
+        StateFile st{StateFile::Fingerprint{}};
+        s.state(st);
+        std::printf("BRAINHASH %016llx\n", (unsigned long long)st.hash);
+    }
     if (const char* out = std::getenv("NCM_STATE_OUT"); out && *out) {
         StateFile st(out, true);
         s.state(st);

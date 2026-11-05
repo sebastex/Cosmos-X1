@@ -188,6 +188,30 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
     return change;
 }
 
+// Predictive learning: each link changes by the error of the channel it feeds (fired minus
+// predicted) times what its source did a moment before; growth is bounded as in hebbianBlock.
+template <uint32_t C>
+inline double predictiveBlock(float* W, const float* err, const float* prePrev, float rate, const float* preRoom,
+                              float linkMax) {
+    double change = 0.0;
+    for (uint32_t a = 0; a < C; ++a) {
+        const float e = err[a];
+        if (e == 0.0f) continue;
+        float* row = W + size_t(a) * C;
+        for (uint32_t b = 0; b < C; ++b) {
+            const float x = prePrev[b];
+            if (x == 0.0f) continue;
+            const float dw = e * x;
+            float grow = preRoom ? preRoom[b] : 1.0f;
+            if (linkMax > 0.0f) grow *= std::max(0.0f, 1.0f - row[b] / linkMax);
+            const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
+            change += std::fabs(updated - row[b]);
+            row[b] = updated;
+        }
+    }
+    return change;
+}
+
 inline bool anyActive(const float* a, const float* b, uint32_t n) {
     for (uint32_t c = 0; c < n; ++c)
         if (a[c] != 0.0f || b[c] != 0.0f) return true;
@@ -1626,7 +1650,31 @@ void NeuralCellularMatrix::learn(float modulator) {
         const size_t v = size_t(vi);
         const float* pi = post + v * C3;
         const float* qi = useOrderTrace ? orderTrace3_.data() + v * C3 : prev + v * C3;
-        if (!anyActive(pi, qi, C3)) continue; // only active cells change their incoming connections
+        const bool predictive = cfg_.learning.predictive > 0.0f;
+        // Hebbian: only active cells change their incoming connections. Predictive: a silent cell
+        // learns too when its links predicted firing that did not come.
+        float err[C3] = {};
+        if (predictive) {
+            const bool learn4DNow = !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f;
+            float pred[C3] = {};
+            bool any = false;
+            forEachLearnedBlock(v, [&](float* block, size_t src) {
+                const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
+                if (isSilent(sq, C3)) return;
+                any = true;
+                for (uint32_t a = 0; a < C3; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) pred[a] += block[size_t(a) * C3 + b] * sq[b];
+            }, learn4DNow);
+            const float g = cfg_.learning.predictive_gain;
+            bool wrong = false;
+            for (uint32_t a = 0; a < C3; ++a) {
+                err[a] = pi[a] - g * pred[a];
+                wrong = wrong || std::fabs(err[a]) > 1e-6f;
+            }
+            if (!any || !wrong) continue; // nothing to learn from: no earlier input, or all predicted
+        } else if (!anyActive(pi, qi, C3)) {
+            continue;
+        }
         if (memoryPause_ && v / Vf_ == 1) continue; // field roles: the Memory field pauses across a word boundary
         ++learners;
 
@@ -1661,57 +1709,55 @@ void NeuralCellularMatrix::learn(float modulator) {
             const float f = fired > 0.0f ? std::clamp(explained / fired, 0.0f, 1.0f) : 0.0f;
             vrate = rate * std::max(0.0f, 1.0f - cfg_.familiarity * f);
         }
-        // Inhibitory connections and self-persistence are not visited: they stay fixed.
+        // One pass over the learned blocks does what used to be separate passes (each block's
+        // update depends only on itself, so the result is the same, number for number):
+        //   Hebbian learning (inhibitory connections and self-persistence are not visited: they stay
+        //   fixed; the 4D-lattice links learn on 4D steps), then held clues through the same links
+        //   (what a source fired a few words ago, its slow trace above its present firing, before
+        //   what this voxel fires now), then the row totals for synaptic scaling and the
+        //   consolidated share that protection keeps.
+        const bool learn4D = !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f;
+        const float* hBegin = H_.data();
+        const float* hEnd = H_.data() + H_.size();
+        const bool ctxOn = !ctx3_.empty() && cfg_.learning.context_learn > 0.0f;
+        const float kc = vrate * cfg_.learning.context_learn;
+        const float prot = consolidate > 0.0f ? std::clamp(cfg_.learning.protect, 0.0f, 1.0f) : 0.0f;
+        float total[C3] = {};
+        float kept[C3] = {};
         forEachLearnedBlock(v, [&](float* block, size_t src) {
-            const float* sp = post + src * C3;
-            const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
-            change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate, lambda, oja, hetero,
-                                        preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
-        }, !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f); // the 4D-lattice links learn on 4D steps
-
-        // Held clues learn through the same links: what a source fired a few words ago (its slow
-        // trace above its present firing) before what this voxel fires now.
-        if (!ctx3_.empty() && cfg_.learning.context_learn > 0.0f) {
-            const float kc = vrate * cfg_.learning.context_learn;
-            forEachLearnedBlock(v, [&](float* block, size_t src) {
-                const float* cs = ctx3_.data() + src * C3;
-                if (isFaint(cs)) return;
+            const bool is4D = lattice_ && block >= hBegin && block < hEnd;
+            if (!is4D || learn4D) {
                 const float* sp = post + src * C3;
-                for (uint32_t a = 0; a < C3; ++a) {
-                    if (pi[a] <= 0.0f) continue;
-                    for (uint32_t b = 0; b < C3; ++b) {
-                        const float d = cs[b] - sp[b];
-                        if (d <= 0.0f) continue;
-                        float& wv = block[size_t(a) * C3 + b];
-                        const float room = linkMax > 0.0f ? std::max(0.0f, 1.0f - wv / linkMax) : 1.0f;
-                        wv += kc * pi[a] * d * room;
+                const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
+                if (predictive)
+                    change += predictiveBlock<C3>(block, err, sq, vrate * cfg_.learning.predictive,
+                                                  preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                else
+                    change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate, lambda, oja, hetero,
+                                                preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                const float* cs = ctxOn ? ctx3_.data() + src * C3 : nullptr;
+                if (cs && !isFaint(cs)) {
+                    for (uint32_t a = 0; a < C3; ++a) {
+                        if (pi[a] <= 0.0f) continue;
+                        for (uint32_t b = 0; b < C3; ++b) {
+                            const float d = cs[b] - sp[b];
+                            if (d <= 0.0f) continue;
+                            float& wv = block[size_t(a) * C3 + b];
+                            const float room = linkMax > 0.0f ? std::max(0.0f, 1.0f - wv / linkMax) : 1.0f;
+                            wv += kc * pi[a] * d * room;
+                        }
                     }
                 }
-            }, !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f);
-        }
-
-        // Synaptic scaling: cap each output channel's total learned excitatory input.
-        // Oja's term alone cannot bound a cell whose output saturates and competes.
-        float total[C3] = {};
-        auto addRows = [&](const float* block) {
+            }
+            // Synaptic scaling caps each output channel's total learned excitatory input (Oja's term
+            // alone cannot bound a cell whose output saturates and competes); protecting what is
+            // learned keeps the consolidated share of each link out of the scaling.
             for (uint32_t a = 0; a < C3; ++a)
                 for (uint32_t b = 0; b < C3; ++b) total[a] += block[size_t(a) * C3 + b];
-        };
-        auto scaleRows = [&](float* block, const float* factor) {
-            for (uint32_t a = 0; a < C3; ++a)
-                if (factor[a] < 1.0f)
-                    for (uint32_t b = 0; b < C3; ++b) block[size_t(a) * C3 + b] *= factor[a];
-        };
-        forEachLearnedBlock(v, [&](float* block, size_t) { addRows(block); });
-        // Protecting what is learned: the consolidated share of each link is kept out of the
-        // scaling, as long as the kept shares alone fit the budget.
-        const float prot = consolidate > 0.0f ? std::clamp(cfg_.learning.protect, 0.0f, 1.0f) : 0.0f;
-        float kept[C3] = {};
-        if (prot > 0.0f)
-            forEachLearnedBlock(v, [&](float* block, size_t) {
+            if (prot > 0.0f)
                 if (const float* sl = slowOf(block))
                     for (size_t i = 0; i < size_t(C3) * C3; ++i) kept[i / C3] += prot * std::min(block[i], sl[i]);
-            });
+        });
         float factor[C3];
         bool scale = false, keep[C3];
         for (uint32_t a = 0; a < C3; ++a) {
@@ -1720,40 +1766,49 @@ void NeuralCellularMatrix::learn(float modulator) {
             scale = scale || factor[a] < 1.0f;
             scaled += double(total[a]) * (1.0 - double(factor[a]));
         }
-        if (scale && prot > 0.0f)
-            forEachLearnedBlock(v, [&](float* block, size_t) {
-                const float* sl = slowOf(block);
-                for (size_t i = 0; i < size_t(C3) * C3; ++i) {
-                    const uint32_t a = uint32_t(i / C3);
-                    if (factor[a] >= 1.0f) continue;
-                    const float k = keep[a] && sl ? prot * std::min(block[i], sl[i]) : 0.0f;
-                    block[i] = k + (block[i] - k) * factor[a];
-                }
-            });
-        else if (scale)
-            forEachLearnedBlock(v, [&](float* block, size_t) { scaleRows(block, factor); });
-
-        // Consolidation: the slow part follows the fast part upward, then its own budget.
-        if (consolidate > 0.0f) {
+        // Scaling, then consolidation (the slow part follows the fast part upward), in one pass.
+        if (scale || consolidate > 0.0f) {
             float slowTotal[C3] = {};
             forEachLearnedBlock(v, [&](float* block, size_t) {
-                float* slow = slowOf(block);
-                if (!slow) return; // blocks without a slow part (learned cue route)
-                for (size_t i = 0; i < size_t(C3) * C3; ++i) {
-                    if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
-                    slowTotal[i / C3] += slow[i];
+                if (scale) {
+                    if (prot > 0.0f) {
+                        const float* sl = slowOf(block);
+                        for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                            const uint32_t a = uint32_t(i / C3);
+                            if (factor[a] >= 1.0f) continue;
+                            const float k = keep[a] && sl ? prot * std::min(block[i], sl[i]) : 0.0f;
+                            block[i] = k + (block[i] - k) * factor[a];
+                        }
+                    } else {
+                        for (uint32_t a = 0; a < C3; ++a)
+                            if (factor[a] < 1.0f)
+                                for (uint32_t b = 0; b < C3; ++b) block[size_t(a) * C3 + b] *= factor[a];
+                    }
+                }
+                if (consolidate > 0.0f) {
+                    float* slow = slowOf(block);
+                    if (!slow) return; // blocks without a slow part (learned cue route)
+                    for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                        if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
+                        slowTotal[i / C3] += slow[i];
+                    }
                 }
             });
-            float slowFactor[C3];
-            bool slowScale = false;
-            for (uint32_t a = 0; a < C3; ++a) {
-                slowFactor[a] = slowTotal[a] > slowBudget ? slowBudget / slowTotal[a] : 1.0f;
-                slowScale = slowScale || slowFactor[a] < 1.0f;
+            if (consolidate > 0.0f) {
+                float slowFactor[C3];
+                bool slowScale = false;
+                for (uint32_t a = 0; a < C3; ++a) {
+                    slowFactor[a] = slowTotal[a] > slowBudget ? slowBudget / slowTotal[a] : 1.0f;
+                    slowScale = slowScale || slowFactor[a] < 1.0f;
+                }
+                if (slowScale)
+                    forEachLearnedBlock(v, [&](float* block, size_t) {
+                        if (float* sb = slowOf(block))
+                            for (uint32_t a = 0; a < C3; ++a)
+                                if (slowFactor[a] < 1.0f)
+                                    for (uint32_t b = 0; b < C3; ++b) sb[size_t(a) * C3 + b] *= slowFactor[a];
+                    });
             }
-            if (slowScale)
-                forEachLearnedBlock(v, [&](float* block, size_t) {
-                    if (float* sb = slowOf(block)) scaleRows(sb, slowFactor);
-                });
         }
     }
     // Assembly inhibition: for every voxel (silent ones too) and long-range partner: a partner
@@ -1996,7 +2051,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(sheetSkip_, "sheet flags");
     st.vec(orderTrace3_, "order trace");
     st.vec(chanTheta3_, "channel thresholds");
-    st.value(learnStats_);
+    if (!st.hashing) st.value(learnStats_); // a diagnostic total (its summing order varies with threads)
     st.value(modulator_);
     st.value(fieldGain_);
     st.vec(cellGain_, "4D cell gains");
