@@ -106,7 +106,9 @@ public:
         if (monitor_) {
             monitorEvent_.tick = clock_.ticks1D();
             // While only listening, the record shows its surprise (nothing is being learned from it).
-            monitorEvent_.modulator = !allowLearning && (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) ? m_->lastSurprise() : lastModulator_;
+            monitorEvent_.modulator = !allowLearning && cfg_.compare > 0.5f ? m_->somaticMismatch()
+                                     : !allowLearning && (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) ? m_->lastSurprise()
+                                                                                                                      : lastModulator_;
             monitor_->record(*m_, monitorEvent_);
         }
         heard_ = 0;

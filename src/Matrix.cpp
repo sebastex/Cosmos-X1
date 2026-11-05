@@ -398,7 +398,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.soma > 0.5f) { // the somatic network: one node per 4D cell (per field without the lattice)
         std::vector<uint32_t> node(V_);
         for (size_t v = 0; v < V_; ++v) node[v] = uint32_t(lattice_ ? cell4Of(v) : v / Vf_);
-        soma_.init(V_, C3, std::move(node), uint32_t(lattice_ ? cellGain_.size() : kFields), cfg_.seed);
+        soma_.init(V_, C3, std::move(node), uint32_t(lattice_ ? cellGain_.size() : kFields), cfg_.seed, cfg_.compare > 0.5f);
     }
     lrTarget_.resize(V_ * K);
 
@@ -1343,7 +1343,7 @@ void NeuralCellularMatrix::step3D() {
             if (!isSilent(s + v * C3, C3)) mtActive_.push_back(uint32_t(v));
         mt3_.step(s, mtActive_, mtParams());
     }
-    if (soma_.on()) soma_.step(s3_.cur.data(), somaParams()); // the somatic network senses the new state
+    if (soma_.on()) soma_.step(s3_.cur.data(), somaParams(), sensoryOn_); // the somatic network senses the new state
 }
 
 template <class Fn>
@@ -1443,6 +1443,7 @@ SomaticNetwork::Params NeuralCellularMatrix::somaParams() const {
     p.gain = cfg_.soma_gain, p.quiet = cfg_.soma_quiet, p.tau = cfg_.soma_tau, p.drive = cfg_.soma_drive;
     p.couple = cfg_.soma_couple, p.bias = cfg_.soma_bias, p.threshold = cfg_.soma_threshold, p.decay = cfg_.soma_decay;
     p.mode = int(cfg_.soma_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
+    p.compare = cfg_.compare, p.compareTau = cfg_.compare_tau, p.compareGain = cfg_.compare_gain;
     return p;
 }
 

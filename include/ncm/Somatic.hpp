@@ -31,11 +31,19 @@ public:
         float decay = 0.9f;      // per 3D step, how long a settled decision lasts
         int mode = 0;
         uint64_t stream = 0;
+        float compare = 0.0f;     // > 0: compare what is heard with what was expected (see mismatch())
+        float compareTau = 2.0f;  // 3D steps: how fast the held expectation follows the brain while it listens
+        float compareGain = 0.0f; // how much "does not fit" raises the push to what is different
     };
-    void init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed);
+    void init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare = false);
     bool on() const { return !nodeOf_.empty(); }
     // After every 3D step: update expectations, sense the differences, evolve and maybe reduce.
-    void step(const float* state, const Params& p);
+    void step(const float* state, const Params& p, bool hearing = false);
+    // Comparing (compare): while nothing is heard every cell holds what it is now doing beyond its
+    // usual background - what it expects. While something is heard each node measures how well its
+    // cells' firing (beyond the background) matches what they held; over the whole brain (weighted by
+    // how much each node fires) that is one fit in [-1, 1]. mismatch() = (1 - fit) / 2, 0..1.
+    float mismatch() const { return mismatch_; }
     // Into a cell's input (relative to its own mean positive drive, so it shapes, never creates).
     void addPush(size_t cell, const float* state, float* in, const Params& p) const;
     void state(StateFile& st);
@@ -51,6 +59,9 @@ private:
     std::vector<float> evidence_;         // per node: its cells' difference, last step
     float spread_ = 1.0f, meanExpect_ = 0.0f, tau_ = 0.0f;
     std::vector<float> cellDiff_;         // scratch: per cell, summed positive difference
+    bool compare_ = false;
+    std::vector<float> guess_;            // per cell channel: what it held while listening (compare)
+    float mismatch_ = 0.0f;
 };
 
 } // namespace ncm

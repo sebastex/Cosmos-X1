@@ -429,6 +429,12 @@ struct Config {
     float soma_threshold = 3.0f;
     float soma_decay = 0.9f;
     float soma_mode = 0.0f;
+    // Comparing (needs soma): every cell holds what it is doing while it listens; while it hears, the
+    // somatic network measures how well the brain's firing fits what it held: one brain-wide mismatch.
+    // compare_gain: how much a mismatch raises the somatic push (attention to what does not fit).
+    float compare = 0.0f;
+    float compare_tau = 2.0f;
+    float compare_gain = 0.0f;
     // Pattern separation at storage: while the matrix is encoding (modulator > 0), the input of
     // each voxel channel in the Memory, Reasoning and Output fields is scaled by
     // max(0, 1 - separation * M * load), where load is the share of that channel's learned-input

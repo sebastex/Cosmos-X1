@@ -258,6 +258,9 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"mt_orch_couple", &c.mt_orch_couple},
         {"mt_orch_threshold", &c.mt_orch_threshold},
         {"soma", &c.soma},
+        {"compare", &c.compare},
+        {"compare_tau", &c.compare_tau},
+        {"compare_gain", &c.compare_gain},
         {"soma_gain", &c.soma_gain},
         {"soma_quiet", &c.soma_quiet},
         {"soma_tau", &c.soma_tau},
@@ -425,6 +428,13 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"qof", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8",
                  "predict_watch=1"}},                                                                  // Dalet, watching its predictions
+        // Comparing (2026-11-05): the somatic network measures how well what is heard fits what was expected.
+        {"resh", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                  "soma=1", "compare=1"}},                                                      // Vav, comparing (measured only)
+        {"shin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                  "soma=1", "compare=1", "compare_gain=2"}},                                    // Resh + attention to what does not fit
         // Learning from right and wrong (2026-10-29): a brain-wide good/bad signal after an answer.
         {"chet", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "soma=1", "feedback_tau=40"}},                                                // Alef + right and wrong

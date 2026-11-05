@@ -7,7 +7,7 @@
 
 namespace ncm {
 
-void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed) {
+void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare) {
     channels_ = channels;
     nodes_ = nodes;
     seed_ = seed;
@@ -19,13 +19,47 @@ void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t>
     held_.assign(nodes, 0.0f);
     evidence_.assign(nodes, 0.0f);
     cellDiff_.assign(cells, 0.0f);
+    compare_ = compare;
+    if (compare_) guess_.assign(cells * channels, 0.0f);
 }
 
-void SomaticNetwork::step(const float* state, const Params& p) {
+void SomaticNetwork::step(const float* state, const Params& p, bool hearing) {
     ++step_;
     const size_t cells = nodeOf_.size();
     const uint32_t C = channels_;
     const float k = 1.0f / std::max(1.0f, p.tau);
+    if (compare_) { // compare with what was expected (against the background as it was before this step)
+        std::vector<double> dot(nodes_, 0.0), nn(nodes_, 0.0), ng(nodes_, 0.0);
+        const float kg = 1.0f / std::max(1.0f, p.compareTau);
+        for (size_t v = 0; v < cells; ++v) { // in order, so the sums are the same every run
+            const float* x = state + v * C;
+            const float* e = expect_.data() + v * C;
+            float* g = guess_.data() + v * C;
+            const uint32_t m = nodeOf_[v];
+            for (uint32_t c = 0; c < C; ++c) {
+                const float d = x[c] - e[c];
+                if (hearing) {
+                    dot[m] += double(d) * g[c];
+                    nn[m] += double(d) * d;
+                    ng[m] += double(g[c]) * g[c];
+                } else {
+                    g[c] += kg * (d - g[c]); // listening: hold what it is doing now
+                }
+            }
+        }
+        if (hearing) {
+            double fit = 0.0, w = 0.0;
+            for (uint32_t m = 0; m < nodes_; ++m) {
+                if (nn[m] <= 0.0 || ng[m] <= 0.0) continue;
+                const double wm = std::sqrt(nn[m]);
+                fit += wm * dot[m] / (wm * std::sqrt(ng[m]));
+                w += wm;
+            }
+            mismatch_ = w > 0.0 ? float((1.0 - fit / w) / 2.0) : 0.0f;
+        } else {
+            mismatch_ = 0.0f;
+        }
+    }
     // Sense: each cell's firing above what it usually does (before the expectation learns this step).
     double sq = 0.0, ex = 0.0;
 #pragma omp parallel for schedule(static) reduction(+ : sq, ex)
@@ -110,10 +144,11 @@ void SomaticNetwork::addPush(size_t cell, const float* state, float* in, const P
     const float* x = state + cell * C;
     const float* e = expect_.data() + cell * C;
     const float held = held_[nodeOf_[cell]];
+    const float gain = p.gain * (1.0f + p.compareGain * mismatch_); // what does not fit gets more attention
     for (uint32_t c = 0; c < C; ++c) {
         const float z = std::max(0.0f, x[c] - e[c]) / spread_;                // different from usual
         const float usual = e[c] / (e[c] + meanExpect_ + 1e-6f);               // 0..1: how much is background
-        in[c] += own * (p.gain * held * std::min(z, 3.0f) - p.quiet * usual);
+        in[c] += own * (gain * held * std::min(z, 3.0f) - p.quiet * usual);
     }
 }
 
@@ -130,6 +165,10 @@ void SomaticNetwork::state(StateFile& st) {
     st.vec(a1r_, "somatic nodes");
     st.vec(a1i_, "somatic nodes");
     st.vec(held_, "somatic nodes");
+    if (compare_) { // only brains that compare (older brains load unchanged)
+        st.vec(guess_, "somatic held expectations");
+        st.value(mismatch_);
+    }
 }
 
 } // namespace ncm

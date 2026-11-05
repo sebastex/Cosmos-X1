@@ -154,6 +154,7 @@ public:
     std::string probeReport() const;
     uint64_t microtubuleCollapses() const { return mt1_.collapses() + mt2_.collapses() + mt3_.collapses(); }
     uint64_t somaticReductions() const { return soma_.reductions(); }
+    float somaticMismatch() const { return soma_.mismatch(); }
     bool somaticOn() const { return soma_.on(); }
     size_t microtubules() const { return mt1_.tubes() + mt2_.tubes() + mt3_.tubes(); }
     size_t memoryBytes() const;
