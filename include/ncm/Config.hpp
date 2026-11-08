@@ -172,6 +172,14 @@ struct LearningParams {
     // the error: dW = rate x predictive x (fired - predicted) x earlier source activity. What is
     // already predicted is not learned again; links that predict firing that does not come are
     // weakened, including in cells that stay silent. Budgets and consolidation stay as they are.
+    // Learning at each cell's own level (level_learn > 0; needs the 4D lattice): a 4D cell whose
+    // voxels fire faintly but clearly (far from the senses they fire about 10x weaker, yet each
+    // slice alone tells the words apart) learns as much as a loud one. Each 4D cell's firing
+    // level is the mean strongest channel of its firing voxels; a link learns at
+    // rate x min(level_learn, (brain level / target level) x (brain level / source level)), never
+    // below 1x. Nothing fires louder; only how much a link changes is measured against the cells'
+    // own levels. 0 = off.
+    float level_learn = 0.0f;
     float predictive = 0.0f;
     float predictive_gain = 1.0f;
     float feedback_rate = 0.02f;

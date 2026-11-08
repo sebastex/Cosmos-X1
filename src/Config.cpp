@@ -207,6 +207,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"protect", &c.learning.protect},
         {"feedback_tau", &c.learning.feedback_tau},
         {"predictive", &c.learning.predictive},
+        {"level_learn", &c.learning.level_learn},
         {"predictive_gain", &c.learning.predictive_gain},
         {"feedback_rate", &c.learning.feedback_rate},
         {"field_roles", &c.learning.field_roles},
@@ -437,6 +438,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"shin", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                   "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
                   "soma=1", "compare=1", "compare_gain=2"}},                                    // Resh + attention to what does not fit
+        // Learning at each cell's own level (2026-11-06): the faint deep slices learn as much as the loud ones.
+        {"vavL", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
+                    "soma=1", "level_learn=30"}},                                               // Vav, learning at each cell's level
+        {"alefL", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "level_learn=30"}},                                                // Alef, learning at each cell's level
         // Predictive learning (2026-11-05): links change by the error of what they predicted.
         {"tav", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",

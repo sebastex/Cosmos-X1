@@ -1641,6 +1641,33 @@ void NeuralCellularMatrix::learn(float modulator) {
     // after j. The antisymmetric form cancels the shared current step.
     const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
     auto avgOf = [&](size_t cell) { return cov * average3_[cell]; };
+    // Learning at each cell's own level: per 4D cell, how much louder the brain fires than it.
+    std::vector<float> levelK;
+    const float levelMax = cfg_.learning.level_learn;
+    if (levelMax > 0.0f && lattice_) {
+        const size_t cells = cellGain_.size();
+        std::vector<double> sum(cells, 0.0);
+        std::vector<uint32_t> cnt(cells, 0);
+        double all = 0.0;
+        uint64_t allN = 0;
+        for (size_t u = 0; u < V_; ++u) {
+            const float* c = post + u * C3;
+            float m = 0.0f;
+            for (uint32_t k = 0; k < C3; ++k) m = std::max(m, c[k]);
+            if (m <= 0.0f) continue;
+            sum[gainOf(u)] += m;
+            ++cnt[gainOf(u)];
+            all += m;
+            ++allN;
+        }
+        const double brain = allN ? all / double(allN) : 0.0;
+        levelK.assign(cells, 1.0f);
+        for (size_t k = 0; k < cells; ++k)
+            if (cnt[k] && brain > 0.0) levelK[k] = float(std::max(1.0, brain / (sum[k] / cnt[k])));
+    }
+    auto levelOf = [&](size_t a, size_t b) {
+        return levelK.empty() ? 1.0f : std::min(levelMax, std::max(1.0f, levelK[gainOf(a)] * levelK[gainOf(b)]));
+    };
 
     const int64_t voxels = int64_t(V_);
     double change = 0.0, scaled = 0.0;
@@ -1727,14 +1754,15 @@ void NeuralCellularMatrix::learn(float modulator) {
         forEachLearnedBlock(v, [&](float* block, size_t src) {
             const bool is4D = lattice_ && block >= hBegin && block < hEnd;
             if (!is4D || learn4D) {
+                const float lv = levelOf(v, src);
                 const float* sp = post + src * C3;
                 const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
                 if (predictive)
                     change += predictiveBlock<C3>(block, err, sq, vrate * cfg_.learning.predictive,
                                                   preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
                 else
-                    change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate, lambda, oja, hetero,
-                                                preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                    change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate * lv, lambda,
+                                                oja, hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
                 const float* cs = ctxOn ? ctx3_.data() + src * C3 : nullptr;
                 if (cs && !isFaint(cs)) {
                     for (uint32_t a = 0; a < C3; ++a) {
@@ -1744,7 +1772,7 @@ void NeuralCellularMatrix::learn(float modulator) {
                             if (d <= 0.0f) continue;
                             float& wv = block[size_t(a) * C3 + b];
                             const float room = linkMax > 0.0f ? std::max(0.0f, 1.0f - wv / linkMax) : 1.0f;
-                            wv += kc * pi[a] * d * room;
+                            wv += kc * lv * pi[a] * d * room;
                         }
                     }
                 }
