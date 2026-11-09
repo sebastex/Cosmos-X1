@@ -1,0 +1,53 @@
+# Probe grown ladder brains slice by slice (tools/ladder/probe.py): restore each saved brain, show
+# 100 learned words twice and cue 48 of them, and measure recognition and recall in every slice on
+# its own scale.
+# Start: gh workflow run probe.yml --ref cosmos-pharmakon -f lanes='[{"lane":"alef-3004","run":"123"}]'
+name: probe
+on:
+  workflow_dispatch:
+    inputs:
+      lanes:
+        description: 'Brains, as a list of {"lane": "<variant>-<seed>", "run": "<run id that saved it>"}'
+        required: true
+      stage:
+        description: Words the brains have learned
+        default: "1000"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        b: ${{ fromJSON(inputs.lanes) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh && pip install -q numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: ladder-brain-${{ matrix.b.lane }}
+          run-id: ${{ matrix.b.run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Probe
+        env:
+          LANE: ${{ matrix.b.lane }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          zstd -d -q --rm brain.bin.zst
+          VARIANT=${LANE%-*}; SEED=${LANE##*-}
+          python3 tools/ladder/probe.py script ${{ inputs.stage }} > items.json
+          python3 -c "import json; print(json.load(open('items.json'))['script'])" > probe.txt
+          NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=probe.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+            ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED > result.txt
+          rm -f brain.bin
+          python3 tools/ladder/probe.py score monitor/session0.ncmmon items.json > probe_$LANE.json
+          cat probe_$LANE.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-${{ matrix.b.lane }}
+          path: probe_*.json
