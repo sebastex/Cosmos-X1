@@ -444,6 +444,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                     "soma=1", "level_learn=30"}},                                               // Vav, learning at each cell's level
         {"alefL", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "level_learn=30"}},                                                // Alef, learning at each cell's level
+        // The learned slice-to-slice links not (fully) muted while hearing (2026-11-09): they are the
+        // deep slices' main input, so muting them made the deep slices store new words faintly.
+        {"alefE5", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d=0.5"}},                                  // Alef, 4D links half muted while hearing
+        {"alefE0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d=0"}},                                    // Alef, 4D links on while hearing
         // Predictive learning (2026-11-05): links change by the error of what they predicted.
         {"tav", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",
