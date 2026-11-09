@@ -189,6 +189,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"average_tau", &c.learning.average_tau},
         {"encoding_suppression", &c.learning.encoding_suppression},
         {"encoding_suppression_4d", &c.learning.encoding_suppression_4d},
+        {"encoding_suppression_4d_out", &c.learning.encoding_suppression_4d_out},
         {"assembly_inhibition", &c.learning.assembly_inhibition},
         {"assembly_max", &c.learning.assembly_max},
         {"order_tau", &c.learning.order_tau},
@@ -450,6 +451,10 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                     "soma=1", "encoding_suppression_4d=0.5"}},                                  // Alef, 4D links half muted while hearing
         {"alefE0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d=0"}},                                    // Alef, 4D links on while hearing
+        // Both hummed (silence as loud as sound, every cue fell into the same few words). Only the
+        // outward links on while hearing: the deep slices hear, but no learned loop forms.
+        {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Predictive learning (2026-11-05): links change by the error of what they predicted.
         {"tav", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",

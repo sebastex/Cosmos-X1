@@ -304,6 +304,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         }
         hold4Fixed_.assign(V_ * C3, 0.0f);
         hold4Learned_.assign(V_ * C3, 0.0f);
+        if (cfg.learning.encoding_suppression_4d_out >= 0.0f) hold4Out_.assign(V_ * C3, 0.0f);
         const size_t A = N_ / B_;
         cellGain_.assign(A * A * A * kFields, 1.0f);
     }
@@ -845,6 +846,10 @@ void NeuralCellularMatrix::step3D() {
     // The learned part of the 4D link is an association too; its scaffold is the input path.
     const float rec4 = 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d, 0.0f, 1.0f) *
                                   std::clamp(modulator_, 0.0f, 1.0f);
+    const bool split4 = !hold4Out_.empty();
+    const float rec4o = split4 ? 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d_out, 0.0f, 1.0f) *
+                                            std::clamp(modulator_, 0.0f, 1.0f)
+                               : rec4;
     const StartingRule& r = cfg_.rule;
     const uint32_t N = N_;
     const uint32_t K = cfg_.long_range_links;
@@ -882,7 +887,7 @@ void NeuralCellularMatrix::step3D() {
             const size_t v = size_t(vi);
             const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
             const uint32_t w = uint32_t(v / Vf_);
-            float fx[C3] = {}, lx[C3] = {};
+            float fx[C3] = {}, lx[C3] = {}, ox[C3] = {};
             float pexc = 0.0f, pinh = 0.0f;
             for (uint32_t k = 0; k < KH; ++k) {
                 const size_t vg = lattice4Partner(x, y, z, w, k);
@@ -900,8 +905,9 @@ void NeuralCellularMatrix::step3D() {
                     addScaled(src, fx, C3, inh * r.lattice_link * latScale_[k]);
                 } else {
                     addScaled(src, fx, C3, r.lattice_link * latScale_[k]);
-                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
-                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, lx, C3, C3, latDir_[k]);
+                    float* to = split4 && vg / Vf_ < w ? ox : lx; // outward: from the slice nearer the senses
+                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, to, C3, C3, latDir_[k]);
+                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, to, C3, C3, latDir_[k]);
                 }
             }
             if (cfg_.lattice_edge_norm > 0.5f) { // edge cells: scale to the full or the average set of links
@@ -912,10 +918,11 @@ void NeuralCellularMatrix::step3D() {
                 }
                 const float ref = cfg_.lattice_edge_norm > 1.5f ? latAvgHave_ : all;
                 const float f = have > 0.0f ? ref / have : 1.0f;
-                for (uint32_t c = 0; c < C3; ++c) fx[c] *= f, lx[c] *= f;
+                for (uint32_t c = 0; c < C3; ++c) fx[c] *= f, lx[c] *= f, ox[c] *= f;
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
             std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
+            if (split4) std::copy(ox, ox + C3, hold4Out_.data() + v * C3);
             if (!ctx3_.empty()) { // held clues reach through the same learned 4D links
                 float cx[C3] = {};
                 for (uint32_t k = 0; k < KH; ++k) {
@@ -1025,6 +1032,10 @@ void NeuralCellularMatrix::step3D() {
             for (uint32_t c = 0; c < C3; ++c) {
                 in[c] += afferentGain * hf[c];
                 pl4[c] += afferentGain * rec4 * hl[c];
+            }
+            if (split4) {
+                const float* ho = hold4Out_.data() + v * C3;
+                for (uint32_t c = 0; c < C3; ++c) pl4[c] += afferentGain * rec4o * ho[c];
             }
         }
         uint32_t gi = 0;
@@ -2085,6 +2096,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(cellGain_, "4D cell gains");
     st.vec(hold4Fixed_, "4D drive");
     st.vec(hold4Learned_, "4D drive");
+    if (!hold4Out_.empty()) st.vec(hold4Out_, "4D outward drive"); // only brains that split it
     st.value(tick4_);
     st.value(memoryPause_);
     st.value(noiseStep_);

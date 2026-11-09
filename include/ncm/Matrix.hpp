@@ -269,7 +269,7 @@ private:
     std::vector<float> latDir_;
     float latAvgHave_ = 0.0f;       // average weight of a voxel's existing 4D links (lattice_edge_norm 2)     // per 4D-lattice offset: direction scale, also for the learned part (as Prime's feedback)
     std::vector<uint32_t> latPerm_; // lattice_scramble: 80 x B^3 shuffles of the place inside a 4D cell
-    AVec<float> hold4Fixed_, hold4Learned_; // per voxel channel: 4D-lattice drive held between 4D steps
+    AVec<float> hold4Fixed_, hold4Learned_, hold4Out_; // per voxel channel: 4D drive held between 4D steps (Out: learned, from w-1)
     std::vector<float> cellGain_;          // gain control per 4D cell
     // Firing probe (NCM_PROBE=1): per voxel this step, the 4D-lattice signal from excitatory and from
     // inhibitory partners, the strongest channel's final input and the firing threshold; and sums

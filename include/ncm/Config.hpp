@@ -98,6 +98,10 @@ struct LearningParams {
     // path between fields, is never suppressed). In the hippocampal model acetylcholine turns
     // down every learned associative pathway and spares only afferent input. 0 = off.
     float encoding_suppression_4d = 0.0f;
+    // The same for the learned links that come from the slice nearer the senses (outward, w-1 to w).
+    // Below 0 = as encoding_suppression_4d. Muting only the links back and sideways lets the deep
+    // slices hear while no learned loop can form between slices.
+    float encoding_suppression_4d_out = -1.0f;
     // Learned competition between memories (assembly inhibition): each long-range link also has a
     // learned inhibitory weight. While memories are written, a partner that fires while this voxel
     // stays silent strengthens its inhibition onto the voxel (they belong to different memories),
