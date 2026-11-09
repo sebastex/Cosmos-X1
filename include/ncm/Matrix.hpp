@@ -129,6 +129,24 @@ public:
     MatrixStats computeStats() const;
     const LearningStats& learningStats() const { return learnStats_; }
     const std::array<float, kFields>& fieldGains() const { return fieldGain_; }
+    // Diagnostic: the gain control of the 4D cells in each w-slice (lattice; Prime: the field's gain).
+    std::array<std::array<float, 3>, kFields> sliceGains() const {
+        std::array<std::array<float, 3>, kFields> out{};
+        for (uint32_t s = 0; s < kFields; ++s) out[s] = {fieldGain_[s], fieldGain_[s], fieldGain_[s]};
+        if (cellGain_.empty()) return out;
+        const size_t per = cellGain_.size() / kFields;
+        for (uint32_t s = 0; s < kFields; ++s) {
+            float lo = 1e9f, hi = -1e9f;
+            double sum = 0.0;
+            for (size_t k = s * per; k < (s + 1) * per; ++k) {
+                lo = std::min(lo, cellGain_[k]);
+                hi = std::max(hi, cellGain_[k]);
+                sum += cellGain_[k];
+            }
+            out[s] = {lo, float(sum / double(per)), hi};
+        }
+        return out;
+    }
     // Total strength of the plastic (learned) part of all connections.
     double totalPlasticStrength() const;
     // Diagnostic: total learned (plastic) drive the pattern `from` would send into the pattern

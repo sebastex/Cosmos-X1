@@ -34,10 +34,10 @@ def script(stage):
     others = sorted(set(ladder.words()[:stage]) - set(targets))
     shown = targets + rng.sample(others, 100 - len(targets))
     rng.shuffle(shown)
-    ops = ['still:1'] + [f'say:{w}:2:40' for w in shown] + ['rest:300'] + [f'say:{w}:2:40' for w in shown] + ['rest:800']
+    ops = ['still:1', 'report:start'] + [f'say:{w}:2:40' for w in shown] + ['rest:300'] + [f'say:{w}:2:40' for w in shown] + ['rest:800']
     for w in targets:
         ops += [f'cue:{pre[w]}:60', 'rest:150']
-    ops.append('still:0')
+    ops += ['report:end', 'still:0']
     return dict(shown=shown, targets=targets, cues=[pre[w] for w in targets], script=';'.join(ops))
 
 
@@ -81,7 +81,7 @@ def score(rec, items):
         unit = lambda m: m / np.maximum(np.linalg.norm(m, axis=-1, keepdims=True), 1e-12)
         na, nb = unit(ca), unit(cb)
         ident = float(((na @ nb.T).argmax(axis=1) == np.arange(nW)).mean())
-        right, margins, energy = 0, [], 0.0
+        right, margins, energy, hits = 0, [], 0.0, []
         for cue, w in zip(items['cues'], items['targets']):
             if cue not in by_cue:
                 continue
@@ -92,9 +92,16 @@ def score(rec, items):
             other = np.max(np.delete(sims, t))
             margins.append(float(sims[t] - other))
             right += sims[t] > other
+            if sims[t] > other:
+                hits.append(cue)
         out['slices'].append(dict(slice=s, id=round(ident, 3), recall=round(right / max(1, len(margins)), 3),
                                   margin=round(float(np.mean(margins)) if margins else 0.0, 4),
-                                  word_energy=round(float((sb ** 2).sum()), 2), cue_energy=round(energy, 2)))
+                                  word_energy=round(float((sb ** 2).sum()), 2), cue_energy=round(energy, 2), hits=hits))
+    # Do the deep slices recall words the senses' slice does not?
+    s0 = set(out['slices'][0]['hits'])
+    deep = set().union(*[set(x['hits']) for x in out['slices'][1:]])
+    out['only_deep'] = len(deep - s0)
+    out['any_slice'] = round(len(deep | s0) / max(1, len(items['cues'])), 3)
     # All slices together, each on its own scale (every slice's shapes scaled to unit norm first).
     return out
 

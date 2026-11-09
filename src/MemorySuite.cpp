@@ -2131,16 +2131,17 @@ int runScriptTest(const Config& cfg) {
             const auto health = m.weightHealth();
             const auto stats = m.computeStats();
             const auto& ls = m.learningStats();
+            const auto gains = m.sliceGains();
             std::string j = "{\"tag\":\"" + (f.size() > 1 ? f[1] : std::string()) + "\",\"tick\":" + std::to_string(tick) +
                             ",\"plastic\":" + std::to_string(m.totalPlasticStrength()) + ",\"fields\":[";
             for (uint32_t k = 0; k < kFields; ++k) {
                 char buf[400];
                 std::snprintf(buf, sizeof buf,
                               "%s{\"fill\":%.5f,\"full\":%.5f,\"used\":%.5f,\"hubs\":%.5f,\"active3d\":%.5f,\"mean3d\":%.5f,"
-                              "\"active2d\":%.5f,\"active1d\":%.5f}",
+                              "\"active2d\":%.5f,\"active1d\":%.5f,\"gain\":[%.4f,%.4f,%.4f]}",
                               k ? "," : "", health[k].meanFill, health[k].shareFull, health[k].shareUsed, health[k].topSourceShare,
                               stats.voxel.active_fraction[k], stats.voxel.mean[k], stats.sheet.active_fraction[k],
-                              stats.line.active_fraction[k]);
+                              stats.line.active_fraction[k], gains[k][0], gains[k][1], gains[k][2]);
                 j += buf;
             }
             char tail[300];
