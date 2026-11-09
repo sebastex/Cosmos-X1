@@ -12,6 +12,9 @@ on:
       stage:
         description: Words the brains have learned
         default: "1000"
+      quick:
+        description: true = only read the brain's state report (no probe)
+        default: "false"
 permissions:
   contents: read
   actions: read
@@ -41,13 +44,20 @@ jobs:
           VARIANT=${LANE%-*}; SEED=${LANE##*-}
           python3 tools/ladder/probe.py script ${{ inputs.stage }} > items.json
           python3 -c "import json; print(json.load(open('items.json'))['script'])" > probe.txt
+          if [ "${{ inputs.quick }}" = "true" ]; then echo "report:state" > probe.txt; fi
           NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=probe.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
             ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED > result.txt
           rm -f brain.bin
-          python3 tools/ladder/probe.py score monitor/session0.ncmmon items.json > probe_$LANE.json
-          cat probe_$LANE.json
+          grep BRAINREPORT result.txt > report_$LANE.txt || true
+          cat report_$LANE.txt
+          if [ "${{ inputs.quick }}" != "true" ]; then
+            python3 tools/ladder/probe.py score monitor/session0.ncmmon items.json > probe_$LANE.json
+            cat probe_$LANE.json
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: probe-${{ matrix.b.lane }}
-          path: probe_*.json
+          path: |
+            probe_*.json
+            report_*.txt
