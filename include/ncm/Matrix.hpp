@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ncm/BlockStore.hpp"
+#include "ncm/LinkStore.hpp"
 #include "ncm/Buffer.hpp"
 #include "ncm/Config.hpp"
 #include "ncm/Microtubule.hpp"
@@ -199,8 +200,9 @@ private:
 
     // Calls fn(block, src) - or fn(block, src, kind) - for every learned C3 x C3 block entering
     // voxel v: neighbourhood (kind 0, except self-persistence), long-range (1), 4D (2) and the
-    // learned cue route (3), from excitatory sources only. An empty (never learned) block is
-    // handed over as zeros; if fn writes into it, it is stored from then on.
+    // learned cue route (3), from excitatory sources only. Blocks are handed over whole (empty
+    // ones as zeros); what fn writes is stored (only the non-zero links). A fn taking
+    // const float* only reads, and nothing is stored back.
     // with4D = false skips the 4D-lattice blocks (Pharmakon: they learn only on 4D steps).
     template <class Fn>
     void forEachLearnedBlock(size_t v, Fn&& fn, bool with4D = true);
@@ -332,25 +334,39 @@ private:
 
     // Learned connections (spec Section 2C) = fixed scaffold (StartingRule strengths, a
     // scaled one-to-one channel map applied on the fly) + the plastic parts stored here.
-    BlockStore W3_;                // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused); stored once learned
+    // Per voxel, its incoming plastic blocks (C3 x C3 each), stored link by link (LinkStore):
+    // blocks 0..26 the neighbourhood offsets (self block unused), then the long-range links
+    // (longB_ + l), then the 4D links (h4B_ + k: 3 other fields, or 80 lattice neighbours).
+    LinkStore links_;
+    uint32_t longB_ = 27, h4B_ = 27;
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
     std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
     uint32_t spreadK_ = 0;                // random 4D sources per voxel (link4d_spread, scaled with size if set)
     std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)
-    BlockStore WL_;                // per voxel: long-range links x C3 x C3
     double pruned_ = 0.0;
-    BlockStore H_;                 // per voxel: hBlocks_ x C3 x C3 (4D link: 3 other fields, or 80 lattice neighbours)
-    // Consolidated (slow) plastic parts: with consolidation on, each stored block of W3_, WL_ and
-    // H_ has its slow block right after it. Transmission uses fast + slow.
+    // Consolidated (slow) plastic parts: with consolidation on, each block handed over by
+    // forEachLearnedBlock has its slow block right after it. Transmission uses fast + slow.
     float* slowOf(float* fastBlock) {
-        if (!W3_.hasSlow()) return nullptr;
+        if (!links_.hasSlow()) return nullptr;
         if (!WS_.empty() && fastBlock >= WS_.data() && fastBlock < WS_.data() + WS_.size()) return nullptr;
-        return fastBlock + BlockStore::kBlock;
+        return fastBlock + LinkStore::kBlock;
+    }
+    const float* slowOf(const float* fastBlock) const {
+        if (!links_.hasSlow()) return nullptr;
+        if (!WS_.empty() && fastBlock >= WS_.data() && fastBlock < WS_.data() + WS_.size()) return nullptr;
+        return fastBlock + LinkStore::kBlock;
     }
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
-    // Inner-level learning: per voxel C3 x (SS x C2) learned upward weights (path 1), per sheet
-    // cell C2 x C3 learned downward weights (path 2), and each voxel's learned amount (critical period).
-    AVec<float> UPL_, DNL_, innerLearned_;
+    // Inner-level learning: per sheet cell q (voxel q / SS), one chunk (stored once it learns):
+    // the voxel's C3 x C2 learned upward weights from that cell (path 1, [c][b]), then the cell's
+    // C2 x C3 learned downward weights (path 2, [b][c]); and each voxel's learned amount
+    // (critical period). Saved in the dense layout of the old arrays (up: [v][c][cell][b],
+    // down: [v][cell][b][c]).
+    static constexpr size_t kInnerDown = size_t(C3) * C2; // the downward part starts here in a chunk
+    BlockStore inner_;
+    bool innerUp_ = false, innerDown_ = false;
+    AVec<float> innerLearned_;
+    void stateInner(StateFile& st, bool down);
     // 2D learned lateral links: per sheet cell 8 neighbours x C2 x C2 (sheet_learn).
     AVec<float> L2_;
     // up_evidence: per sheet cell, the share of its last drive that came from its own voxel.
