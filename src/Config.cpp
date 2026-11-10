@@ -199,6 +199,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidation_rate", &c.learning.consolidation_rate},
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
+        {"prune", &c.learning.prune},
         {"silence_gate", &c.learning.silence_gate},
         {"context_tau", &c.learning.context_tau},
         {"context_gain", &c.learning.context_gain},

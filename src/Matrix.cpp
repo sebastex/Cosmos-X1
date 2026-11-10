@@ -1715,7 +1715,9 @@ void NeuralCellularMatrix::learn(float modulator) {
     const int64_t voxels = int64_t(V_);
     double change = 0.0, scaled = 0.0;
     uint64_t learners = 0;
-#pragma omp parallel for schedule(dynamic, 64) reduction(+ : change, scaled, learners)
+    const float pruneK = std::max(0.0f, cfg_.learning.prune);
+    double pruned = 0.0;
+#pragma omp parallel for schedule(dynamic, 64) reduction(+ : change, scaled, learners, pruned)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         const float* pi = post + v * C3;
@@ -1879,7 +1881,38 @@ void NeuralCellularMatrix::learn(float modulator) {
                     });
             }
         }
+        // Pruning: links far below the channel's typical link are background noise, not memory.
+        if (pruneK > 0.0f) {
+            double sum[C3] = {};
+            uint32_t cnt[C3] = {};
+            forEachLearnedBlock(v, [&](float* block, size_t) {
+                const float* sl = slowOf(block);
+                for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                    const float w = block[i] + (sl ? sl[i] : 0.0f);
+                    if (w > 0.0f) sum[i / C3] += w, ++cnt[i / C3];
+                }
+            });
+            float cut[C3];
+            bool any = false;
+            for (uint32_t a = 0; a < C3; ++a) {
+                cut[a] = cnt[a] ? pruneK * float(sum[a] / double(cnt[a])) : 0.0f;
+                any = any || cut[a] > 0.0f;
+            }
+            if (any)
+                forEachLearnedBlock(v, [&](float* block, size_t) {
+                    float* sl = slowOf(block);
+                    for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                        const float w = block[i] + (sl ? sl[i] : 0.0f);
+                        if (w > 0.0f && w < cut[i / C3]) {
+                            block[i] = 0.0f;
+                            if (sl) sl[i] = 0.0f;
+                            pruned += 1.0;
+                        }
+                    }
+                });
+        }
     }
+    pruned_ += pruned;
     // Assembly inhibition: for every voxel (silent ones too) and long-range partner: a partner
     // firing while the voxel is silent strengthens the inhibitory weight, firing together weakens it.
     if (!asmInh_.empty()) {
@@ -2190,6 +2223,41 @@ std::string NeuralCellularMatrix::blockReport() const {
         innerN += double(a->size());
         for (float x : *a) innerNZ += x != 0.0f;
     }
+    // Pruning check: per output channel, the mean of its non-zero incoming weights (fast + slow);
+    // for each cut c, the share of weights under c x that mean and the share of strength they hold.
+    const float cuts[6] = {0.02f, 0.05f, 0.1f, 0.2f, 0.3f, 0.5f};
+    double below[6] = {}, belowS[6] = {}, allW = 0.0, allS = 0.0;
+    auto& self = const_cast<NeuralCellularMatrix&>(*this);
+    for (size_t v = 0; v < V_; ++v) {
+        double sum[C3] = {};
+        uint32_t cnt[C3] = {};
+        self.forEachLearnedBlock(v, [&](float* block, size_t) {
+            const float* sl = self.slowOf(block);
+            for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                const float w = block[i] + (sl ? sl[i] : 0.0f);
+                if (w > 0.0f) sum[i / C3] += w, ++cnt[i / C3];
+            }
+        });
+        self.forEachLearnedBlock(v, [&](float* block, size_t) {
+            const float* sl = self.slowOf(block);
+            for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                const float w = block[i] + (sl ? sl[i] : 0.0f);
+                if (w <= 0.0f) continue;
+                const double m = sum[i / C3] / double(cnt[i / C3]);
+                allW += 1.0, allS += w;
+                for (int c = 0; c < 6; ++c)
+                    if (w < cuts[c] * m) below[c] += 1.0, belowS[c] += w;
+            }
+        });
+    }
+    s += ",\"prune_check\":[";
+    for (int c = 0; c < 6; ++c) {
+        char b[120];
+        std::snprintf(b, sizeof b, "%s[%.2f,%.4f,%.4f]", c ? "," : "", cuts[c], allW > 0 ? below[c] / allW : 0.0,
+                      allS > 0 ? belowS[c] / allS : 0.0);
+        s += b;
+    }
+    s += "],\"pruned\":" + std::to_string(pruned_);
     char tail[300];
     std::snprintf(tail, sizeof tail, ",\"blocks_gb\":%.3f,\"blocks_dense_gb\":%.3f,\"inner_gb\":%.3f,\"inner_nonzero\":%.4f,\"total_gb\":%.3f}",
                   stored / 1e9, dense / 1e9, innerN * 4 / 1e9, innerN > 0 ? innerNZ / innerN : 0.0, double(memoryBytes()) / 1e9);

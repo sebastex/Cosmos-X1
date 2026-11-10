@@ -180,6 +180,7 @@ public:
     // Which learned blocks are stored (ever learned something), per kind and field, and the memory
     // they take against storing every block (one BLOCKS json line).
     std::string blockReport() const;
+    double prunedWeights() const { return pruned_; } // weights removed by pruning so far (not saved)
     // Save or restore everything that changes while the brain runs (one brain across runs).
     // Restoring needs a brain built with the same configuration and seed.
     void state(StateFile& s);
@@ -337,6 +338,7 @@ private:
     uint32_t spreadK_ = 0;                // random 4D sources per voxel (link4d_spread, scaled with size if set)
     std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)
     BlockStore WL_;                // per voxel: long-range links x C3 x C3
+    double pruned_ = 0.0;
     BlockStore H_;                 // per voxel: hBlocks_ x C3 x C3 (4D link: 3 other fields, or 80 lattice neighbours)
     // Consolidated (slow) plastic parts: with consolidation on, each stored block of W3_, WL_ and
     // H_ has its slow block right after it. Transmission uses fast + slow.
