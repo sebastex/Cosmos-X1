@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "ncm/BlockStore.hpp"
 #include "ncm/Buffer.hpp"
 #include "ncm/Config.hpp"
 #include "ncm/Microtubule.hpp"
@@ -176,6 +177,9 @@ public:
     bool somaticOn() const { return soma_.on(); }
     size_t microtubules() const { return mt1_.tubes() + mt2_.tubes() + mt3_.tubes(); }
     size_t memoryBytes() const;
+    // Which learned blocks are stored (ever learned something), per kind and field, and the memory
+    // they take against storing every block (one BLOCKS json line).
+    std::string blockReport() const;
     // Save or restore everything that changes while the brain runs (one brain across runs).
     // Restoring needs a brain built with the same configuration and seed.
     void state(StateFile& s);
@@ -192,8 +196,10 @@ private:
     void initSurfaces();
     void applySurfaceClamps();
 
-    // Calls fn(block) for every learned C3 x C3 block entering voxel v: neighbourhood
-    // (except self-persistence), long-range and 4D, from excitatory sources only.
+    // Calls fn(block, src) - or fn(block, src, kind) - for every learned C3 x C3 block entering
+    // voxel v: neighbourhood (kind 0, except self-persistence), long-range (1), 4D (2) and the
+    // learned cue route (3), from excitatory sources only. An empty (never learned) block is
+    // handed over as zeros; if fn writes into it, it is stored from then on.
     // with4D = false skips the 4D-lattice blocks (Pharmakon: they learn only on 4D steps).
     template <class Fn>
     void forEachLearnedBlock(size_t v, Fn&& fn, bool with4D = true);
@@ -325,24 +331,19 @@ private:
 
     // Learned connections (spec Section 2C) = fixed scaffold (StartingRule strengths, a
     // scaled one-to-one channel map applied on the fly) + the plastic parts stored here.
-    AVec<float> W3_;               // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused)
+    BlockStore W3_;                // per voxel: 27 neighbourhood offsets x C3 x C3 (self block unused); stored once learned
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
     std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
     uint32_t spreadK_ = 0;                // random 4D sources per voxel (link4d_spread, scaled with size if set)
     std::vector<uint32_t> inputDepthPos_; // per Input-field voxel: random sensory-face positions (y + z*N)
-    AVec<float> WL_;               // per voxel: long-range links x C3 x C3
-    AVec<float> H_;                // per voxel: hBlocks_ x C3 x C3 (4D link: 3 other fields, or 80 lattice neighbours)
-    // Consolidated (slow) plastic parts, same layout as W3_, WL_ and H_; empty when
-    // consolidation is off. Transmission uses fast + slow.
-    AVec<float> S3_, SL_, SH_;
+    BlockStore WL_;                // per voxel: long-range links x C3 x C3
+    BlockStore H_;                 // per voxel: hBlocks_ x C3 x C3 (4D link: 3 other fields, or 80 lattice neighbours)
+    // Consolidated (slow) plastic parts: with consolidation on, each stored block of W3_, WL_ and
+    // H_ has its slow block right after it. Transmission uses fast + slow.
     float* slowOf(float* fastBlock) {
-        auto map = [&](AVec<float>& fast, AVec<float>& slow) -> float* {
-            if (slow.empty() || fastBlock < fast.data() || fastBlock >= fast.data() + fast.size()) return nullptr;
-            return slow.data() + (fastBlock - fast.data());
-        };
-        if (float* s = map(W3_, S3_)) return s;
-        if (float* s = map(WL_, SL_)) return s;
-        return map(H_, SH_);
+        if (!W3_.hasSlow()) return nullptr;
+        if (!WS_.empty() && fastBlock >= WS_.data() && fastBlock < WS_.data() + WS_.size()) return nullptr;
+        return fastBlock + BlockStore::kBlock;
     }
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
     // Inner-level learning: per voxel C3 x (SS x C2) learned upward weights (path 1), per sheet

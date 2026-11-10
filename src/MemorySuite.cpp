@@ -2183,6 +2183,7 @@ int runScriptTest(const Config& cfg) {
                 (unsigned long long)s.matrix().microtubuleCollapses(), s.matrix().microtubules());
     if (s.matrix().somaticOn())
         std::printf("  somatic network reductions: %llu\n", (unsigned long long)s.matrix().somaticReductions());
+    std::printf("%s\n", s.matrix().blockReport().c_str()); // which learned blocks are stored, and the memory they take
     if (const char* h = std::getenv("NCM_HASH"); h && std::atoi(h) > 0) { // the brain's fingerprint
         StateFile st{StateFile::Fingerprint{}};
         s.state(st);

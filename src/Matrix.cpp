@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <type_traits>
 #include <stdexcept>
 
 #include "ncm/Random.hpp"
@@ -392,14 +395,10 @@ void NeuralCellularMatrix::initVoxelWeights() {
     // or changed; these arrays hold only the plastic part, which starts at zero.
     const uint32_t K = cfg_.long_range_links;
 
-    W3_.assign(V_ * 27 * C3 * C3, 0.0f);
-    if (cfg_.learning.consolidation_rate > 0.0f) {
-        S3_.assign(V_ * 27 * C3 * C3, 0.0f);
-        SL_.assign(V_ * cfg_.long_range_links * C3 * C3, 0.0f);
-        SH_.assign(V_ * hBlocks_ * C3 * C3, 0.0f);
-    }
-    WL_.assign(V_ * K * C3 * C3, 0.0f);
-    H_.assign(V_ * hBlocks_ * C3 * C3, 0.0f);
+    const bool slow = cfg_.learning.consolidation_rate > 0.0f; // consolidated (slow) blocks beside the fast ones
+    W3_.init(V_ * 27, slow);
+    WL_.init(V_ * K, slow);
+    H_.init(V_ * hBlocks_, slow);
     M2_.assign(V_ * C2 * C2, 0.0f);
     if (cfg_.learning.inner_up > 0.0f) UPL_.assign(V_ * C3 * SS_ * C2, 0.0f);
     if (cfg_.learning.inner_down > 0.0f) DNL_.assign(V_ * SS_ * C2 * C3, 0.0f);
@@ -906,8 +905,10 @@ void NeuralCellularMatrix::step3D() {
                 } else {
                     addScaled(src, fx, C3, r.lattice_link * latScale_[k]);
                     float* to = split4 && vg / Vf_ < w ? ox : lx; // outward: from the slice nearer the senses
-                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, src, to, C3, C3, latDir_[k]);
-                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, src, to, C3, C3, latDir_[k]);
+                    if (const float* hb = H_.get(v * KH + k)) { // an empty block adds nothing
+                        matvecAdd(hb, src, to, C3, C3, latDir_[k]);
+                        if (H_.hasSlow()) matvecAdd(hb + BlockStore::kBlock, src, to, C3, C3, latDir_[k]);
+                    }
                 }
             }
             if (cfg_.lattice_edge_norm > 0.5f) { // edge cells: scale to the full or the average set of links
@@ -930,8 +931,10 @@ void NeuralCellularMatrix::step3D() {
                     if (vg == SIZE_MAX || inhib3_[vg]) continue;
                     const float* cs = ctx3_.data() + vg * C3;
                     if (isFaint(cs)) continue;
-                    matvecAdd(H_.data() + (v * KH + k) * C3 * C3, cs, cx, C3, C3, latDir_[k]);
-                    if (!SH_.empty()) matvecAdd(SH_.data() + (v * KH + k) * C3 * C3, cs, cx, C3, C3, latDir_[k]);
+                    if (const float* hb = H_.get(v * KH + k)) {
+                        matvecAdd(hb, cs, cx, C3, C3, latDir_[k]);
+                        if (H_.hasSlow()) matvecAdd(hb + BlockStore::kBlock, cs, cx, C3, C3, latDir_[k]);
+                    }
                 }
                 std::copy(cx, cx + C3, hold4Ctx_.data() + v * C3);
             }
@@ -956,7 +959,6 @@ void NeuralCellularMatrix::step3D() {
         };
         // Gain control scales incoming signals only (per field).
         const float afferentGain = lattice_ ? cellGain_[gainOf(v)] : fieldGain_[f];
-        const float* w = W3_.data() + v * 27 * C3 * C3;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
                 for (int dx = -1; dx <= 1; ++dx) {
@@ -972,8 +974,10 @@ void NeuralCellularMatrix::step3D() {
                         addScaled(src, in, C3, inh * r.voxel_neighbour); // inhibitory: fixed scaffold only
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                 // scaffold
-                        matvecAdd(w + size_t(o) * C3 * C3, src, pl, C3, C3, rec); // plastic memory part
-                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, src, pl, C3, C3, rec);
+                        if (const float* wb = W3_.get(v * 27 + o)) { // plastic memory part
+                            matvecAdd(wb, src, pl, C3, C3, rec);
+                            if (W3_.hasSlow()) matvecAdd(wb + BlockStore::kBlock, src, pl, C3, C3, rec);
+                        }
                     }
                 }
 
@@ -993,8 +997,10 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
                 addScaled(src, in, C3, r.long_range);
-                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
-                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, src, pl, C3, C3, rec);
+                if (const float* wb = WL_.get(v * K + l)) {
+                    matvecAdd(wb, src, pl, C3, C3, rec);
+                    if (WL_.hasSlow()) matvecAdd(wb + BlockStore::kBlock, src, pl, C3, C3, rec);
+                }
             }
         }
 
@@ -1012,16 +1018,20 @@ void NeuralCellularMatrix::step3D() {
                         if (o == 13 || inhib3_[vn]) continue;
                         const float* cs = ctx3_.data() + vn * C3;
                         if (isFaint(cs)) continue;
-                        matvecAdd(w + size_t(o) * C3 * C3, cs, plc, C3, C3, rec);
-                        if (!S3_.empty()) matvecAdd(S3_.data() + (v * 27 + o) * C3 * C3, cs, plc, C3, C3, rec);
+                        if (const float* wb = W3_.get(v * 27 + o)) {
+                            matvecAdd(wb, cs, plc, C3, C3, rec);
+                            if (W3_.hasSlow()) matvecAdd(wb + BlockStore::kBlock, cs, plc, C3, C3, rec);
+                        }
                     }
             for (uint32_t l = 0; l < K; ++l) {
                 const size_t t = lrTarget_[v * K + l];
                 if (inhib3_[t]) continue;
                 const float* cs = ctx3_.data() + t * C3;
                 if (isFaint(cs)) continue;
-                matvecAdd(WL_.data() + (v * K + l) * C3 * C3, cs, plc, C3, C3, rec);
-                if (!SL_.empty()) matvecAdd(SL_.data() + (v * K + l) * C3 * C3, cs, plc, C3, C3, rec);
+                if (const float* wb = WL_.get(v * K + l)) {
+                    matvecAdd(wb, cs, plc, C3, C3, rec);
+                    if (WL_.hasSlow()) matvecAdd(wb + BlockStore::kBlock, cs, plc, C3, C3, rec);
+                }
             }
         }
         // The 4D link is the path input takes between fields, so encoding mode does not
@@ -1062,9 +1072,10 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, gain * inh * link);
             } else {
                 addScaled(src, in, C3, gain * link);
-                matvecAdd(H_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
-                if (!SH_.empty())
-                    matvecAdd(SH_.data() + (v * 3 + gi) * C3 * C3, src, pl4, C3, C3, gain * plasticScale * rec4);
+                if (const float* hb = H_.get(v * 3 + gi)) {
+                    matvecAdd(hb, src, pl4, C3, C3, gain * plasticScale * rec4);
+                    if (H_.hasSlow()) matvecAdd(hb + BlockStore::kBlock, src, pl4, C3, C3, gain * plasticScale * rec4);
+                }
             }
             ++gi;
         }
@@ -1389,8 +1400,29 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
     const uint32_t y = uint32_t((v / N) % N);
     const uint32_t z = uint32_t((v / (size_t(N) * N)) % N);
     const uint32_t f = uint32_t(v / Vf_);
+    auto call = [&](float* block, size_t src, int kind) {
+        if constexpr (std::is_invocable_v<Fn, float*, size_t, int>) fn(block, src, kind);
+        else fn(block, src);
+    };
+    // A stored block is handed over as it is; an empty one as zeros (in a scratch block), and it
+    // is stored only if fn wrote something into it.
+    auto visit = [&](BlockStore& store, size_t i, size_t src, int kind) {
+        if (float* b = store.get(i)) return call(b, src, kind);
+        thread_local AVec<float> scratch;
+        constexpr size_t n = 2 * BlockStore::kBlock;
+        if (scratch.size() != n) scratch.assign(n, 0.0f);
+        call(scratch.data(), src, kind);
+        uint32_t bits = 0;
+        for (size_t q = 0; q < n; ++q) {
+            uint32_t u;
+            std::memcpy(&u, scratch.data() + q, 4);
+            bits |= u;
+        }
+        if (!bits) return;
+        std::memcpy(store.make(i), scratch.data(), (store.hasSlow() ? n : BlockStore::kBlock) * sizeof(float));
+        std::fill(scratch.begin(), scratch.end(), 0.0f);
+    };
 
-    float* w = W3_.data() + v * 27 * C3 * C3;
     for (int dz = -1; dz <= 1; ++dz)
         for (int dy = -1; dy <= 1; ++dy)
             for (int dx = -1; dx <= 1; ++dx) {
@@ -1399,22 +1431,22 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
                 const uint32_t o = uint32_t((dz + 1) * 9 + (dy + 1) * 3 + (dx + 1));
                 if (o == 13) continue; // self-persistence is not a synapse
                 const size_t vn = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
-                if (!inhib3_[vn]) fn(w + size_t(o) * C3 * C3, vn);
+                if (!inhib3_[vn]) visit(W3_, v * 27 + o, vn, 0);
             }
     for (uint32_t l = 0; l < K; ++l) {
         const size_t t = lrTarget_[v * K + l];
-        if (!inhib3_[t]) fn(WL_.data() + (v * K + l) * C3 * C3, t);
+        if (!inhib3_[t]) visit(WL_, v * K + l, t, 1);
     }
     if (lattice_) {
         if (with4D)
             for (uint32_t k = 0; k < hBlocks_; ++k) {
                 const size_t vg = lattice4Partner(x, y, z, f, k);
-                if (vg != SIZE_MAX && !inhib3_[vg]) fn(H_.data() + (v * hBlocks_ + k) * C3 * C3, vg);
+                if (vg != SIZE_MAX && !inhib3_[vg]) visit(H_, v * hBlocks_ + k, vg, 2);
             }
         if (!WS_.empty())
             for (uint32_t l = 0; l < spreadK_; ++l) {
                 const size_t vs = spreadPos_[v * spreadK_ + l];
-                if (vs < V_ && !inhib3_[vs]) fn(WS_.data() + (v * spreadK_ + l) * C3 * C3, vs);
+                if (vs < V_ && !inhib3_[vs]) call(WS_.data() + (v * spreadK_ + l) * C3 * C3, vs, 3);
             }
         return;
     }
@@ -1422,7 +1454,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
     for (uint32_t g = 0; g < kFields; ++g) {
         if (g == f) continue;
         const size_t vg = voxelIndex(g, x, y, z);
-        if (!inhib3_[vg]) fn(H_.data() + (v * 3 + gi) * C3 * C3, vg);
+        if (!inhib3_[vg]) visit(H_, v * 3 + gi, vg, 2);
         ++gi;
     }
     if (!WS_.empty() && f > 0) {
@@ -1430,7 +1462,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
         for (uint32_t g = 0; g < f; ++g)
             for (uint32_t l = 0; l < spreadCount(g); ++l) {
                 const size_t vs = size_t(g) * Vf_ + spreadPos_[v * S4 + l];
-                if (!inhib3_[vs]) fn(WS_.data() + spreadBlock(v, g, l) * C3 * C3, vs);
+                if (!inhib3_[vs]) call(WS_.data() + spreadBlock(v, g, l) * C3 * C3, vs, 3);
             }
     }
 }
@@ -1624,7 +1656,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float budget = std::max(0.0f, cfg_.learning.plastic_budget);
     const float oja = std::max(0.0f, cfg_.learning.oja);
     const float hetero = std::clamp(cfg_.learning.hetero_ltd, 0.0f, 1.0f);
-    const float consolidate = S3_.empty() ? 0.0f : std::clamp(cfg_.learning.consolidation_rate, 0.0f, 1.0f);
+    const float consolidate = !W3_.hasSlow() ? 0.0f : std::clamp(cfg_.learning.consolidation_rate, 0.0f, 1.0f);
     const float slowBudget = std::max(0.0f, cfg_.learning.consolidated_budget);
     const float linkMax = std::max(0.0f, cfg_.learning.link_bound);
     // Presynaptic budget: each source channel's total outgoing plastic strength, refreshed
@@ -1755,15 +1787,13 @@ void NeuralCellularMatrix::learn(float modulator) {
         //   what this voxel fires now), then the row totals for synaptic scaling and the
         //   consolidated share that protection keeps.
         const bool learn4D = !lattice_ || tick4_ || cfg_.lattice_hold < 0.5f;
-        const float* hBegin = H_.data();
-        const float* hEnd = H_.data() + H_.size();
         const bool ctxOn = !ctx3_.empty() && cfg_.learning.context_learn > 0.0f;
         const float kc = vrate * cfg_.learning.context_learn;
         const float prot = consolidate > 0.0f ? std::clamp(cfg_.learning.protect, 0.0f, 1.0f) : 0.0f;
         float total[C3] = {};
         float kept[C3] = {};
-        forEachLearnedBlock(v, [&](float* block, size_t src) {
-            const bool is4D = lattice_ && block >= hBegin && block < hEnd;
+        forEachLearnedBlock(v, [&](float* block, size_t src, int kind) {
+            const bool is4D = lattice_ && kind == 2;
             if (!is4D || learn4D) {
                 const float lv = levelOf(v, src);
                 const float* sp = post + src * C3;
@@ -1983,8 +2013,10 @@ double NeuralCellularMatrix::plasticFlow(const std::vector<double>& from, const 
 
 double NeuralCellularMatrix::totalPlasticStrength() const {
     double total = 0.0;
-    for (const AVec<float>* w : {&W3_, &WL_, &H_})
-        for (float x : *w) total += x;
+    for (const BlockStore* w : {&W3_, &WL_, &H_}) // in block order; empty blocks add nothing
+        for (size_t i = 0; i < w->slots(); ++i)
+            if (const float* b = w->get(i))
+                for (size_t q = 0; q < BlockStore::kBlock; ++q) total += b[q];
     return total;
 }
 
@@ -2101,12 +2133,12 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.value(tick4_);
     st.value(memoryPause_);
     st.value(noiseStep_);
-    st.vec(W3_, "W3");
-    st.vec(WL_, "WL");
-    st.vec(H_, "H");
-    st.vec(S3_, "S3");
-    st.vec(SL_, "SL");
-    st.vec(SH_, "SH");
+    W3_.stateFast(st, "W3"); // the full (dense) layout, as before
+    WL_.stateFast(st, "WL");
+    H_.stateFast(st, "H");
+    W3_.stateSlow(st, "S3");
+    WL_.stateSlow(st, "SL");
+    H_.stateSlow(st, "SH");
     st.vec(M2_, "M2");
     st.vec(UPL_, "inner up");
     st.vec(DNL_, "inner down");
@@ -2128,13 +2160,49 @@ void NeuralCellularMatrix::state(StateFile& st) {
     if (!fbTrace_.empty()) st.vec(fbTrace_, "right/wrong trace"); // only brains that learn from right and wrong
 }
 
+std::string NeuralCellularMatrix::blockReport() const {
+    const BlockStore* stores[3] = {&W3_, &WL_, &H_};
+    const char* names[3] = {"near", "long", "4d"};
+    const size_t per[3] = {27, cfg_.long_range_links, hBlocks_};
+    std::string s = "BLOCKS {";
+    double stored = 0.0, dense = 0.0;
+    for (int k = 0; k < 3; ++k) {
+        const BlockStore& b = *stores[k];
+        std::array<size_t, kFields> byField{};
+        size_t n = 0, nz = 0;
+        for (size_t i = 0; i < b.slots(); ++i)
+            if (const float* w = b.get(i)) {
+                ++n, ++byField[std::min<size_t>(kFields - 1, (i / std::max<size_t>(1, per[k])) / Vf_)];
+                for (size_t q = 0; q < BlockStore::kBlock; ++q) nz += w[q] != 0.0f;
+            }
+        const double blockBytes = double(BlockStore::kBlock) * sizeof(float) * (b.hasSlow() ? 2 : 1);
+        stored += double(b.bytes());
+        dense += double(b.slots()) * blockBytes;
+        s += std::string(k ? "," : "") + "\"" + names[k] + "\":{\"slots\":" + std::to_string(b.slots()) +
+             ",\"stored\":" + std::to_string(n) + ",\"nonzero_in_stored\":" +
+             std::to_string(n ? double(nz) / double(n * BlockStore::kBlock) : 0.0) + ",\"fields\":[";
+        for (uint32_t f = 0; f < kFields; ++f) s += (f ? "," : "") + std::to_string(byField[f]);
+        s += "]}";
+    }
+    // The inner (voxel <-> sheet) learned weights stay dense: how much of them is non-zero.
+    double innerN = 0.0, innerNZ = 0.0;
+    for (const AVec<float>* a : {&UPL_, &DNL_}) {
+        innerN += double(a->size());
+        for (float x : *a) innerNZ += x != 0.0f;
+    }
+    char tail[300];
+    std::snprintf(tail, sizeof tail, ",\"blocks_gb\":%.3f,\"blocks_dense_gb\":%.3f,\"inner_gb\":%.3f,\"inner_nonzero\":%.4f,\"total_gb\":%.3f}",
+                  stored / 1e9, dense / 1e9, innerN * 4 / 1e9, innerN > 0 ? innerNZ / innerN : 0.0, double(memoryBytes()) / 1e9);
+    return s + tail;
+}
+
 size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };
     return level(s1_) + level(s2_) + level(s3_) + bytes(inhib2_) + bytes(inhib3_) + bytes(drive2_) +
            bytes(drive3_) + bytes(fatigue2_) + bytes(fatigue3_) + bytes(average3_) + bytes(orderTrace3_) + bytes(W1_) + bytes(W2_) +
-           bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + bytes(W3_) + bytes(lrTarget_) + bytes(WL_) +
-           bytes(H_) + bytes(WS_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
+           bytes(U1_) + bytes(D1_) + bytes(U2_) + bytes(D2_) + W3_.bytes() + bytes(lrTarget_) + WL_.bytes() +
+           H_.bytes() + bytes(UPL_) + bytes(DNL_) + bytes(L2_) + bytes(WS_) + bytes(M2_) + bytes(sensoryQ_) + bytes(motorQ_) + bytes(sensoryDrive_) + bytes(motorDrive_);
 }
 
 } // namespace ncm
