@@ -144,8 +144,33 @@ jobs:
         if: steps.ladder.outputs.done != '1' && fromJSON(inputs.runs) > 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # GitHub sometimes fails to start a run (no jobs at all); then the lane would just stop. So
+        # check that the next run really started, and start it again if it failed at once (3 tries).
+        # A run that cannot be seen yet is never started twice (two runs of one lane would clash).
         run: |
-          gh workflow run ladder.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
-            -f seed=${{ inputs.seed }} -f variant=${{ inputs.variant }} -f preset=${{ inputs.preset }} \
-            -f hours=${{ inputs.hours }} -f runs=$(( ${{ inputs.runs }} - 1 )) -f step=$(( ${{ inputs.step }} + 1 )) \
-            -f op=${{ steps.ladder.outputs.next }} -f prev_run=${{ github.run_id }}
+          NEXT="ladder ${{ inputs.variant }} ${{ inputs.seed }} run $(( ${{ inputs.step }} + 1 ))"
+          for try in 1 2 3; do
+            T=$(date -u -d '-1 minute' +%Y-%m-%dT%H:%M:%SZ)
+            gh workflow run ladder.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
+              -f seed=${{ inputs.seed }} -f variant=${{ inputs.variant }} -f preset=${{ inputs.preset }} \
+              -f hours=${{ inputs.hours }} -f runs=$(( ${{ inputs.runs }} - 1 )) -f step=$(( ${{ inputs.step }} + 1 )) \
+              -f op=${{ steps.ladder.outputs.next }} -f prev_run=${{ github.run_id }}
+            st=""
+            for look in 1 2 3 4 5 6 7 8; do
+              sleep 30
+              st=$(gh run list -R ${{ github.repository }} -w ladder.yml -L 50 --json displayTitle,status,conclusion,createdAt \
+                -q "[.[] | select(.displayTitle == \"$NEXT\" and .createdAt >= \"$T\")] | sort_by(.createdAt) | last | \"\(.status) \(.conclusion)\"" || true)
+              echo "try $try, look $look: $NEXT -> $st"
+              case "$st" in
+                "completed failure"|"completed startup_failure") break ;;
+                ""|"null null") ;;
+                *) [ "$look" -ge 3 ] && exit 0 ;;  # running or queued for a while: it started
+              esac
+            done
+            case "$st" in
+              "completed failure"|"completed startup_failure") echo "the next run failed to start; again" ;;
+              ""|"null null") echo "the next run cannot be seen; not starting it twice"; exit 1 ;;
+              *) exit 0 ;;
+            esac
+          done
+          exit 1

@@ -126,7 +126,7 @@ public:
     // A diagnostic, used to test whether lingering activity causes memories to merge.
     void clearActivity();
 
-    MatrixStats computeStats() const;
+    MatrixStats computeStats(bool voxelOnly = false) const; // voxelOnly: leave the sheet and line levels at 0
     const LearningStats& learningStats() const { return learnStats_; }
     const std::array<float, kFields>& fieldGains() const { return fieldGain_; }
     // Diagnostic: the gain control of the 4D cells in each w-slice (lattice; Prime: the field's gain).

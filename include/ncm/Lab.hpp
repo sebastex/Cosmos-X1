@@ -100,6 +100,18 @@ public:
             m_->setTick4D(t.fourD);
             m_->step3D();
             lap(t.fourD ? 4 : 3, t0);
+            if (watchActivity_) { // read only: what the brain does while hearing and in silence
+                const int b = fingerprint ? 0 : 1;
+                const bool all = actSteps_++ % 8 == 0; // the sheet and line levels on every 8th step
+                const MatrixStats st = m_->computeStats(!all);
+                for (uint32_t f = 0; f < kFields; ++f) {
+                    act_.voxel[b][f] += st.voxel.active_fraction[f];
+                    act_.voxelMean[b][f] += st.voxel.mean[f];
+                    if (all) act_.sheet[b][f] += st.sheet.active_fraction[f], act_.line[b][f] += st.line.active_fraction[f];
+                }
+                ++act_.steps[b];
+                if (all) ++act_.allSteps[b];
+            }
             if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) m_->predictSurprise();
             const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             surpriseSum_ = 0.0;
@@ -201,6 +213,18 @@ public:
         for (int k = 0; k < 6; ++k) s += std::string(" ") + names[k] + "=" + std::to_string(prof_[k]);
         return s + "\n";
     }
+    // Activity per field, averaged over the 3D steps while hearing [0] and in silence [1] since the
+    // last takeActivity() (watchActivity(true) turns the reading on; it changes nothing in the brain).
+    struct ActivityLog {
+        double voxel[2][kFields] = {}, voxelMean[2][kFields] = {}, sheet[2][kFields] = {}, line[2][kFields] = {};
+        uint64_t steps[2] = {}, allSteps[2] = {};
+    };
+    void watchActivity(bool on) { watchActivity_ = on; }
+    ActivityLog takeActivity() {
+        ActivityLog a = act_;
+        act_ = ActivityLog{};
+        return a;
+    }
     void setLearning(bool on) { learning_ = on; }
     bool learning() const { return learning_; } // diagnostic: pause learning, keep the mode
     double flow(const std::vector<double>& from, const std::vector<double>& to) { return m_->plasticFlow(from, to); }
@@ -236,6 +260,9 @@ private:
     bool learning_;
     bool profile_ = std::getenv("NCM_PROFILE") && std::atoi(std::getenv("NCM_PROFILE")) > 0;
     double prof_[6] = {};
+    bool watchActivity_ = false;
+    ActivityLog act_;
+    uint64_t actSteps_ = 0;
     bool silenceSuppressed_;
     std::unique_ptr<NeuralCellularMatrix> m_;
     CharacterCodebook codebook_;

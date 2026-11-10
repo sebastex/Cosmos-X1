@@ -2019,7 +2019,7 @@ double NeuralCellularMatrix::motorOverlap(const std::vector<uint32_t>& fingerpri
     return double(hits) / double(fingerprint.size());
 }
 
-MatrixStats NeuralCellularMatrix::computeStats() const {
+MatrixStats NeuralCellularMatrix::computeStats(bool voxelOnly) const {
     MatrixStats st;
     auto levelStats = [](const AVec<float>& state, size_t cellsPerField, uint32_t channels, float level) {
         LevelStats ls;
@@ -2045,9 +2045,10 @@ MatrixStats NeuralCellularMatrix::computeStats() const {
         }
         return ls;
     };
+    st.voxel = levelStats(s3_.cur, V_ / kFields, C3, cfg_.level3.active_level);
+    if (voxelOnly) return st;
     st.line = levelStats(s1_.cur, P_ / kFields, C1, cfg_.level1.active_level);
     st.sheet = levelStats(s2_.cur, Q_ / kFields, C2, cfg_.level2.active_level);
-    st.voxel = levelStats(s3_.cur, V_ / kFields, C3, cfg_.level3.active_level);
     return st;
 }
 

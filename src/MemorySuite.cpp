@@ -2028,6 +2028,7 @@ int runScriptTest(const Config& cfg) {
     };
     bool learn = true;
     const bool learns = s.learning(); // the twin never learns, whatever the script says
+    if (script.find("report:") != std::string::npos) s.watchActivity(true); // reports show activity while hearing
     uint64_t tick = 0, index = 0;
     for (const std::string& step : split(script, ';')) {
         if (step.empty()) continue;
@@ -2129,24 +2130,30 @@ int runScriptTest(const Config& cfg) {
         } else if (op == "report") { // report:TAG - the state of the learned links, one BRAINREPORT json line
             auto& m = const_cast<NeuralCellularMatrix&>(s.matrix());
             const auto health = m.weightHealth();
-            const auto stats = m.computeStats();
+            const auto act = s.takeActivity();
             const auto& ls = m.learningStats();
             const auto gains = m.sliceGains();
             std::string j = "{\"tag\":\"" + (f.size() > 1 ? f[1] : std::string()) + "\",\"tick\":" + std::to_string(tick) +
                             ",\"plastic\":" + std::to_string(m.totalPlasticStrength()) + ",\"fields\":[";
             for (uint32_t k = 0; k < kFields; ++k) {
-                char buf[400];
+                // Activity averaged since the last report: [hearing, silence] (0 where there was none).
+                auto avg = [&](const double (&x)[2][kFields], const uint64_t (&n)[2], int b) {
+                    return n[b] ? x[b][k] / double(n[b]) : 0.0;
+                };
+                char buf[700];
                 std::snprintf(buf, sizeof buf,
-                              "%s{\"fill\":%.5f,\"full\":%.5f,\"used\":%.5f,\"hubs\":%.5f,\"active3d\":%.5f,\"mean3d\":%.5f,"
-                              "\"active2d\":%.5f,\"active1d\":%.5f,\"gain\":[%.4f,%.4f,%.4f]}",
+                              "%s{\"fill\":%.5f,\"full\":%.5f,\"used\":%.5f,\"hubs\":%.5f,"
+                              "\"active3d\":[%.5f,%.5f],\"mean3d\":[%.6f,%.6f],\"active2d\":[%.5f,%.5f],\"active1d\":[%.5f,%.5f],"
+                              "\"gain\":[%.4f,%.4f,%.4f]}",
                               k ? "," : "", health[k].meanFill, health[k].shareFull, health[k].shareUsed, health[k].topSourceShare,
-                              stats.voxel.active_fraction[k], stats.voxel.mean[k], stats.sheet.active_fraction[k],
-                              stats.line.active_fraction[k], gains[k][0], gains[k][1], gains[k][2]);
+                              avg(act.voxel, act.steps, 0), avg(act.voxel, act.steps, 1), avg(act.voxelMean, act.steps, 0),
+                              avg(act.voxelMean, act.steps, 1), avg(act.sheet, act.allSteps, 0), avg(act.sheet, act.allSteps, 1),
+                              avg(act.line, act.allSteps, 0), avg(act.line, act.allSteps, 1), gains[k][0], gains[k][1], gains[k][2]);
                 j += buf;
             }
-            char tail[300];
-            std::snprintf(tail, sizeof tail, "],\"learn_calls\":%llu,\"learn_change\":%.4f,\"scaled\":%.4f,\"mt\":%llu,\"soma\":%llu}",
-                          (unsigned long long)ls.calls, ls.change, ls.scaled, (unsigned long long)m.microtubuleCollapses(),
+            char tail[400];
+            std::snprintf(tail, sizeof tail, "],\"steps\":[%llu,%llu],\"learn_calls\":%llu,\"learn_change\":%.4f,\"scaled\":%.4f,\"mt\":%llu,\"soma\":%llu}",
+                          (unsigned long long)act.steps[0], (unsigned long long)act.steps[1], (unsigned long long)ls.calls, ls.change, ls.scaled, (unsigned long long)m.microtubuleCollapses(),
                           (unsigned long long)m.somaticReductions());
             j += tail;
             std::printf("BRAINREPORT %s\n", j.c_str());
