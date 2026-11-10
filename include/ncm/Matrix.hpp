@@ -369,6 +369,8 @@ private:
     void stateInner(StateFile& st, bool down);
     // 2D learned lateral links: per sheet cell 8 neighbours x C2 x C2 (sheet_learn).
     AVec<float> L2_;
+    // Loop guard (link_use): per voxel channel, the resource of its learned links (1 = rested).
+    AVec<float> linkRes_;
     // up_evidence: per sheet cell, the share of its last drive that came from its own voxel.
     AVec<float> parentShare2_;
     // Microtubules in every cell (microtubule, mt_levels): one layer per level.

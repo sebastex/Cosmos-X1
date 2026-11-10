@@ -200,6 +200,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"prune", &c.learning.prune},
+        {"link_use", &c.learning.link_use},
+        {"link_recovery", &c.learning.link_recovery},
         {"silence_gate", &c.learning.silence_gate},
         {"context_tau", &c.learning.context_tau},
         {"context_gain", &c.learning.context_gain},
@@ -462,6 +464,17 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                     "soma=1", "prune=0.00001"}},                                                  // Alef, links below 1e-5 pruned
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
+        // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the
+        // twin: 56%) because the 4D links are muted while hearing, the only guard against humming.
+        // alefG: the 4D links stay on while hearing, and tiring learned links (short-term
+        // depression) guard against echoes where they run. Steady firing at 1 leaves
+        // 1 / (1 + use x recovery) of the strength: alefG 1/4, alefG2 1/13, alefG3 1/2.
+        {"alefG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "encoding_suppression_4d=0", "link_use=0.1", "link_recovery=30"}},
+        {"alefG2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d=0", "link_use=0.2", "link_recovery=60"}},
+        {"alefG3", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d=0", "link_use=0.05", "link_recovery=20"}},
         // Predictive learning (2026-11-05): links change by the error of what they predicted.
         {"tav", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                  "context_tau=8", "context_learn=2", "context_gain=4", "context_reset=8", "join_gain=4", "protect=0.8",

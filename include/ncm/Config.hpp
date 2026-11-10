@@ -189,6 +189,13 @@ struct LearningParams {
     // carry memories stay. One fixed strength for the whole brain, set from measured grown brains
     // (BLOCKS weight histogram), below what one moment of learning adds. 0 = off.
     float prune = 0.0f;
+    // Local loop guard (link_use > 0): short-term depression of the learned links. Every voxel
+    // channel has a resource r (0..1, starts full) that scales what it sends through learned links
+    // (near, long-range, 4D): r drops by link_use x r x firing each 3D step and recovers by
+    // (1 - r) / link_recovery. A fresh signal passes at full strength; a signal that keeps going
+    // round (an echo) wears itself out where it runs. Fixed links and held clues are not touched.
+    float link_use = 0.0f;
+    float link_recovery = 30.0f;
     float predictive = 0.0f;
     float predictive_gain = 1.0f;
     float feedback_rate = 0.02f;

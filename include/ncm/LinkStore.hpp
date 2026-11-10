@@ -15,6 +15,7 @@
 //
 // Learning works on a voxel's blocks unpacked (open): one buffer per thread, all of the voxel's
 // blocks whole, each fast block followed by its slow block. Closing packs them back.
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
@@ -194,8 +195,15 @@ public:
             }
     }
     void finishLoad() {
-        for (Rec& r : rec_)
-            if (r.fast.empty()) r = Rec();
+        for (Rec& r : rec_) {
+            if (r.fast.empty()) {
+                r = Rec();
+                continue;
+            }
+            r.pos.shrink_to_fit(); // loading grew them step by step: give back the spare room
+            r.fast.shrink_to_fit();
+            r.slow.shrink_to_fit();
+        }
     }
 
 private:
@@ -256,6 +264,12 @@ private:
         t.poff[nb_] = uint32_t(t.pos.size());
     }
 
+    // Room for `add` more, growing by an eighth at a time (not double: loading a big brain must
+    // not need twice its memory on the way).
+    template <class T>
+    static void roomFor(std::vector<T>& v, size_t add) {
+        if (v.size() + add > v.capacity()) v.reserve(v.size() + std::max(add, v.size() / 8 + kBlock));
+    }
     void startLoad() {
         for (Rec& r : rec_) {
             r = Rec();
@@ -270,6 +284,10 @@ private:
         r.poff[b] = uint32_t(r.pos.size());
         uint32_t n = 0;
         for (size_t i = 0; i < kBlock; ++i) n += nonzero(f[i]) ? 1u : 0u;
+        const size_t add = n > kWhole ? kBlock : n;
+        roomFor(r.fast, add);
+        if (slow_) roomFor(r.slow, add);
+        if (n <= kWhole) roomFor(r.pos, add);
         if (n > kWhole) r.fast.insert(r.fast.end(), f, f + kBlock);
         else
             for (size_t i = 0; i < kBlock; ++i)

@@ -430,6 +430,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     }
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
+    if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
     if (cfg_.microtubule > 0.5f) {
         const int levels = int(cfg_.mt_levels + 0.5f);
         const uint32_t len = uint32_t(cfg_.mt_len + 0.5f);
@@ -899,6 +900,13 @@ void NeuralCellularMatrix::step3D() {
     const bool sweep = lattice_ ? cfg_.lattice_sweep > 0.5f : cfg_.field_sweep > 0.5f;
     const bool fourDNow = lattice_ && (tick4_ || cfg_.lattice_hold < 0.5f);
     const float* drive = drive3_.data();
+    // Loop guard: what source u sends through learned links is its firing x its resource.
+    const float* res = linkRes_.empty() ? nullptr : linkRes_.data();
+    auto spent = [res](size_t u, const float* src, float* buf) -> const float* {
+        if (!res) return src;
+        for (uint32_t c = 0; c < C3; ++c) buf[c] = src[c] * res[u * C3 + c];
+        return buf;
+    };
     const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
     // Pharmakon: on a 4D step, every voxel gathers its 80 counterparts in the neighbouring 4D
     // cells (content to content); the drive is held until the next 4D step.
@@ -932,7 +940,8 @@ void NeuralCellularMatrix::step3D() {
                     addScaled(src, fx, C3, r.lattice_link * latScale_[k]);
                     float* to = split4 && vg / Vf_ < w ? ox : lx; // outward: from the slice nearer the senses
                     { // an empty block adds nothing
-                        addLinks(links_.view(v, h4B_ + k), src, to, latDir_[k]);
+                        float sb[C3];
+                        addLinks(links_.view(v, h4B_ + k), spent(vg, src, sb), to, latDir_[k]);
                     }
                 }
             }
@@ -996,7 +1005,8 @@ void NeuralCellularMatrix::step3D() {
                         addScaled(src, in, C3, inh * r.voxel_neighbour); // inhibitory: fixed scaffold only
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                 // scaffold
-                        addLinks(links_.view(v, o), src, pl, rec); // plastic memory part
+                        float sb[C3];
+                        addLinks(links_.view(v, o), spent(vn, src, sb), pl, rec); // plastic memory part
                     }
                 }
 
@@ -1016,7 +1026,8 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, inh * r.long_range);
             } else {
                 addScaled(src, in, C3, r.long_range);
-                addLinks(links_.view(v, longB_ + l), src, pl, rec);
+                float sb[C3];
+                addLinks(links_.view(v, longB_ + l), spent(t, src, sb), pl, rec);
             }
         }
 
@@ -1082,7 +1093,8 @@ void NeuralCellularMatrix::step3D() {
                 addScaled(src, in, C3, gain * inh * link);
             } else {
                 addScaled(src, in, C3, gain * link);
-                addLinks(links_.view(v, h4B_ + gi), src, pl4, gain * plasticScale * rec4);
+                float sb[C3];
+                addLinks(links_.view(v, h4B_ + gi), spent(vg, src, sb), pl4, gain * plasticScale * rec4);
             }
             ++gi;
         }
@@ -1389,6 +1401,16 @@ void NeuralCellularMatrix::step3D() {
     }
     if (noiseLevel_ > 0.0f) ++noiseStep_;
     s3_.swap();
+    if (!linkRes_.empty()) { // loop guard: firing tires the learned links, rest restores them
+        const float use = cfg_.learning.link_use, back = 1.0f / std::max(1.0f, cfg_.learning.link_recovery);
+        const float* a = s3_.cur.data();
+        const int64_t n = int64_t(linkRes_.size());
+#pragma omp parallel for schedule(static)
+        for (int64_t i = 0; i < n; ++i) {
+            float& rr = linkRes_[size_t(i)];
+            rr = std::clamp(rr + back * (1.0f - rr) - use * rr * a[i], 0.0f, 1.0f);
+        }
+    }
     if (mt3_.on()) { // microtubules of the voxels, on the 3D clock
         mtActive_.clear();
         const float* s = s3_.cur.data();
@@ -2062,6 +2084,7 @@ void NeuralCellularMatrix::clearActivity() {
     }
     std::fill(fatigue2_.begin(), fatigue2_.end(), 0.0f);
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
+    std::fill(linkRes_.begin(), linkRes_.end(), 1.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
     std::fill(ctx3_.begin(), ctx3_.end(), 0.0f);
     std::fill(fbTrace_.begin(), fbTrace_.end(), 0.0f);
@@ -2195,6 +2218,7 @@ void NeuralCellularMatrix::state(StateFile& st) {
     }
     if (soma_.on()) soma_.state(st); // only brains with the somatic network
     if (!fbTrace_.empty()) st.vec(fbTrace_, "right/wrong trace"); // only brains that learn from right and wrong
+    if (!linkRes_.empty()) st.vec(linkRes_, "link resources");   // only brains with the loop guard
 }
 
 // The inner chunks in the dense layout of the old arrays (an empty vector when that path is off):
