@@ -371,6 +371,27 @@ private:
     AVec<float> L2_;
     // Loop guard (link_use): per voxel channel, the resource of its learned links (1 = rested).
     AVec<float> linkRes_;
+    // Predictive coding: a copy of the top-down predictions (hold4Learned_) read while it is rewritten.
+    AVec<float> pred4_;
+    // Vigilance: per voxel, its last mismatch (0..1) and the 3D steps left of a reset.
+    AVec<float> mismatch3_, reset3_;
+    // Engram allocation: per voxel, its excitability (0..1), and the 3D steps counted for its jitter.
+    AVec<float> excit3_;
+    uint64_t allocStep_ = 0;
+    // A probe of the three parts while hearing: [prediction, firing] sums of what is sent inward,
+    // mismatches above vigilance, resets, mean excitability (for the report).
+public:
+    struct TheoryProbe {
+        double sent = 0.0, predicted = 0.0, mismatchN = 0.0, mismatchSum = 0.0, resets = 0.0;
+    };
+    const TheoryProbe& theoryProbe() const { return theory_; }
+    double meanExcitability() const {
+        double s = 0.0;
+        for (float e : excit3_) s += e;
+        return excit3_.empty() ? 1.0 : s / double(excit3_.size());
+    }
+private:
+    TheoryProbe theory_;
     // up_evidence: per sheet cell, the share of its last drive that came from its own voxel.
     AVec<float> parentShare2_;
     // Microtubules in every cell (microtubule, mt_levels): one layer per level.

@@ -431,6 +431,13 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
     if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
+    if (lattice_ && (cfg_.learning.pc_error > 0.0f || cfg_.learning.art_vigilance > 0.0f)) {
+        if (hold4Out_.empty())
+            throw std::invalid_argument("pc_error and art_vigilance need the outward 4D links split off (encoding_suppression_4d_out >= 0)");
+        pred4_.assign(V_ * C3, 0.0f);
+    }
+    if (lattice_ && cfg_.learning.art_vigilance > 0.0f) mismatch3_.assign(V_, -1.0f), reset3_.assign(V_, 0.0f);
+    if (cfg_.learning.alloc_gain > 0.0f) excit3_.assign(V_, 1.0f);
     if (cfg_.microtubule > 0.5f) {
         const int levels = int(cfg_.mt_levels + 0.5f);
         const uint32_t len = uint32_t(cfg_.mt_len + 0.5f);
@@ -915,19 +922,54 @@ void NeuralCellularMatrix::step3D() {
     const int64_t vEnd = sweep ? int64_t(fs + 1) * int64_t(Vf_) : voxels;
     if (fourDNow) {
         const uint32_t KH = hBlocks_;
-#pragma omp parallel for schedule(dynamic, 256)
+        // Predictive coding / vigilance: the predictions as they stand (the loop below rewrites them).
+        const bool pcOn = !pred4_.empty();
+        if (pcOn) std::copy(hold4Learned_.begin(), hold4Learned_.end(), pred4_.begin());
+        const float pcK = std::clamp(cfg_.learning.pc_error, 0.0f, 1.0f);
+        // Predictions on the brain's own scale: a typical prediction (the mean over voxels that
+        // have one of their strongest predicted channel) counts as 1 x pc_gain.
+        float pcG = 0.0f;
+        if (pcOn && pcK > 0.0f) {
+            double sum = 0.0;
+            size_t n = 0;
+            for (size_t u = 0; u < V_; ++u) {
+                float m = 0.0f;
+                for (uint32_t c = 0; c < C3; ++c) m = std::max(m, pred4_[u * C3 + c]);
+                if (m > 0.0f) sum += m, ++n;
+            }
+            pcG = n && sum > 0.0 ? std::max(0.0f, cfg_.learning.pc_gain) * float(double(n) / sum) : 0.0f;
+        }
+        const bool artOn = !mismatch3_.empty() && sensoryOn_;
+        double pSent = 0.0, pPred = 0.0, pResets = 0.0;
+#pragma omp parallel for schedule(dynamic, 256) reduction(+ : pSent, pPred, pResets)
         for (int64_t vi = vBegin; vi < vEnd; ++vi) {
             const size_t v = size_t(vi);
             const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
             const uint32_t w = uint32_t(v / Vf_);
             float fx[C3] = {}, lx[C3] = {}, ox[C3] = {};
             float pexc = 0.0f, pinh = 0.0f;
+            float misSum = 0.0f;
+            uint32_t misN = 0;
             for (uint32_t k = 0; k < KH; ++k) {
                 const size_t vg = lattice4Partner(x, y, z, w, k);
                 if (vg == SIZE_MAX) continue;
                 if (inhib3_[vg] && cfg_.lattice_exc_only > 0.5f) continue; // inhibition stays local
                 const float* src = (sweep && vg / Vf_ < w ? out : s3) + vg * C3; // sweep: earlier slices' new state
                 if (isSilent(src, C3)) continue;
+                float errBuf[C3];
+                if (vg / Vf_ < w && !inhib3_[vg]) { // from the slice nearer the senses
+                    if (artOn && mismatch3_[vg] >= 0.0f) misSum += mismatch3_[vg], ++misN; // only partners that had an expectation
+                    if (pcG > 0.0f) { // send inward only what was not predicted
+                        const float* pr = pred4_.data() + vg * C3;
+                        for (uint32_t c = 0; c < C3; ++c) {
+                            const float p = std::min(1.0f, pcG * std::max(0.0f, pr[c]));
+                            errBuf[c] = std::max(0.0f, src[c] - pcK * p);
+                            pSent += src[c], pPred += src[c] - errBuf[c];
+                        }
+                        src = errBuf;
+                        if (isSilent(src, C3)) continue;
+                    }
+                }
                 if (probe_) {
                     float s = 0.0f;
                     for (uint32_t c = 0; c < C3; ++c) s += src[c];
@@ -957,6 +999,12 @@ void NeuralCellularMatrix::step3D() {
             }
             std::copy(fx, fx + C3, hold4Fixed_.data() + v * C3);
             std::copy(lx, lx + C3, hold4Learned_.data() + v * C3);
+            // Vigilance: a firing voxel whose partners below report a wrong expectation is reset.
+            if (artOn && misN && misSum / float(misN) > cfg_.learning.art_vigilance && !isSilent(s3 + v * C3, C3) &&
+                reset3_[v] <= 0.0f) {
+                reset3_[v] = std::max(1.0f, cfg_.learning.art_reset);
+                pResets += 1.0;
+            }
             if (split4) std::copy(ox, ox + C3, hold4Out_.data() + v * C3);
             if (!ctx3_.empty()) { // held clues reach through the same learned 4D links
                 float cx[C3] = {};
@@ -971,6 +1019,8 @@ void NeuralCellularMatrix::step3D() {
             }
             if (probe_) probeExc_[v] = pexc, probeInh_[v] = pinh;
         }
+        if (sensoryOn_) theory_.sent += pSent, theory_.predicted += pPred;
+        theory_.resets += pResets;
     }
 #pragma omp parallel for schedule(dynamic, 256)
     for (int64_t vi = vBegin; vi < vEnd; ++vi) {
@@ -1209,6 +1259,19 @@ void NeuralCellularMatrix::step3D() {
             }
             if (cfg_.inner_rules > 0.5f) // learned upward path: muted while encoding, like other learned links
                 for (uint32_t c = 0; c < C3; ++c) pl[c] += gu * rec * upLearned[c];
+            if (!mismatch3_.empty()) { // vigilance: what the deeper partners expect vs what comes in from below
+                const float* tl = hold4Learned_.data() + v * C3;
+                float sT = 0.0f, sI = 0.0f;
+                for (uint32_t c = 0; c < C3; ++c) sT += std::max(0.0f, tl[c]), sI += std::max(0.0f, in[c]);
+                float mis = -1.0f; // no expectation: nothing to compare
+                if (sI > 0.0f && sT >= cfg_.learning.art_floor * sI) {
+                    float overlap = 0.0f;
+                    for (uint32_t c = 0; c < C3; ++c)
+                        overlap += std::min(std::max(0.0f, tl[c]) / sT, std::max(0.0f, in[c]) / sI);
+                    mis = 1.0f - overlap;
+                }
+                mismatch3_[v] = mis;
+            }
             float plSum = 0.0f, inSum = 0.0f;
             // Quiet ears: without input, the fixed paths (the echo of what was heard) turn down.
             const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
@@ -1262,7 +1325,19 @@ void NeuralCellularMatrix::step3D() {
             probeMax_[v] = m;
             probeThr_[v] = theta[v] + lp.fatigue_gain * fatigue3_[v];
         }
-        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v], cfg_.channel_winners3);
+        float allocTheta = 0.0f; // engram allocation: a used cell is harder to excite for a while
+        if (!excit3_.empty()) {
+            allocTheta = cfg_.learning.alloc_gain * (1.0f - excit3_[v]);
+            if (cfg_.learning.alloc_jitter > 0.0f) {
+                const uint64_t epoch = allocStep_ / uint64_t(std::max(1.0f, cfg_.learning.alloc_period));
+                allocTheta += cfg_.learning.alloc_jitter * float(2.0 * hashUniform(cfg_.seed, kStreamAlloc, epoch * uint64_t(V_) + v) - 1.0);
+            }
+        }
+        if (!reset3_.empty() && reset3_[v] > 0.0f) { // vigilance reset: silent for now
+            reset3_[v] -= 1.0f;
+            for (uint32_t c = 0; c < C3; ++c) in[c] = -1.0f;
+        }
+        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v] + allocTheta, cfg_.channel_winners3);
     }
 
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
@@ -1289,6 +1364,12 @@ void NeuralCellularMatrix::step3D() {
         adaptThreshold(theta[v], final, lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
+        if (!excit3_.empty()) { // engram allocation: firing while hearing uses excitability up; rest restores it
+            float& e = excit3_[v];
+            e += (1.0f - e) / std::max(1.0f, cfg_.learning.alloc_recovery);
+            if (sensoryOn_) e -= cfg_.learning.alloc_use * std::min(1.0f, firing3);
+            e = std::clamp(e, 0.0f, 1.0f);
+        }
         average3_[v] += (final - average3_[v]) / avgTau;
         if (!chanTheta3_.empty() && final > 0.0f) {
             const float* cell = out + v * C3;
@@ -1400,6 +1481,10 @@ void NeuralCellularMatrix::step3D() {
         for (uint32_t f = 0; f < kFields; ++f) probeSums_[f][snd].steps += 1;
     }
     if (noiseLevel_ > 0.0f) ++noiseStep_;
+    if (!excit3_.empty()) ++allocStep_;
+    if (!mismatch3_.empty() && sensoryOn_)
+        for (size_t v = 0; v < V_; ++v)
+            if (mismatch3_[v] >= 0.0f) theory_.mismatchN += 1.0, theory_.mismatchSum += mismatch3_[v];
     s3_.swap();
     if (!linkRes_.empty()) { // loop guard: firing tires the learned links, rest restores them
         const float use = cfg_.learning.link_use, back = 1.0f / std::max(1.0f, cfg_.learning.link_recovery);
@@ -2085,6 +2170,8 @@ void NeuralCellularMatrix::clearActivity() {
     std::fill(fatigue2_.begin(), fatigue2_.end(), 0.0f);
     std::fill(fatigue3_.begin(), fatigue3_.end(), 0.0f);
     std::fill(linkRes_.begin(), linkRes_.end(), 1.0f);
+    std::fill(mismatch3_.begin(), mismatch3_.end(), -1.0f);
+    std::fill(reset3_.begin(), reset3_.end(), 0.0f);
     std::fill(orderTrace3_.begin(), orderTrace3_.end(), 0.0f);
     std::fill(ctx3_.begin(), ctx3_.end(), 0.0f);
     std::fill(fbTrace_.begin(), fbTrace_.end(), 0.0f);
@@ -2219,6 +2306,8 @@ void NeuralCellularMatrix::state(StateFile& st) {
     if (soma_.on()) soma_.state(st); // only brains with the somatic network
     if (!fbTrace_.empty()) st.vec(fbTrace_, "right/wrong trace"); // only brains that learn from right and wrong
     if (!linkRes_.empty()) st.vec(linkRes_, "link resources");   // only brains with the loop guard
+    if (!mismatch3_.empty()) st.vec(mismatch3_, "mismatch"), st.vec(reset3_, "resets"); // vigilance
+    if (!excit3_.empty()) st.vec(excit3_, "excitability"), st.value(allocStep_);         // engram allocation
 }
 
 // The inner chunks in the dense layout of the old arrays (an empty vector when that path is off):

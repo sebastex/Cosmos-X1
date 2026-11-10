@@ -196,6 +196,34 @@ struct LearningParams {
     // round (an echo) wears itself out where it runs. Fixed links and held clues are not touched.
     float link_use = 0.0f;
     float link_recovery = 30.0f;
+    // Predictive coding (pc_error > 0, 4D lattice with the outward links split off): a slice sends
+    // inward (to the slice farther from the senses) what its deeper partners did not predict.
+    // Each voxel's prediction is its learned 4D input from the same and deeper slices (top-down);
+    // what it sends inward through its 4D links (fixed and learned) is its firing minus
+    // pc_error x min(1, pc_gain x prediction / typical prediction), never below 0 (typical = the
+    // mean over voxels of their strongest predicted channel). What all of a word's sounds share
+    // is predicted away; what tells it apart reaches the deep slices.
+    float pc_error = 0.0f;
+    float pc_gain = 1.0f;
+    // Vigilance (art_vigilance > 0, adaptive resonance): each voxel compares what its deeper
+    // partners expect (top-down learned 4D input) with what comes in from below (its fixed input).
+    // Mismatch = 1 - overlap of the two patterns (each scaled to sum 1), when an expectation of at
+    // least art_floor x the input is there. While hearing, a deep voxel that is firing while its
+    // partners nearer the senses report a mean mismatch above art_vigilance is reset: silent for
+    // art_reset 3D steps, so other voxels take the new word instead of merging it into the old.
+    float art_vigilance = 0.0f;
+    float art_floor = 0.05f;
+    float art_reset = 20.0f;
+    // Engram allocation (alloc_gain > 0): each voxel's excitability e (0..1, starts 1). Firing
+    // while hearing uses it up (e -= alloc_use x firing per 3D step); it comes back by
+    // (1 - e) / alloc_recovery. Its firing threshold rises by alloc_gain x (1 - e), plus a random
+    // offset of up to +-alloc_jitter that changes every alloc_period 3D steps. Words heard at
+    // different times land on different cells; a word heard again finds its cells rested.
+    float alloc_gain = 0.0f;
+    float alloc_use = 0.02f;
+    float alloc_recovery = 3000.0f;
+    float alloc_jitter = 0.0f;
+    float alloc_period = 400.0f;
     float predictive = 0.0f;
     float predictive_gain = 1.0f;
     float feedback_rate = 0.02f;

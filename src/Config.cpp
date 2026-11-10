@@ -202,6 +202,16 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"prune", &c.learning.prune},
         {"link_use", &c.learning.link_use},
         {"link_recovery", &c.learning.link_recovery},
+        {"pc_error", &c.learning.pc_error},
+        {"pc_gain", &c.learning.pc_gain},
+        {"art_vigilance", &c.learning.art_vigilance},
+        {"art_floor", &c.learning.art_floor},
+        {"art_reset", &c.learning.art_reset},
+        {"alloc_gain", &c.learning.alloc_gain},
+        {"alloc_use", &c.learning.alloc_use},
+        {"alloc_recovery", &c.learning.alloc_recovery},
+        {"alloc_jitter", &c.learning.alloc_jitter},
+        {"alloc_period", &c.learning.alloc_period},
         {"silence_gate", &c.learning.silence_gate},
         {"context_tau", &c.learning.context_tau},
         {"context_gain", &c.learning.context_gain},
@@ -469,6 +479,23 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // alefG: the 4D links stay on while hearing, and tiring learned links (short-term
         // depression) guard against echoes where they run. Steady firing at 1 leaves
         // 1 / (1 + use x recovery) of the strength: alefG 1/4, alefG2 1/13, alefG3 1/2.
+        // Three parts from theories of learning (2026-11-10), each on alefEF (outward 4D links on
+        // while hearing), and all three together: predictive coding (Rao & Ballard, Friston),
+        // vigilance and reset (adaptive resonance, Grossberg), engram allocation by excitability
+        // (Josselyn & Frankland). Aimed at near-copies (page/pass 0.99 alike) and empty deep slices.
+        {"alefPC", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d_out=0", "pc_error=1", "pc_gain=1"}},
+        {"alefART", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                     "soma=1", "encoding_suppression_4d_out=0", "art_vigilance=0.6", "art_floor=0.05", "art_reset=20"}},
+        {"alefART4", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                      "soma=1", "encoding_suppression_4d_out=0", "art_vigilance=0.35", "art_floor=0.05", "art_reset=20"}},
+        {"alefEN", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                    "soma=1", "encoding_suppression_4d_out=0", "alloc_gain=0.15", "alloc_use=0.02",
+                    "alloc_recovery=3000", "alloc_jitter=0.03", "alloc_period=400"}},
+        {"alefTri", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                     "soma=1", "encoding_suppression_4d_out=0", "pc_error=1", "pc_gain=1", "art_vigilance=0.6",
+                     "art_floor=0.05", "art_reset=20", "alloc_gain=0.15", "alloc_use=0.02", "alloc_recovery=3000",
+                     "alloc_jitter=0.03", "alloc_period=400"}},
         {"alefG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "encoding_suppression_4d=0", "link_use=0.1", "link_recovery=30"}},
         {"alefG2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",

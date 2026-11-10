@@ -2184,6 +2184,12 @@ int runScriptTest(const Config& cfg) {
     if (s.matrix().somaticOn())
         std::printf("  somatic network reductions: %llu\n", (unsigned long long)s.matrix().somaticReductions());
     std::printf("%s\n", s.matrix().blockReport().c_str()); // which learned blocks are stored, and the memory they take
+    { // the three parts from theories of learning: what predictive coding took away, vigilance resets, excitability
+        const auto& t = s.matrix().theoryProbe();
+        std::printf("THEORY {\"predicted_share\":%.4f,\"compared\":%.0f,\"mean_mismatch\":%.3f,\"resets\":%.0f,\"excitability\":%.4f}\n",
+                    t.sent > 0 ? t.predicted / t.sent : 0.0, t.mismatchN, t.mismatchN > 0 ? t.mismatchSum / t.mismatchN : 0.0,
+                    t.resets, s.matrix().meanExcitability());
+    }
     if (const char* h = std::getenv("NCM_HASH"); h && std::atoi(h) > 0) { // the brain's fingerprint
         StateFile st{StateFile::Fingerprint{}};
         s.state(st);
