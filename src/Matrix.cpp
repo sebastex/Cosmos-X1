@@ -1882,35 +1882,18 @@ void NeuralCellularMatrix::learn(float modulator) {
             }
         }
         // Pruning: links far below the channel's typical link are background noise, not memory.
-        if (pruneK > 0.0f) {
-            double sum[C3] = {};
-            uint32_t cnt[C3] = {};
+        if (pruneK > 0.0f)
             forEachLearnedBlock(v, [&](float* block, size_t) {
-                const float* sl = slowOf(block);
+                float* sl = slowOf(block);
                 for (size_t i = 0; i < size_t(C3) * C3; ++i) {
                     const float w = block[i] + (sl ? sl[i] : 0.0f);
-                    if (w > 0.0f) sum[i / C3] += w, ++cnt[i / C3];
+                    if (w > 0.0f && w < pruneK) {
+                        block[i] = 0.0f;
+                        if (sl) sl[i] = 0.0f;
+                        pruned += 1.0;
+                    }
                 }
             });
-            float cut[C3];
-            bool any = false;
-            for (uint32_t a = 0; a < C3; ++a) {
-                cut[a] = cnt[a] ? pruneK * float(sum[a] / double(cnt[a])) : 0.0f;
-                any = any || cut[a] > 0.0f;
-            }
-            if (any)
-                forEachLearnedBlock(v, [&](float* block, size_t) {
-                    float* sl = slowOf(block);
-                    for (size_t i = 0; i < size_t(C3) * C3; ++i) {
-                        const float w = block[i] + (sl ? sl[i] : 0.0f);
-                        if (w > 0.0f && w < cut[i / C3]) {
-                            block[i] = 0.0f;
-                            if (sl) sl[i] = 0.0f;
-                            pruned += 1.0;
-                        }
-                    }
-                });
-        }
     }
     pruned_ += pruned;
     // Assembly inhibition: for every voxel (silent ones too) and long-range partner: a partner
@@ -2258,6 +2241,26 @@ std::string NeuralCellularMatrix::blockReport() const {
         s += b;
     }
     s += "],\"pruned\":" + std::to_string(pruned_);
+    // Weight strengths (fast + slow) in powers of ten, 1e-12 .. 1e+1: [count share, strength share].
+    double hist[14] = {}, histS[14] = {};
+    for (size_t v = 0; v < V_; ++v)
+        self.forEachLearnedBlock(v, [&](float* block, size_t) {
+            const float* sl = self.slowOf(block);
+            for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                const float w = block[i] + (sl ? sl[i] : 0.0f);
+                if (w <= 0.0f) continue;
+                const int bin = std::clamp(int(std::floor(std::log10(double(w)))) + 12, 0, 13);
+                hist[bin] += 1.0, histS[bin] += w;
+            }
+        });
+    s += ",\"strength_hist\":[";
+    for (int k = 0; k < 14; ++k) {
+        char b[100];
+        std::snprintf(b, sizeof b, "%s[%d,%.4f,%.4f]", k ? "," : "", k - 12, allW > 0 ? hist[k] / allW : 0.0,
+                      allS > 0 ? histS[k] / allS : 0.0);
+        s += b;
+    }
+    s += "]";
     char tail[300];
     std::snprintf(tail, sizeof tail, ",\"blocks_gb\":%.3f,\"blocks_dense_gb\":%.3f,\"inner_gb\":%.3f,\"inner_nonzero\":%.4f,\"total_gb\":%.3f}",
                   stored / 1e9, dense / 1e9, innerN * 4 / 1e9, innerN > 0 ? innerNZ / innerN : 0.0, double(memoryBytes()) / 1e9);

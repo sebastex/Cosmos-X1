@@ -184,10 +184,10 @@ struct LearningParams {
     // below 1x. Nothing fires louder; only how much a link changes is measured against the cells'
     // own levels. 0 = off.
     float level_learn = 0.0f;
-    // Pruning (prune > 0): after every learning step, each output channel of the learning voxel
-    // drops the incoming weights far below its typical link: every weight (fast + slow) under
-    // prune x the mean of the channel's non-zero incoming weights is set to 0. The cut follows the
-    // brain as it learns (it is relative to what the channel holds now). 0 = off.
+    // Pruning (prune > 0): after every learning step, every incoming learned weight (fast + slow)
+    // of the learning voxel weaker than prune is set to 0: background noise is removed, links that
+    // carry memories stay. One fixed strength for the whole brain, set from measured grown brains
+    // (BLOCKS weight histogram), below what one moment of learning adds. 0 = off.
     float prune = 0.0f;
     float predictive = 0.0f;
     float predictive_gain = 1.0f;
