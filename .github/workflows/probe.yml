@@ -45,10 +45,10 @@ jobs:
           python3 tools/ladder/probe.py script ${{ inputs.stage }} > items.json
           python3 -c "import json; print(json.load(open('items.json'))['script'])" > probe.txt
           if [ "${{ inputs.quick }}" = "true" ]; then echo "report:state" > probe.txt; fi
-          NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=probe.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+          NCM_HASH=1 NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=probe.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
             /usr/bin/time -v ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED > result.txt 2> time.txt
           rm -f brain.bin
-          grep -E "BRAINREPORT|BLOCKS" result.txt > report_$LANE.txt || true
+          grep -E "BRAINREPORT|BLOCKS|BRAINHASH" result.txt > report_$LANE.txt || true
           grep -E "Maximum resident|Elapsed" time.txt >> report_$LANE.txt || true
           cat report_$LANE.txt
           if [ "${{ inputs.quick }}" != "true" ]; then
