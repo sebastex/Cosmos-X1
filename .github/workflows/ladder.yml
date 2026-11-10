@@ -140,6 +140,13 @@ jobs:
           name: ladder-run-${{ env.LANE }}-${{ inputs.step }}
           path: out
           retention-days: 30
+      - name: Start the full test (every word, all 1000 as candidates)
+        if: steps.ladder.outputs.done == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run fulltest.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} \
+            -f lane=${{ env.LANE }} -f run=${{ github.run_id }} -f preset=${{ inputs.preset }}
       - name: Start the next run
         if: steps.ladder.outputs.done != '1' && fromJSON(inputs.runs) > 1
         env:

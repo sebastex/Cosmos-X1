@@ -7,6 +7,8 @@ old?), with a full report of the brain's state (tools/ladder/ladder.yml runs it 
     python tools/ladder/ladder.py test STAGE          the test after STAGE words, as an arena puzzle
     python tools/ladder/ladder.py row STAGE score.json report.txt result.txt   one growth-log row (json)
     python tools/ladder/ladder.py table growth.json   the ladder as a table
+    python tools/ladder/ladder.py full PART [PARTS]    one piece of the full test after 1000 words
+    python tools/ladder/ladder.py fullsummary piece.json ...   the full test, all pieces together
 
 Words are heard alone (8 times, as in complete50); nothing is ever paired. The test first shows
 up to 200 learned words with learning frozen (still:1, so their shapes are recorded but nothing
@@ -96,6 +98,58 @@ def test(stage):
                 items=items, shown=len(shown), script=';'.join(script))
 
 
+def full(part, parts=6):
+    """The full test after all 1000 words, one of `parts` pieces (run side by side on separate
+    machines; the brain does not change during a test). Every piece shows all 1000 words (learning
+    frozen, so their shapes are recorded), then cues its share of every word that can be cued by a
+    beginning no other word shares; each answer must beat all 999 other words and the untrained twin."""
+    ws = words()
+    pre = prefixes(ws)
+    so = stage_of()
+    shown = list(ws)
+    random.Random(4242).shuffle(shown)
+    cueable = sorted(w for w in ws if pre[w])
+    random.Random(4243).shuffle(cueable)
+    targets = cueable[part::parts]
+    script = ['still:1', f'report:full{part}'] + [f'say:{w}:2:40' for w in shown] + ['rest:800']
+    for w in targets:
+        script += [f'cue:{pre[w]}:60', 'rest:150']
+    script.append('still:0')
+    items = [dict(cue=pre[w], word=w, stage=so[w]) for w in targets]
+    return dict(id='full', name=f'Full test, piece {part + 1} of {parts}', kind='complete', twin=True,
+                items=items, shown=len(shown), cueable=len(cueable), script=';'.join(script))
+
+
+def full_summary(paths):
+    """All pieces of the full test together: recall of every cueable word (and by the stage it was
+    learned in), the twin, and what wrongly won."""
+    by = collections.defaultdict(lambda: dict(n=0, right=0, twin_right=0))
+    won = collections.Counter()
+    n = right = 0
+    for path in paths:
+        piece = json.load(open(path))
+        item = {it['cue']: it for it in piece['items']}
+        learner, twin = piece['score'].get('learner', {}), piece['score'].get('twin', {})
+        for cue, m in learner.items():
+            it = item.get(cue)
+            if not it:
+                continue
+            ok = m > 0 and m > twin.get(cue, -9)
+            r = by[it['stage']]
+            r['n'] += 1
+            r['right'] += ok
+            r['twin_right'] += twin.get(cue, -9) > 0
+            n += 1
+            right += ok
+        for c in piece.get('cues', []):
+            if c['cue'] in item and c.get('best') and c['best'] != item[c['cue']]['word']:
+                won[c['best']] += 1
+    for r in by.values():
+        r['score'] = round(r['right'] / r['n'], 3)
+    return dict(asked=n, right=right, recall=round(right / max(1, n), 3),
+                by_stage={str(k): v for k, v in sorted(by.items())}, wrong_winners=won.most_common(12))
+
+
 def labscores(report):
     out = []
     for line in open(report, encoding='utf-8', errors='replace'):
@@ -164,6 +218,15 @@ def main():
         print(json.dumps(row(int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5])))
     elif what == 'table':
         table(sys.argv[2])
+    elif what == 'full':  # full PART [PARTS]: one piece of the full test (arena puzzle json)
+        print(json.dumps(dict(puzzles=[full(int(sys.argv[2]), int(sys.argv[3]) if len(sys.argv) > 3 else 6)])))
+    elif what == 'fullpiece':  # fullpiece test.json score.json report.txt: one piece's answers, for the summary
+        t = json.load(open(sys.argv[2]))['puzzles'][0]
+        labs = labscores(sys.argv[4])
+        print(json.dumps(dict(items=t['items'], score=json.load(open(sys.argv[3])),
+                              cues=labs[0].get('cues', []) if labs else [])))
+    elif what == 'fullsummary':  # fullsummary piece.json ...: the whole test
+        print(json.dumps(full_summary(sys.argv[2:]), indent=1))
 
 
 if __name__ == '__main__':

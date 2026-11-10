@@ -1,0 +1,105 @@
+# The full test of a ladder brain after all 1000 words (tools/ladder/ladder.py full): every word that
+# can be cued by a beginning no other word shares (686 of the 1000) is cued, and each answer must
+# beat all 999 other words and the untrained twin. Six pieces run side by side (the brain does not
+# change during a test), and a seventh hears all 1000 words twice (can it tell every word apart?).
+# The ladder starts it by itself when a lane is done.
+# Start: gh workflow run fulltest.yml --ref cosmos-pharmakon -f lane=alefP-3004 -f run=<run that saved the brain>
+name: fulltest
+run-name: full test ${{ inputs.lane }}
+on:
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: Ladder lane, <variant>-<seed>
+        required: true
+      run:
+        description: Run that saved the 1000-word brain
+        required: true
+      preset:
+        description: Brain size
+        default: "dev"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  piece:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ["0", "1", "2", "3", "4", "5", "every"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh && pip install -q numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: ladder-brain-${{ inputs.lane }}
+          run-id: ${{ inputs.run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test
+        env:
+          LANE: ${{ inputs.lane }}
+          PART: ${{ matrix.part }}
+          PRESET: ${{ inputs.preset }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          zstd -d -q --rm brain.bin.zst
+          VARIANT=${LANE%-*}; SEED=${LANE##*-}
+          mkdir -p out
+          if [ "$PART" = every ]; then
+            python3 tools/ladder/probe.py script 1000 every > out/items.json
+            python3 -c "import json; print(json.load(open('out/items.json'))['script'])" > test.txt
+            NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=test.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+              ./build/cosmos_x1 --test script --preset $PRESET --variant $VARIANT --seed $SEED > out/result.txt
+            rm -f brain.bin
+            python3 tools/ladder/probe.py score monitor/session0.ncmmon out/items.json > out/recognition.json
+            cat out/recognition.json | head -40
+          else
+            python3 tools/ladder/ladder.py full $PART 6 > out/test.json
+            python3 -c "import json; print(json.load(open('out/test.json'))['puzzles'][0]['script'])" > test.txt
+            NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=test.txt NCM_SCRIPT_TWIN=1 NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+              ./build/cosmos_x1 --test script --preset $PRESET --variant $VARIANT --seed $SEED > out/result.txt
+            rm -f brain.bin
+            : > out/report.txt
+            for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> out/report.txt; done
+            python3 tools/arena/score.py full out/result.txt out/report.txt out/test.json > out/score.json
+            python3 tools/ladder/ladder.py fullpiece out/test.json out/score.json out/report.txt > out/piece$PART.json
+            python3 -c "import json; s=json.load(open('out/score.json')); print('piece score', s.get('score'))"
+          fi
+          rm -rf monitor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fulltest-${{ inputs.lane }}-${{ matrix.part }}
+          path: out
+          retention-days: 90
+  summary:
+    needs: piece
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: fulltest-${{ inputs.lane }}-*
+          path: pieces
+      - name: The whole test
+        run: |
+          python3 tools/ladder/ladder.py fullsummary pieces/*/piece*.json > fulltest.json || true
+          python3 - <<'EOF' || true
+          import glob, json
+          s = json.load(open('fulltest.json'))
+          for f in glob.glob('pieces/*/recognition.json'):
+              r = json.load(open(f))
+              s['recognition'] = dict(words=r['words'], all_slices=r.get('id_all_slices'),
+                                      per_slice=[x['id'] for x in r['slices']])
+          json.dump(s, open('fulltest.json', 'w'), indent=1)
+          EOF
+          cat fulltest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fulltest-${{ inputs.lane }}
+          path: fulltest.json
+          retention-days: 90

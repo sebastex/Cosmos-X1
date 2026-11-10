@@ -26,13 +26,14 @@ import read_monitor as rm  # noqa: E402
 from deep import events  # noqa: E402
 
 
-def script(stage):
+def script(stage, every=False):
+    """every: recognition of every learned word (all shown twice, no cues)."""
     t = ladder.test(stage)
-    targets = [it['word'] for it in t['items']]
+    targets = [] if every else [it['word'] for it in t['items']]
     pre = {it['word']: it['cue'] for it in t['items']}
     rng = random.Random(77)
     others = sorted(set(ladder.words()[:stage]) - set(targets))
-    shown = targets + rng.sample(others, 100 - len(targets))
+    shown = targets + (others if every else rng.sample(others, 100 - len(targets)))
     rng.shuffle(shown)
     ops = ['still:1', 'report:start'] + [f'say:{w}:2:40' for w in shown] + ['rest:300'] + [f'say:{w}:2:40' for w in shown] + ['rest:800']
     for w in targets:
@@ -60,10 +61,11 @@ def score(rec, items):
         for e in evs:
             if e['word'] == w:
                 parts += x[e['start']:min(n, e['end'] + 3)]
-        return rm.dense(rm.Sparse.total(parts), size)
+        return rm.dense(rm.Sparse.total(parts), size).astype(np.float32)
 
-    MA = np.array([shape(A, w) for w in shown])
-    MB = np.array([shape(B, w) for w in shown])
+    MA = np.array([shape(A, w) for w in shown], dtype=np.float32)
+    MB = np.array([shape(B, w) for w in shown], dtype=np.float32)
+    together = np.zeros((nW, nW), dtype=np.float64)  # all slices, each on its own scale
     # Each cue's silence: 3..28 ticks after the cue's last letter (as the ladder's scores).
     by_cue = {}
     for k, e in enumerate(cues):
@@ -80,7 +82,9 @@ def score(rec, items):
         ca, cb = sa - sa.mean(axis=0), sb - mean
         unit = lambda m: m / np.maximum(np.linalg.norm(m, axis=-1, keepdims=True), 1e-12)
         na, nb = unit(ca), unit(cb)
-        ident = float(((na @ nb.T).argmax(axis=1) == np.arange(nW)).mean())
+        sim = na @ nb.T
+        together += sim
+        ident = float((sim.argmax(axis=1) == np.arange(nW)).mean())
         right, margins, energy, hits = 0, [], 0.0, []
         for cue, w in zip(items['cues'], items['targets']):
             if cue not in by_cue:
@@ -103,12 +107,13 @@ def score(rec, items):
     out['only_deep'] = len(deep - s0)
     out['any_slice'] = round(len(deep | s0) / max(1, len(items['cues'])), 3)
     # All slices together, each on its own scale (every slice's shapes scaled to unit norm first).
+    out['id_all_slices'] = round(float((together.argmax(axis=1) == np.arange(nW)).mean()), 3)
     return out
 
 
 def main():
     if sys.argv[1] == 'script':
-        print(json.dumps(script(int(sys.argv[2]))))
+        print(json.dumps(script(int(sys.argv[2]), len(sys.argv) > 3 and sys.argv[3] == 'every')))
     else:
         print(json.dumps(score(sys.argv[2], json.load(open(sys.argv[3]))), indent=1))
 
