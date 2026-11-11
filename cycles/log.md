@@ -211,3 +211,27 @@
 - EF list 2 EF-g9-3: fitness 0.568 (new 0.54, old 0.60)
 - EF list 2 EF-g9-4: fitness 0.464 (new 0.49, old 0.44)
 - EF list 2 EF-g9-5: fitness 0.440 (new 0.44, old 0.44)
+
+## Generation 10 (run 43072689976)
+
+- P5 list 2 P5-g10-0: fitness 0.462 (new 0.46, old 0.46) **yardstick (untuned)**
+- P5 list 2 P5-g10-1: fitness 0.508 (new 0.54, old 0.48)
+- P5 list 2 P5-g10-2: fitness 0.486 (new 0.51, old 0.46)
+- P5 list 2 P5-g10-3: fitness 0.554 (new 0.55, old 0.56)
+- P5 list 2 P5-g10-4: fitness 0.518 (new 0.54, old 0.50)
+- P5 list 2 P5-g10-5: fitness 0.496 (new 0.51, old 0.48)
+- P5 list 2 P5-g10-6: fitness 0.530 (new 0.56, old 0.50)
+- P list 2 P-g10-0: fitness 0.476 (new 0.51, old 0.44) **yardstick (untuned)**
+- P list 2 P-g10-1: fitness 0.479 (new 0.44, old 0.52)
+- P list 2 P-g10-2: fitness 0.492 (new 0.46, old 0.52)
+- P list 2 P-g10-3: fitness 0.469 (new 0.44, old 0.50)
+- P list 2 P-g10-4: fitness 0.525 (new 0.61, old 0.44)
+- P list 2 P-g10-5: fitness 0.532 (new 0.52, old 0.54)
+- P list 2 P-g10-6: fitness 0.454 (new 0.49, old 0.42)
+- EF list 2 EF-g10-0: fitness 0.488 (new 0.54, old 0.44) **yardstick (untuned)**
+- EF list 2 EF-g10-1: fitness 0.452 (new 0.46, old 0.44)
+- EF list 2 EF-g10-2: fitness 0.468 (new 0.48, old 0.46)
+- EF list 2 EF-g10-3: fitness 0.458 (new 0.48, old 0.44)
+- EF list 2 EF-g10-4: fitness 0.556 (new 0.51, old 0.60)
+- EF list 2 EF-g10-5: fitness 0.454 (new 0.49, old 0.42)
+- EF list 2 EF-g10-6: fitness 0.426 (new 0.51, old 0.34)
