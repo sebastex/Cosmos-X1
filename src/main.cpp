@@ -227,6 +227,10 @@ int main(int argc, char** argv) {
     }
     if (opt.seedSet) cfg.seed = opt.seed;
     ncm::setTestTimeScale(opt.timeScale);
+    if (opt.test == "settings") { // every setting's value under these options, as JSON
+        std::printf("%s\n", ncm::settingValues(cfg).c_str());
+        return 0;
+    }
 
     for (const auto& t : tests())
         if (opt.test == t.name) return t.run(cfg, opt);

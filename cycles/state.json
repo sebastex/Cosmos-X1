@@ -1,0 +1,106 @@
+{
+ "generation": 0,
+ "lineages": [
+  {
+   "name": "P5",
+   "variant": "alefP5",
+   "seed": 3004,
+   "split": false,
+   "list": 1,
+   "brain": {
+    "run": "42932875595",
+    "artifact": "ladder-brain-alefP5-3004"
+   },
+   "center": {
+    "learning_rate": 0.0222200006,
+    "plastic_budget": 5.67830992,
+    "presynaptic_bound": 0.898119986,
+    "hetero_ltd": 0.97329998,
+    "covariance": 0.58434999,
+    "encoding_suppression": 1.0,
+    "consolidation_rate": 0.0055999998,
+    "consolidated_budget": 0.508419991,
+    "order_gain": 6.23346996,
+    "order_tau": 2.90192008,
+    "inner_rate": 0.0500000007,
+    "prune": 9.99999975e-06,
+    "trace_floor": 1e-06,
+    "alloc_gain": 0.0,
+    "link_use": 0.0
+   },
+   "archive": [],
+   "gens_on_list": 0,
+   "stale": 0,
+   "best": null,
+   "history": []
+  },
+  {
+   "name": "P",
+   "variant": "alefP",
+   "seed": 3004,
+   "split": false,
+   "list": 1,
+   "brain": {
+    "run": "42934483077",
+    "artifact": "ladder-brain-alefP-3004"
+   },
+   "center": {
+    "learning_rate": 0.0222200006,
+    "plastic_budget": 5.67830992,
+    "presynaptic_bound": 0.898119986,
+    "hetero_ltd": 0.97329998,
+    "covariance": 0.58434999,
+    "encoding_suppression": 1.0,
+    "consolidation_rate": 0.0055999998,
+    "consolidated_budget": 0.508419991,
+    "order_gain": 6.23346996,
+    "order_tau": 2.90192008,
+    "inner_rate": 0.0500000007,
+    "prune": 9.99999975e-05,
+    "trace_floor": 1e-06,
+    "alloc_gain": 0.0,
+    "link_use": 0.0
+   },
+   "archive": [],
+   "gens_on_list": 0,
+   "stale": 0,
+   "best": null,
+   "history": []
+  },
+  {
+   "name": "EF",
+   "variant": "alefEF",
+   "seed": 3004,
+   "split": true,
+   "list": 1,
+   "brain": {
+    "run": "42742725584",
+    "artifact": "ladder-brain-alefEF-3004"
+   },
+   "center": {
+    "learning_rate": 0.0222200006,
+    "plastic_budget": 5.67830992,
+    "presynaptic_bound": 0.898119986,
+    "hetero_ltd": 0.97329998,
+    "covariance": 0.58434999,
+    "encoding_suppression": 1.0,
+    "consolidation_rate": 0.0055999998,
+    "consolidated_budget": 0.508419991,
+    "order_gain": 6.23346996,
+    "order_tau": 2.90192008,
+    "inner_rate": 0.0500000007,
+    "prune": 0.0,
+    "trace_floor": 1e-06,
+    "alloc_gain": 0.0,
+    "link_use": 0.0,
+    "pc_error": 0.0,
+    "art_vigilance": 0.0
+   },
+   "archive": [],
+   "gens_on_list": 0,
+   "stale": 0,
+   "best": null,
+   "history": []
+  }
+ ]
+}

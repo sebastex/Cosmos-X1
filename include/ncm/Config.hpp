@@ -557,6 +557,8 @@ Config makePreset(const std::string& name);
 // Sets one tunable parameter from "name=value" (e.g. "upward_gain=1.0").
 // These are the values rule evolution will search over (spec Section 5E).
 void applySetting(Config& cfg, const std::string& assignment);
+// Every setting's value, as one JSON object (name: value).
+std::string settingValues(Config cfg);
 // Named Pharmakon variants (alpha, beta, gamma, delta = default, epsilon, zeta, eta).
 void applyVariant(Config& cfg, const std::string& name);
 const std::vector<std::pair<std::string, std::vector<std::string>>>& variants();

@@ -1,5 +1,6 @@
 #include "ncm/Config.hpp"
 
+#include <cstdio>
 #include <map>
 #include <vector>
 #include <stdexcept>
@@ -346,6 +347,20 @@ std::string settingNames() {
     for (const auto& [name, ptr] : settingTable(c)) names += (names.empty() ? "" : ", ") + name;
     for (const auto& [name, ptr] : countTable(c)) names += ", " + name;
     return names;
+}
+
+std::string settingValues(Config c) {
+    std::string s = "{";
+    char buf[96];
+    for (const auto& [name, ptr] : settingTable(c)) {
+        std::snprintf(buf, sizeof buf, "%s\"%s\":%.9g", s.size() > 1 ? "," : "", name.c_str(), double(*ptr));
+        s += buf;
+    }
+    for (const auto& [name, ptr] : countTable(c)) {
+        std::snprintf(buf, sizeof buf, ",\"%s\":%u", name.c_str(), unsigned(*ptr));
+        s += buf;
+    }
+    return s + "}";
 }
 
 void applyEvolvedRule(Config& cfg) {
