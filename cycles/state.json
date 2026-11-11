@@ -1,576 +1,43 @@
 {
- "generation": 6,
+ "generation": 7,
  "lineages": [
   {
    "name": "P5",
    "variant": "alefP5",
    "seed": 3004,
    "split": false,
-   "list": 1,
+   "list": 2,
    "brain": {
-    "run": "42932875595",
-    "artifact": "ladder-brain-alefP5-3004"
+    "run": "43018640572",
+    "artifact": "cycle-brain-P5-g3-2"
    },
    "center": {
-    "learning_rate": 0.0222200006,
+    "alloc_gain": 0.0,
+    "consolidated_budget": 0.508419991,
+    "consolidation_rate": 0.0056,
+    "covariance": 0.58434999,
+    "encoding_suppression": 0.910332962,
+    "hetero_ltd": 0.583871745,
+    "inner_rate": 0.012964707,
+    "learning_rate": 0.022448342,
+    "link_use": 0.0,
+    "order_gain": 5.06324938,
+    "order_tau": 2.90192008,
     "plastic_budget": 5.67830992,
     "presynaptic_bound": 0.898119986,
-    "hetero_ltd": 0.97329998,
-    "covariance": 0.58434999,
-    "encoding_suppression": 1.0,
-    "consolidation_rate": 0.0055999998,
-    "consolidated_budget": 0.508419991,
-    "order_gain": 6.23346996,
-    "order_tau": 2.90192008,
-    "inner_rate": 0.0500000007,
-    "prune": 9.99999975e-06,
-    "trace_floor": 1e-06,
-    "alloc_gain": 0.0,
-    "link_use": 0.0
+    "prune": 1e-05,
+    "trace_floor": 1.278e-06
    },
-   "archive": [
+   "archive": [],
+   "gens_on_list": 0,
+   "stale": 0,
+   "best": null,
+   "history": [
     {
-     "cand": "P5-g0-0",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.4795,
-     "new": 0.519,
-     "old": 0.44,
-     "brain": {
-      "run": "42998698321",
-      "artifact": "cycle-brain-P5-g0-0"
-     }
-    },
-    {
-     "cand": "P5-g0-1",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.004407852,
-      "covariance": 0.58434999,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.038136553,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 1.92639048,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.431e-06
-     },
-     "fitness": 0.4695,
-     "new": 0.519,
-     "old": 0.42,
-     "brain": {
-      "run": "42998698321",
-      "artifact": "cycle-brain-P5-g0-1"
-     }
-    },
-    {
-     "cand": "P5-g0-2",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.792157026,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.6091,
-     "new": 0.6582,
-     "old": 0.56,
-     "brain": {
-      "run": "42998698321",
-      "artifact": "cycle-brain-P5-g0-2"
-     }
-    },
-    {
-     "cand": "P5-g0-3",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.43686829,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.107304272,
-      "learning_rate": 0.037840457,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 2.6014e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.4395,
-     "new": 0.519,
-     "old": 0.36,
-     "brain": {
-      "run": "42998698321",
-      "artifact": "cycle-brain-P5-g0-3"
-     }
-    },
-    {
-     "cand": "P5-g0-4",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.561716485,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.012262607,
-      "link_use": 0.0,
-      "order_gain": 3.184172014,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 8.67e-07
-     },
-     "fitness": 0.4968,
-     "new": 0.4937,
-     "old": 0.5,
-     "brain": {
-      "run": "42998698321",
-      "artifact": "cycle-brain-P5-g0-4"
-     }
-    },
-    {
-     "cand": "P5-g0-5",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.768716554,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.705546234,
-      "presynaptic_bound": 1.0,
-      "prune": 1e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5322,
-     "new": 0.5443,
-     "old": 0.52,
-     "brain": {
-      "run": "42998698321",
-      "artifact": "cycle-brain-P5-g0-5"
-     }
-    },
-    {
-     "cand": "P5-g1-0",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.742187577,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022220001,
-      "link_use": 0.141300734,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 3.01167678,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 6.94e-07
-     },
-     "fitness": 0.5422,
-     "new": 0.5443,
-     "old": 0.54,
-     "brain": {
-      "run": "43004541948",
-      "artifact": "cycle-brain-P5-g1-0"
-     }
-    },
-    {
-     "cand": "P5-g1-1",
-     "params": {
-      "alloc_gain": 0.13404956,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.768716554,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.041707788,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.213644812,
-      "plastic_budget": 5.705546234,
-      "presynaptic_bound": 1.0,
-      "prune": 8.126e-06,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5811,
-     "new": 0.5823,
-     "old": 0.58,
-     "brain": {
-      "run": "43004541948",
-      "artifact": "cycle-brain-P5-g1-1"
-     }
-    },
-    {
-     "cand": "P5-g1-2",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.768716554,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 10.0,
-      "order_tau": 2.220214045,
-      "plastic_budget": 5.705546234,
-      "presynaptic_bound": 1.0,
-      "prune": 1.1025e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5085,
-     "new": 0.557,
-     "old": 0.46,
-     "brain": {
-      "run": "43004541948",
-      "artifact": "cycle-brain-P5-g1-2"
-     }
-    },
-    {
-     "cand": "P5-g1-3",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.007064888,
-      "covariance": 0.93898958,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 4.189979615,
-      "presynaptic_bound": 1.0,
-      "prune": 1e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5185,
-     "new": 0.557,
-     "old": 0.48,
-     "brain": {
-      "run": "43004541948",
-      "artifact": "cycle-brain-P5-g1-3"
-     }
-    },
-    {
-     "cand": "P5-g1-4",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.634551341,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 4.72544646,
-      "presynaptic_bound": 0.956105441,
-      "prune": 1e-05,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.4922,
-     "new": 0.5443,
-     "old": 0.44,
-     "brain": {
-      "run": "43004541948",
-      "artifact": "cycle-brain-P5-g1-4"
-     }
-    },
-    {
-     "cand": "P5-g1-5",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.782800236,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 3.84473106,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 2.403e-06
-     },
-     "fitness": 0.5801,
-     "new": 0.6203,
-     "old": 0.54,
-     "brain": {
-      "run": "43004541948",
-      "artifact": "cycle-brain-P5-g1-5"
-     }
-    },
-    {
-     "cand": "P5-g2-0",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.884296473,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022220001,
-      "link_use": 0.204469757,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 3.01167678,
-      "presynaptic_bound": 1.0,
-      "prune": 1e-05,
-      "trace_floor": 1.443e-06
-     },
-     "fitness": 0.4605,
-     "new": 0.481,
-     "old": 0.44,
-     "brain": {
-      "run": "43011836825",
-      "artifact": "cycle-brain-P5-g2-0"
-     }
-    },
-    {
-     "cand": "P5-g2-1",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.62187342,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022448342,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.278e-06
-     },
-     "fitness": 0.6101,
-     "new": 0.6203,
-     "old": 0.6,
-     "brain": {
-      "run": "43011836825",
-      "artifact": "cycle-brain-P5-g2-1"
-     }
-    },
-    {
-     "cand": "P5-g2-2",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.742187577,
-      "inner_rate": 0.015369281,
-      "learning_rate": 0.022220001,
-      "link_use": 0.3,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 3.01167678,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 5.47e-07
-     },
-     "fitness": 0.5185,
-     "new": 0.557,
-     "old": 0.48,
-     "brain": {
-      "run": "43011836825",
-      "artifact": "cycle-brain-P5-g2-2"
-     }
-    },
-    {
-     "cand": "P5-g2-3",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.726306876,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.742187577,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022220001,
-      "link_use": 0.141300734,
-      "order_gain": 6.23346996,
-      "order_tau": 4.844354341,
-      "plastic_budget": 2.19822304,
-      "presynaptic_bound": 0.898119986,
-      "prune": 7.832e-06,
-      "trace_floor": 6.94e-07
-     },
-     "fitness": 0.5185,
-     "new": 0.557,
-     "old": 0.48,
-     "brain": {
-      "run": "43011836825",
-      "artifact": "cycle-brain-P5-g2-3"
-     }
-    },
-    {
-     "cand": "P5-g2-4",
-     "params": {
-      "alloc_gain": 0.13404956,
-      "consolidated_budget": 0.409317816,
-      "consolidation_rate": 0.00812095,
-      "covariance": 0.768716554,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.97329998,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.041707788,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 4.145595764,
-      "plastic_budget": 2.887285204,
-      "presynaptic_bound": 1.0,
-      "prune": 8.126e-06,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.4142,
-     "new": 0.4684,
-     "old": 0.36,
-     "brain": {
-      "run": "43011836825",
-      "artifact": "cycle-brain-P5-g2-4"
-     }
-    },
-    {
-     "cand": "P5-g2-5",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.00603648,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.792157026,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022220001,
-      "link_use": 0.15293627,
-      "order_gain": 6.23346996,
-      "order_tau": 2.90192008,
-      "plastic_budget": 3.573120179,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.052e-06
-     },
-     "fitness": 0.5448,
-     "new": 0.5696,
-     "old": 0.52,
-     "brain": {
-      "run": "43011836825",
-      "artifact": "cycle-brain-P5-g2-5"
-     }
-    },
-    {
-     "cand": "P5-g3-0",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.80422806,
-      "hetero_ltd": 0.78438537,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 3.839169399,
-      "order_tau": 3.84473106,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1.414e-05,
-      "trace_floor": 2.403e-06
-     },
-     "fitness": 0.5981,
-     "new": 0.6962,
-     "old": 0.5,
-     "brain": {
-      "run": "43018640572",
-      "artifact": "cycle-brain-P5-g3-0"
-     }
-    },
-    {
-     "cand": "P5-g3-1",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.675938753,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.62187342,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022448342,
-      "link_use": 0.230132048,
-      "order_gain": 7.429185821,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.278e-06
-     },
-     "fitness": 0.6265,
-     "new": 0.6329,
-     "old": 0.62,
-     "brain": {
-      "run": "43018640572",
-      "artifact": "cycle-brain-P5-g3-1"
-     }
-    },
-    {
-     "cand": "P5-g3-2",
+     "list": 1,
+     "fitness": 0.6538,
+     "new": 0.6076,
+     "old": 0.7,
      "params": {
       "alloc_gain": 0.0,
       "consolidated_budget": 0.508419991,
@@ -588,450 +55,13 @@
       "prune": 1e-05,
       "trace_floor": 1.278e-06
      },
-     "fitness": 0.6538,
-     "new": 0.6076,
-     "old": 0.7,
+     "generations": 7,
      "brain": {
       "run": "43018640572",
       "artifact": "cycle-brain-P5-g3-2"
      }
-    },
-    {
-     "cand": "P5-g3-3",
-     "params": {
-      "alloc_gain": 0.13404956,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.768716554,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.882675646,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.038842096,
-      "link_use": 0.0,
-      "order_gain": 8.525157201,
-      "order_tau": 2.213644812,
-      "plastic_budget": 5.705546234,
-      "presynaptic_bound": 1.0,
-      "prune": 7.363e-06,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5358,
-     "new": 0.5316,
-     "old": 0.54,
-     "brain": {
-      "run": "43018640572",
-      "artifact": "cycle-brain-P5-g3-3"
-     }
-    },
-    {
-     "cand": "P5-g3-4",
-     "params": {
-      "alloc_gain": 0.13404956,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.013434439,
-      "covariance": 0.768716554,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.726649399,
-      "inner_rate": 0.050000001,
-      "learning_rate": 0.041707788,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 2.213644812,
-      "plastic_budget": 5.705546234,
-      "presynaptic_bound": 1.0,
-      "prune": 8.126e-06,
-      "trace_floor": 1.215e-06
-     },
-     "fitness": 0.5785,
-     "new": 0.557,
-     "old": 0.6,
-     "brain": {
-      "run": "43018640572",
-      "artifact": "cycle-brain-P5-g3-4"
-     }
-    },
-    {
-     "cand": "P5-g3-5",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.792157026,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 3.176802073,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.897978071,
-      "prune": 6.238e-06,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.6301,
-     "new": 0.6203,
-     "old": 0.64,
-     "brain": {
-      "run": "43018640572",
-      "artifact": "cycle-brain-P5-g3-5"
-     }
-    },
-    {
-     "cand": "P5-g4-0",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.62187342,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022448342,
-      "link_use": 0.0,
-      "order_gain": 10.0,
-      "order_tau": 3.866049484,
-      "plastic_budget": 4.804568085,
-      "presynaptic_bound": 0.898119986,
-      "prune": 6.397e-06,
-      "trace_floor": 1.278e-06
-     },
-     "fitness": 0.5438,
-     "new": 0.6076,
-     "old": 0.48,
-     "brain": {
-      "run": "43026146379",
-      "artifact": "cycle-brain-P5-g4-0"
-     }
-    },
-    {
-     "cand": "P5-g4-1",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.927787611,
-      "hetero_ltd": 0.792157026,
-      "inner_rate": 0.008354276,
-      "learning_rate": 0.030714707,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 3.176802073,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.897978071,
-      "prune": 9.792e-06,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5938,
-     "new": 0.6076,
-     "old": 0.58,
-     "brain": {
-      "run": "43026146379",
-      "artifact": "cycle-brain-P5-g4-1"
-     }
-    },
-    {
-     "cand": "P5-g4-2",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.611199633,
-      "inner_rate": 0.012964707,
-      "learning_rate": 0.041945718,
-      "link_use": 0.0,
-      "order_gain": 5.364884122,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1.5434e-05,
-      "trace_floor": 1.278e-06
-     },
-     "fitness": 0.5618,
-     "new": 0.6835,
-     "old": 0.44,
-     "brain": {
-      "run": "43026146379",
-      "artifact": "cycle-brain-P5-g4-2"
-     }
-    },
-    {
-     "cand": "P5-g4-3",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.675938753,
-      "consolidation_rate": 0.003718158,
-      "covariance": 0.660201492,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.62187342,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.020454744,
-      "link_use": 0.230132048,
-      "order_gain": 7.429185821,
-      "order_tau": 2.90192008,
-      "plastic_budget": 2.53775422,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.278e-06
-     },
-     "fitness": 0.4885,
-     "new": 0.557,
-     "old": 0.42,
-     "brain": {
-      "run": "43026146379",
-      "artifact": "cycle-brain-P5-g4-3"
-     }
-    },
-    {
-     "cand": "P5-g4-4",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.675938753,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.586208792,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.013493651,
-      "link_use": 0.230132048,
-      "order_gain": 10.0,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.278e-06
-     },
-     "fitness": 0.6391,
-     "new": 0.6582,
-     "old": 0.62,
-     "brain": {
-      "run": "43026146379",
-      "artifact": "cycle-brain-P5-g4-4"
-     }
-    },
-    {
-     "cand": "P5-g4-5",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.3,
-      "consolidation_rate": 0.004264812,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.792157026,
-      "inner_rate": 0.027694284,
-      "learning_rate": 0.022220001,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 3.176802073,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.897978071,
-      "prune": 6.238e-06,
-      "trace_floor": 1.036e-06
-     },
-     "fitness": 0.6065,
-     "new": 0.6329,
-     "old": 0.58,
-     "brain": {
-      "run": "43026146379",
-      "artifact": "cycle-brain-P5-g4-5"
-     }
-    },
-    {
-     "cand": "P5-g5-0",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.675938753,
-      "consolidation_rate": 0.003881935,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.62187342,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022448342,
-      "link_use": 0.230132048,
-      "order_gain": 10.0,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 1.853e-06
-     },
-     "fitness": 0.6101,
-     "new": 0.6203,
-     "old": 0.6,
-     "brain": {
-      "run": "43033471229",
-      "artifact": "cycle-brain-P5-g5-0"
-     }
-    },
-    {
-     "cand": "P5-g5-1",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.675938753,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.782646558,
-      "hetero_ltd": 0.62187342,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022448342,
-      "link_use": 0.230132048,
-      "order_gain": 7.429185821,
-      "order_tau": 3.748688675,
-      "plastic_budget": 5.605294007,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 9.66e-07
-     },
-     "fitness": 0.6291,
-     "new": 0.6582,
-     "old": 0.6,
-     "brain": {
-      "run": "43033471229",
-      "artifact": "cycle-brain-P5-g5-1"
-     }
-    },
-    {
-     "cand": "P5-g5-2",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.41690453,
-      "encoding_suppression": 1.0,
-      "hetero_ltd": 0.583871745,
-      "inner_rate": 0.012964707,
-      "learning_rate": 0.022864708,
-      "link_use": 0.0,
-      "order_gain": 5.06324938,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 9.34e-07
-     },
-     "fitness": 0.5711,
-     "new": 0.5823,
-     "old": 0.56,
-     "brain": {
-      "run": "43033471229",
-      "artifact": "cycle-brain-P5-g5-2"
-     }
-    },
-    {
-     "cand": "P5-g5-3",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.675938753,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.734561849,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.022448342,
-      "link_use": 0.230132048,
-      "order_gain": 7.429185821,
-      "order_tau": 2.529197625,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 3.332e-06
-     },
-     "fitness": 0.6001,
-     "new": 0.6203,
-     "old": 0.58,
-     "brain": {
-      "run": "43033471229",
-      "artifact": "cycle-brain-P5-g5-3"
-     }
-    },
-    {
-     "cand": "P5-g5-4",
-     "params": {
-      "alloc_gain": 0.079191045,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.463718705,
-      "encoding_suppression": 0.910332962,
-      "hetero_ltd": 0.583871745,
-      "inner_rate": 0.00872612,
-      "learning_rate": 0.022448342,
-      "link_use": 0.0,
-      "order_gain": 5.06324938,
-      "order_tau": 2.90192008,
-      "plastic_budget": 5.67830992,
-      "presynaptic_bound": 0.898119986,
-      "prune": 1e-05,
-      "trace_floor": 3.09e-06
-     },
-     "fitness": 0.5648,
-     "new": 0.5696,
-     "old": 0.56,
-     "brain": {
-      "run": "43033471229",
-      "artifact": "cycle-brain-P5-g5-4"
-     }
-    },
-    {
-     "cand": "P5-g5-5",
-     "params": {
-      "alloc_gain": 0.0,
-      "consolidated_budget": 0.508419991,
-      "consolidation_rate": 0.0056,
-      "covariance": 0.58434999,
-      "encoding_suppression": 0.951979021,
-      "hetero_ltd": 0.792157026,
-      "inner_rate": 0.018144311,
-      "learning_rate": 0.018010167,
-      "link_use": 0.0,
-      "order_gain": 6.23346996,
-      "order_tau": 3.959757387,
-      "plastic_budget": 4.4059072,
-      "presynaptic_bound": 0.897978071,
-      "prune": 6.238e-06,
-      "trace_floor": 1e-06
-     },
-     "fitness": 0.5485,
-     "new": 0.557,
-     "old": 0.54,
-     "brain": {
-      "run": "43033471229",
-      "artifact": "cycle-brain-P5-g5-5"
-     }
     }
-   ],
-   "gens_on_list": 6,
-   "stale": 2,
-   "best": {
-    "cand": "P5-g3-2",
-    "params": {
-     "alloc_gain": 0.0,
-     "consolidated_budget": 0.508419991,
-     "consolidation_rate": 0.0056,
-     "covariance": 0.58434999,
-     "encoding_suppression": 0.910332962,
-     "hetero_ltd": 0.583871745,
-     "inner_rate": 0.012964707,
-     "learning_rate": 0.022448342,
-     "link_use": 0.0,
-     "order_gain": 5.06324938,
-     "order_tau": 2.90192008,
-     "plastic_budget": 5.67830992,
-     "presynaptic_bound": 0.898119986,
-     "prune": 1e-05,
-     "trace_floor": 1.278e-06
-    },
-    "fitness": 0.6538,
-    "new": 0.6076,
-    "old": 0.7,
-    "brain": {
-     "run": "43018640572",
-     "artifact": "cycle-brain-P5-g3-2"
-    }
-   },
-   "history": []
+   ]
   },
   {
    "name": "P",
@@ -2032,10 +1062,172 @@
       "run": "43033471229",
       "artifact": "cycle-brain-P-g5-5"
      }
+    },
+    {
+     "cand": "P-g6-0",
+     "params": {
+      "alloc_gain": 0.0,
+      "consolidated_budget": 0.678416147,
+      "consolidation_rate": 0.0056,
+      "covariance": 0.406495529,
+      "encoding_suppression": 0.890126431,
+      "hetero_ltd": 0.97329998,
+      "inner_rate": 0.050000001,
+      "learning_rate": 0.023852015,
+      "link_use": 0.0,
+      "order_gain": 5.101665484,
+      "order_tau": 2.90192008,
+      "plastic_budget": 6.11214497,
+      "presynaptic_bound": 0.898119986,
+      "prune": 0.000105908,
+      "trace_floor": 2.041e-06
+     },
+     "fitness": 0.5354,
+     "new": 0.6709,
+     "old": 0.4,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-P-g6-0"
+     }
+    },
+    {
+     "cand": "P-g6-1",
+     "params": {
+      "alloc_gain": 0.040822263,
+      "consolidated_budget": 0.870251594,
+      "consolidation_rate": 0.00357463,
+      "covariance": 0.82413411,
+      "encoding_suppression": 1.0,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.066392817,
+      "learning_rate": 0.036937299,
+      "link_use": 0.0,
+      "order_gain": 6.164116105,
+      "order_tau": 1.236511129,
+      "plastic_budget": 3.261783047,
+      "presynaptic_bound": 1.0,
+      "prune": 0.000145258,
+      "trace_floor": 4.25e-07
+     },
+     "fitness": 0.4932,
+     "new": 0.5063,
+     "old": 0.48,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-P-g6-1"
+     }
+    },
+    {
+     "cand": "P-g6-2",
+     "params": {
+      "alloc_gain": 0.040822263,
+      "consolidated_budget": 0.870251594,
+      "consolidation_rate": 0.008750479,
+      "covariance": 0.82413411,
+      "encoding_suppression": 1.0,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.066392817,
+      "learning_rate": 0.019859022,
+      "link_use": 0.0,
+      "order_gain": 6.164116105,
+      "order_tau": 1.236511129,
+      "plastic_budget": 3.261783047,
+      "presynaptic_bound": 0.938484156,
+      "prune": 0.000145258,
+      "trace_floor": 4.25e-07
+     },
+     "fitness": 0.5585,
+     "new": 0.557,
+     "old": 0.56,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-P-g6-2"
+     }
+    },
+    {
+     "cand": "P-g6-3",
+     "params": {
+      "alloc_gain": 0.035509682,
+      "consolidated_budget": 0.678416147,
+      "consolidation_rate": 0.0056,
+      "covariance": 0.406495529,
+      "encoding_suppression": 0.867037078,
+      "hetero_ltd": 0.97329998,
+      "inner_rate": 0.050000001,
+      "learning_rate": 0.022220001,
+      "link_use": 0.0,
+      "order_gain": 5.101665484,
+      "order_tau": 5.397279194,
+      "plastic_budget": 9.018598629,
+      "presynaptic_bound": 0.898119986,
+      "prune": 0.000205912,
+      "trace_floor": 2.041e-06
+     },
+     "fitness": 0.5011,
+     "new": 0.5823,
+     "old": 0.42,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-P-g6-3"
+     }
+    },
+    {
+     "cand": "P-g6-4",
+     "params": {
+      "alloc_gain": 0.0,
+      "consolidated_budget": 0.649585842,
+      "consolidation_rate": 0.0056,
+      "covariance": 0.950118309,
+      "encoding_suppression": 1.0,
+      "hetero_ltd": 0.923586734,
+      "inner_rate": 0.050000001,
+      "learning_rate": 0.020669734,
+      "link_use": 0.0,
+      "order_gain": 10.0,
+      "order_tau": 2.498737822,
+      "plastic_budget": 3.261783047,
+      "presynaptic_bound": 1.0,
+      "prune": 0.000145258,
+      "trace_floor": 4.25e-07
+     },
+     "fitness": 0.4868,
+     "new": 0.4937,
+     "old": 0.48,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-P-g6-4"
+     }
+    },
+    {
+     "cand": "P-g6-5",
+     "params": {
+      "alloc_gain": 0.0,
+      "consolidated_budget": 0.508419991,
+      "consolidation_rate": 0.007903744,
+      "covariance": 1.0,
+      "encoding_suppression": 1.0,
+      "hetero_ltd": 0.972733589,
+      "inner_rate": 0.050000001,
+      "learning_rate": 0.013484539,
+      "link_use": 0.0,
+      "order_gain": 8.594574551,
+      "order_tau": 2.498737822,
+      "plastic_budget": 7.208572178,
+      "presynaptic_bound": 0.898119986,
+      "prune": 0.0001,
+      "trace_floor": 3.86e-07
+     },
+     "fitness": 0.5611,
+     "new": 0.5823,
+     "old": 0.54,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-P-g6-5"
+     }
     }
    ],
-   "gens_on_list": 6,
-   "stale": 0,
+   "gens_on_list": 7,
+   "stale": 1,
    "best": {
     "cand": "P-g5-3",
     "params": {
@@ -3138,240 +2330,215 @@
       "run": "43033471229",
       "artifact": "cycle-brain-EF-g5-5"
      }
+    },
+    {
+     "cand": "EF-g6-0",
+     "params": {
+      "alloc_gain": 0.0,
+      "art_vigilance": 0.835351052,
+      "consolidated_budget": 0.468818559,
+      "consolidation_rate": 0.005785749,
+      "covariance": 0.58434999,
+      "encoding_suppression": 0.793741714,
+      "hetero_ltd": 0.97329998,
+      "inner_rate": 0.041287779,
+      "learning_rate": 0.022220001,
+      "link_use": 0.0,
+      "order_gain": 8.241060349,
+      "order_tau": 1.298860295,
+      "pc_error": 0.0,
+      "plastic_budget": 2.153333857,
+      "presynaptic_bound": 0.919163412,
+      "prune": 0.0,
+      "trace_floor": 1.029e-06
+     },
+     "fitness": 0.6418,
+     "new": 0.6835,
+     "old": 0.6,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-EF-g6-0"
+     }
+    },
+    {
+     "cand": "EF-g6-1",
+     "params": {
+      "alloc_gain": 0.0,
+      "art_vigilance": 0.0,
+      "consolidated_budget": 0.508419991,
+      "consolidation_rate": 0.005785749,
+      "covariance": 0.752895538,
+      "encoding_suppression": 0.70637279,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.052773527,
+      "learning_rate": 0.032342925,
+      "link_use": 0.0,
+      "order_gain": 6.23346996,
+      "order_tau": 1.298860295,
+      "pc_error": 0.0,
+      "plastic_budget": 3.768809956,
+      "presynaptic_bound": 0.898119986,
+      "prune": 0.0,
+      "trace_floor": 2.119e-06
+     },
+     "fitness": 0.1903,
+     "new": 0.2405,
+     "old": 0.14,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-EF-g6-1"
+     }
+    },
+    {
+     "cand": "EF-g6-2",
+     "params": {
+      "alloc_gain": 0.0,
+      "art_vigilance": 0.0,
+      "consolidated_budget": 0.508419991,
+      "consolidation_rate": 0.005785749,
+      "covariance": 0.752895538,
+      "encoding_suppression": 0.793741714,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.028639165,
+      "learning_rate": 0.018615563,
+      "link_use": 0.0,
+      "order_gain": 6.23346996,
+      "order_tau": 1.91899976,
+      "pc_error": 0.0,
+      "plastic_budget": 3.768809956,
+      "presynaptic_bound": 0.830989877,
+      "prune": 0.0,
+      "trace_floor": 2.305e-06
+     },
+     "fitness": 0.5122,
+     "new": 0.5443,
+     "old": 0.48,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-EF-g6-2"
+     }
+    },
+    {
+     "cand": "EF-g6-3",
+     "params": {
+      "alloc_gain": 0.0,
+      "art_vigilance": 0.835351052,
+      "consolidated_budget": 0.508419991,
+      "consolidation_rate": 0.005785749,
+      "covariance": 0.752895538,
+      "encoding_suppression": 0.793741714,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.043980673,
+      "learning_rate": 0.020866553,
+      "link_use": 0.0,
+      "order_gain": 6.23346996,
+      "order_tau": 1.298860295,
+      "pc_error": 0.0,
+      "plastic_budget": 3.768809956,
+      "presynaptic_bound": 0.898119986,
+      "prune": 1e-07,
+      "trace_floor": 2.133e-06
+     },
+     "fitness": 0.6065,
+     "new": 0.6329,
+     "old": 0.58,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-EF-g6-3"
+     }
+    },
+    {
+     "cand": "EF-g6-4",
+     "params": {
+      "alloc_gain": 0.0,
+      "art_vigilance": 0.835351052,
+      "consolidated_budget": 0.508419991,
+      "consolidation_rate": 0.005785749,
+      "covariance": 0.752895538,
+      "encoding_suppression": 0.841367673,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.030564749,
+      "learning_rate": 0.032111386,
+      "link_use": 0.0,
+      "order_gain": 6.23346996,
+      "order_tau": 1.083030245,
+      "pc_error": 0.0,
+      "plastic_budget": 3.441864053,
+      "presynaptic_bound": 0.898119986,
+      "prune": 0.0,
+      "trace_floor": 2.305e-06
+     },
+     "fitness": 0.5585,
+     "new": 0.557,
+     "old": 0.56,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-EF-g6-4"
+     }
+    },
+    {
+     "cand": "EF-g6-5",
+     "params": {
+      "alloc_gain": 0.0,
+      "art_vigilance": 0.835351052,
+      "consolidated_budget": 0.508419991,
+      "consolidation_rate": 0.007079231,
+      "covariance": 0.651295402,
+      "encoding_suppression": 0.793741714,
+      "hetero_ltd": 1.0,
+      "inner_rate": 0.041047822,
+      "learning_rate": 0.022220001,
+      "link_use": 0.0,
+      "order_gain": 6.23346996,
+      "order_tau": 1.430957784,
+      "pc_error": 0.0,
+      "plastic_budget": 3.768809956,
+      "presynaptic_bound": 1.0,
+      "prune": 0.0,
+      "trace_floor": 1.513e-06
+     },
+     "fitness": 0.6275,
+     "new": 0.5949,
+     "old": 0.66,
+     "brain": {
+      "run": "43040091763",
+      "artifact": "cycle-brain-EF-g6-5"
+     }
     }
    ],
-   "gens_on_list": 6,
-   "stale": 2,
+   "gens_on_list": 7,
+   "stale": 0,
    "best": {
-    "cand": "EF-g3-1",
+    "cand": "EF-g6-0",
     "params": {
      "alloc_gain": 0.0,
      "art_vigilance": 0.835351052,
-     "consolidated_budget": 0.508419991,
+     "consolidated_budget": 0.468818559,
      "consolidation_rate": 0.005785749,
-     "covariance": 0.983817524,
+     "covariance": 0.58434999,
      "encoding_suppression": 0.793741714,
-     "hetero_ltd": 1.0,
-     "inner_rate": 0.052773527,
+     "hetero_ltd": 0.97329998,
+     "inner_rate": 0.041287779,
      "learning_rate": 0.022220001,
      "link_use": 0.0,
-     "order_gain": 6.23346996,
-     "order_tau": 1.430957784,
+     "order_gain": 8.241060349,
+     "order_tau": 1.298860295,
      "pc_error": 0.0,
-     "plastic_budget": 3.768809956,
-     "presynaptic_bound": 1.0,
+     "plastic_budget": 2.153333857,
+     "presynaptic_bound": 0.919163412,
      "prune": 0.0,
-     "trace_floor": 1.513e-06
+     "trace_floor": 1.029e-06
     },
-    "fitness": 0.5911,
-    "new": 0.5823,
+    "fitness": 0.6418,
+    "new": 0.6835,
     "old": 0.6,
     "brain": {
-     "run": "43018640572",
-     "artifact": "cycle-brain-EF-g3-1"
+     "run": "43040091763",
+     "artifact": "cycle-brain-EF-g6-0"
     }
    },
    "history": []
   }
  ],
- "pending": [
-  {
-   "lineage": "P5",
-   "variant": "alefP5",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P5-g6-0",
-   "brain_run": "42932875595",
-   "brain_artifact": "ladder-brain-alefP5-3004",
-   "params": "{\"alloc_gain\": 0.0, \"consolidated_budget\": 0.351984339, \"consolidation_rate\": 0.0056, \"covariance\": 0.58434999, \"encoding_suppression\": 0.910332962, \"hetero_ltd\": 0.981332277, \"inner_rate\": 0.018144311, \"learning_rate\": 0.025712719, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 3.176802073, \"plastic_budget\": 5.67830992, \"presynaptic_bound\": 0.897978071, \"prune\": 6.238e-06, \"trace_floor\": 1e-06}",
-   "args": "--set alloc_gain=0 --set consolidated_budget=0.351984339 --set consolidation_rate=0.0056 --set covariance=0.58434999 --set encoding_suppression=0.910332962 --set hetero_ltd=0.981332277 --set inner_rate=0.018144311 --set learning_rate=0.0257127189 --set link_use=0 --set order_gain=6.23346996 --set order_tau=3.17680207 --set plastic_budget=5.67830992 --set presynaptic_bound=0.897978071 --set prune=6.238e-06 --set trace_floor=1e-06"
-  },
-  {
-   "lineage": "P5",
-   "variant": "alefP5",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P5-g6-1",
-   "brain_run": "42932875595",
-   "brain_artifact": "ladder-brain-alefP5-3004",
-   "params": "{\"alloc_gain\": 0.0, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.0056, \"covariance\": 0.58434999, \"encoding_suppression\": 0.910332962, \"hetero_ltd\": 0.792157026, \"inner_rate\": 0.010217688, \"learning_rate\": 0.022220001, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 3.355678668, \"plastic_budget\": 6.450065722, \"presynaptic_bound\": 0.867407262, \"prune\": 6.238e-06, \"trace_floor\": 1e-06}",
-   "args": "--set alloc_gain=0 --set consolidated_budget=0.508419991 --set consolidation_rate=0.0056 --set covariance=0.58434999 --set encoding_suppression=0.910332962 --set hetero_ltd=0.792157026 --set inner_rate=0.0102176877 --set learning_rate=0.022220001 --set link_use=0 --set order_gain=6.23346996 --set order_tau=3.35567867 --set plastic_budget=6.45006572 --set presynaptic_bound=0.867407262 --set prune=6.238e-06 --set trace_floor=1e-06"
-  },
-  {
-   "lineage": "P5",
-   "variant": "alefP5",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P5-g6-2",
-   "brain_run": "42932875595",
-   "brain_artifact": "ladder-brain-alefP5-3004",
-   "params": "{\"alloc_gain\": 0.252231629, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.0056, \"covariance\": 0.58434999, \"encoding_suppression\": 0.910332962, \"hetero_ltd\": 0.792157026, \"inner_rate\": 0.018144311, \"learning_rate\": 0.022220001, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 3.176802073, \"plastic_budget\": 5.67830992, \"presynaptic_bound\": 0.897978071, \"prune\": 6.25e-06, \"trace_floor\": 1.365e-06}",
-   "args": "--set alloc_gain=0.252231629 --set consolidated_budget=0.508419991 --set consolidation_rate=0.0056 --set covariance=0.58434999 --set encoding_suppression=0.910332962 --set hetero_ltd=0.792157026 --set inner_rate=0.018144311 --set learning_rate=0.022220001 --set link_use=0 --set order_gain=6.23346996 --set order_tau=3.17680207 --set plastic_budget=5.67830992 --set presynaptic_bound=0.897978071 --set prune=6.2499006e-06 --set trace_floor=1.36494821e-06"
-  },
-  {
-   "lineage": "P5",
-   "variant": "alefP5",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P5-g6-3",
-   "brain_run": "42932875595",
-   "brain_artifact": "ladder-brain-alefP5-3004",
-   "params": "{\"alloc_gain\": 0.0, \"consolidated_budget\": 0.340485542, \"consolidation_rate\": 0.004278615, \"covariance\": 0.58434999, \"encoding_suppression\": 0.910332962, \"hetero_ltd\": 0.583871745, \"inner_rate\": 0.012964707, \"learning_rate\": 0.029125346, \"link_use\": 0.0, \"order_gain\": 5.06324938, \"order_tau\": 2.95402964, \"plastic_budget\": 5.67830992, \"presynaptic_bound\": 0.898119986, \"prune\": 1e-05, \"trace_floor\": 1.278e-06}",
-   "args": "--set alloc_gain=0 --set consolidated_budget=0.340485542 --set consolidation_rate=0.00427861539 --set covariance=0.58434999 --set encoding_suppression=0.910332962 --set hetero_ltd=0.583871745 --set inner_rate=0.012964707 --set learning_rate=0.0291253459 --set link_use=0 --set order_gain=5.06324938 --set order_tau=2.95402964 --set plastic_budget=5.67830992 --set presynaptic_bound=0.898119986 --set prune=1e-05 --set trace_floor=1.278e-06"
-  },
-  {
-   "lineage": "P5",
-   "variant": "alefP5",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P5-g6-4",
-   "brain_run": "42932875595",
-   "brain_artifact": "ladder-brain-alefP5-3004",
-   "params": "{\"alloc_gain\": 0.100512202, \"consolidated_budget\": 0.675938753, \"consolidation_rate\": 0.0056, \"covariance\": 0.58434999, \"encoding_suppression\": 0.782646558, \"hetero_ltd\": 0.62187342, \"inner_rate\": 0.023964538, \"learning_rate\": 0.022448342, \"link_use\": 0.0, \"order_gain\": 7.429185821, \"order_tau\": 2.592737789, \"plastic_budget\": 5.605294007, \"presynaptic_bound\": 0.898119986, \"prune\": 1e-05, \"trace_floor\": 9.66e-07}",
-   "args": "--set alloc_gain=0.100512202 --set consolidated_budget=0.675938753 --set consolidation_rate=0.0056 --set covariance=0.58434999 --set encoding_suppression=0.782646558 --set hetero_ltd=0.62187342 --set inner_rate=0.0239645378 --set learning_rate=0.022448342 --set link_use=0 --set order_gain=7.42918582 --set order_tau=2.59273779 --set plastic_budget=5.60529401 --set presynaptic_bound=0.898119986 --set prune=1e-05 --set trace_floor=9.66e-07"
-  },
-  {
-   "lineage": "P5",
-   "variant": "alefP5",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P5-g6-5",
-   "brain_run": "42932875595",
-   "brain_artifact": "ladder-brain-alefP5-3004",
-   "params": "{\"alloc_gain\": 0.230102553, \"consolidated_budget\": 0.675938753, \"consolidation_rate\": 0.0056, \"covariance\": 0.58434999, \"encoding_suppression\": 0.782646558, \"hetero_ltd\": 0.659128446, \"inner_rate\": 0.018144311, \"learning_rate\": 0.022448342, \"link_use\": 0.230132048, \"order_gain\": 7.429185821, \"order_tau\": 2.918269124, \"plastic_budget\": 2.130377702, \"presynaptic_bound\": 0.898119986, \"prune\": 1e-05, \"trace_floor\": 9.66e-07}",
-   "args": "--set alloc_gain=0.230102553 --set consolidated_budget=0.675938753 --set consolidation_rate=0.0056 --set covariance=0.58434999 --set encoding_suppression=0.782646558 --set hetero_ltd=0.659128446 --set inner_rate=0.018144311 --set learning_rate=0.022448342 --set link_use=0.230132048 --set order_gain=7.42918582 --set order_tau=2.91826912 --set plastic_budget=2.1303777 --set presynaptic_bound=0.898119986 --set prune=1e-05 --set trace_floor=9.66e-07"
-  },
-  {
-   "lineage": "P",
-   "variant": "alefP",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P-g6-0",
-   "brain_run": "42934483077",
-   "brain_artifact": "ladder-brain-alefP-3004",
-   "params": "{\"alloc_gain\": 0.0, \"consolidated_budget\": 0.678416147, \"consolidation_rate\": 0.0056, \"covariance\": 0.406495529, \"encoding_suppression\": 0.890126431, \"hetero_ltd\": 0.97329998, \"inner_rate\": 0.050000001, \"learning_rate\": 0.023852015, \"link_use\": 0.0, \"order_gain\": 5.101665484, \"order_tau\": 2.90192008, \"plastic_budget\": 6.11214497, \"presynaptic_bound\": 0.898119986, \"prune\": 0.000105908, \"trace_floor\": 2.041e-06}",
-   "args": "--set alloc_gain=0 --set consolidated_budget=0.678416147 --set consolidation_rate=0.0056 --set covariance=0.406495529 --set encoding_suppression=0.890126431 --set hetero_ltd=0.97329998 --set inner_rate=0.050000001 --set learning_rate=0.0238520151 --set link_use=0 --set order_gain=5.10166548 --set order_tau=2.90192008 --set plastic_budget=6.11214497 --set presynaptic_bound=0.898119986 --set prune=0.000105907669 --set trace_floor=2.041e-06"
-  },
-  {
-   "lineage": "P",
-   "variant": "alefP",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P-g6-1",
-   "brain_run": "42934483077",
-   "brain_artifact": "ladder-brain-alefP-3004",
-   "params": "{\"alloc_gain\": 0.040822263, \"consolidated_budget\": 0.870251594, \"consolidation_rate\": 0.00357463, \"covariance\": 0.82413411, \"encoding_suppression\": 1.0, \"hetero_ltd\": 1.0, \"inner_rate\": 0.066392817, \"learning_rate\": 0.036937299, \"link_use\": 0.0, \"order_gain\": 6.164116105, \"order_tau\": 1.236511129, \"plastic_budget\": 3.261783047, \"presynaptic_bound\": 1.0, \"prune\": 0.000145258, \"trace_floor\": 4.25e-07}",
-   "args": "--set alloc_gain=0.040822263 --set consolidated_budget=0.870251594 --set consolidation_rate=0.00357463036 --set covariance=0.82413411 --set encoding_suppression=1 --set hetero_ltd=1 --set inner_rate=0.066392817 --set learning_rate=0.0369372985 --set link_use=0 --set order_gain=6.1641161 --set order_tau=1.23651113 --set plastic_budget=3.26178305 --set presynaptic_bound=1 --set prune=0.000145258 --set trace_floor=4.25e-07"
-  },
-  {
-   "lineage": "P",
-   "variant": "alefP",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P-g6-2",
-   "brain_run": "42934483077",
-   "brain_artifact": "ladder-brain-alefP-3004",
-   "params": "{\"alloc_gain\": 0.040822263, \"consolidated_budget\": 0.870251594, \"consolidation_rate\": 0.008750479, \"covariance\": 0.82413411, \"encoding_suppression\": 1.0, \"hetero_ltd\": 1.0, \"inner_rate\": 0.066392817, \"learning_rate\": 0.019859022, \"link_use\": 0.0, \"order_gain\": 6.164116105, \"order_tau\": 1.236511129, \"plastic_budget\": 3.261783047, \"presynaptic_bound\": 0.938484156, \"prune\": 0.000145258, \"trace_floor\": 4.25e-07}",
-   "args": "--set alloc_gain=0.040822263 --set consolidated_budget=0.870251594 --set consolidation_rate=0.00875047851 --set covariance=0.82413411 --set encoding_suppression=1 --set hetero_ltd=1 --set inner_rate=0.066392817 --set learning_rate=0.019859022 --set link_use=0 --set order_gain=6.1641161 --set order_tau=1.23651113 --set plastic_budget=3.26178305 --set presynaptic_bound=0.938484156 --set prune=0.000145258 --set trace_floor=4.25e-07"
-  },
-  {
-   "lineage": "P",
-   "variant": "alefP",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P-g6-3",
-   "brain_run": "42934483077",
-   "brain_artifact": "ladder-brain-alefP-3004",
-   "params": "{\"alloc_gain\": 0.035509682, \"consolidated_budget\": 0.678416147, \"consolidation_rate\": 0.0056, \"covariance\": 0.406495529, \"encoding_suppression\": 0.867037078, \"hetero_ltd\": 0.97329998, \"inner_rate\": 0.050000001, \"learning_rate\": 0.022220001, \"link_use\": 0.0, \"order_gain\": 5.101665484, \"order_tau\": 5.397279194, \"plastic_budget\": 9.018598629, \"presynaptic_bound\": 0.898119986, \"prune\": 0.000205912, \"trace_floor\": 2.041e-06}",
-   "args": "--set alloc_gain=0.0355096824 --set consolidated_budget=0.678416147 --set consolidation_rate=0.0056 --set covariance=0.406495529 --set encoding_suppression=0.867037078 --set hetero_ltd=0.97329998 --set inner_rate=0.050000001 --set learning_rate=0.022220001 --set link_use=0 --set order_gain=5.10166548 --set order_tau=5.39727919 --set plastic_budget=9.01859863 --set presynaptic_bound=0.898119986 --set prune=0.000205912 --set trace_floor=2.041e-06"
-  },
-  {
-   "lineage": "P",
-   "variant": "alefP",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P-g6-4",
-   "brain_run": "42934483077",
-   "brain_artifact": "ladder-brain-alefP-3004",
-   "params": "{\"alloc_gain\": 0.0, \"consolidated_budget\": 0.649585842, \"consolidation_rate\": 0.0056, \"covariance\": 0.950118309, \"encoding_suppression\": 1.0, \"hetero_ltd\": 0.923586734, \"inner_rate\": 0.050000001, \"learning_rate\": 0.020669734, \"link_use\": 0.0, \"order_gain\": 10.0, \"order_tau\": 2.498737822, \"plastic_budget\": 3.261783047, \"presynaptic_bound\": 1.0, \"prune\": 0.000145258, \"trace_floor\": 4.25e-07}",
-   "args": "--set alloc_gain=0 --set consolidated_budget=0.649585842 --set consolidation_rate=0.0056 --set covariance=0.950118309 --set encoding_suppression=1 --set hetero_ltd=0.923586734 --set inner_rate=0.050000001 --set learning_rate=0.020669734 --set link_use=0 --set order_gain=10 --set order_tau=2.49873782 --set plastic_budget=3.26178305 --set presynaptic_bound=1 --set prune=0.000145258 --set trace_floor=4.25e-07"
-  },
-  {
-   "lineage": "P",
-   "variant": "alefP",
-   "seed": 3004,
-   "list": 1,
-   "cand": "P-g6-5",
-   "brain_run": "42934483077",
-   "brain_artifact": "ladder-brain-alefP-3004",
-   "params": "{\"alloc_gain\": 0.0, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.007903744, \"covariance\": 1.0, \"encoding_suppression\": 1.0, \"hetero_ltd\": 0.972733589, \"inner_rate\": 0.050000001, \"learning_rate\": 0.013484539, \"link_use\": 0.0, \"order_gain\": 8.594574551, \"order_tau\": 2.498737822, \"plastic_budget\": 7.208572178, \"presynaptic_bound\": 0.898119986, \"prune\": 0.0001, \"trace_floor\": 3.86e-07}",
-   "args": "--set alloc_gain=0 --set consolidated_budget=0.508419991 --set consolidation_rate=0.007903744 --set covariance=1 --set encoding_suppression=1 --set hetero_ltd=0.972733589 --set inner_rate=0.050000001 --set learning_rate=0.0134845388 --set link_use=0 --set order_gain=8.59457455 --set order_tau=2.49873782 --set plastic_budget=7.20857218 --set presynaptic_bound=0.898119986 --set prune=0.0001 --set trace_floor=3.855234e-07"
-  },
-  {
-   "lineage": "EF",
-   "variant": "alefEF",
-   "seed": 3004,
-   "list": 1,
-   "cand": "EF-g6-0",
-   "brain_run": "42742725584",
-   "brain_artifact": "ladder-brain-alefEF-3004",
-   "params": "{\"alloc_gain\": 0.0, \"art_vigilance\": 0.835351052, \"consolidated_budget\": 0.468818559, \"consolidation_rate\": 0.005785749, \"covariance\": 0.58434999, \"encoding_suppression\": 0.793741714, \"hetero_ltd\": 0.97329998, \"inner_rate\": 0.041287779, \"learning_rate\": 0.022220001, \"link_use\": 0.0, \"order_gain\": 8.241060349, \"order_tau\": 1.298860295, \"pc_error\": 0.0, \"plastic_budget\": 2.153333857, \"presynaptic_bound\": 0.919163412, \"prune\": 0.0, \"trace_floor\": 1.029e-06}",
-   "args": "--set alloc_gain=0 --set art_vigilance=0.835351052 --set consolidated_budget=0.468818559 --set consolidation_rate=0.005785749 --set covariance=0.58434999 --set encoding_suppression=0.793741714 --set hetero_ltd=0.97329998 --set inner_rate=0.041287779 --set learning_rate=0.022220001 --set link_use=0 --set order_gain=8.24106035 --set order_tau=1.2988603 --set pc_error=0 --set plastic_budget=2.15333386 --set presynaptic_bound=0.919163412 --set prune=0 --set trace_floor=1.029e-06"
-  },
-  {
-   "lineage": "EF",
-   "variant": "alefEF",
-   "seed": 3004,
-   "list": 1,
-   "cand": "EF-g6-1",
-   "brain_run": "42742725584",
-   "brain_artifact": "ladder-brain-alefEF-3004",
-   "params": "{\"alloc_gain\": 0.0, \"art_vigilance\": 0.0, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.005785749, \"covariance\": 0.752895538, \"encoding_suppression\": 0.70637279, \"hetero_ltd\": 1.0, \"inner_rate\": 0.052773527, \"learning_rate\": 0.032342925, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 1.298860295, \"pc_error\": 0.0, \"plastic_budget\": 3.768809956, \"presynaptic_bound\": 0.898119986, \"prune\": 0.0, \"trace_floor\": 2.119e-06}",
-   "args": "--set alloc_gain=0 --set art_vigilance=0 --set consolidated_budget=0.508419991 --set consolidation_rate=0.005785749 --set covariance=0.752895538 --set encoding_suppression=0.70637279 --set hetero_ltd=1 --set inner_rate=0.052773527 --set learning_rate=0.0323429254 --set link_use=0 --set order_gain=6.23346996 --set order_tau=1.2988603 --set pc_error=0 --set plastic_budget=3.76880996 --set presynaptic_bound=0.898119986 --set prune=0 --set trace_floor=2.11850829e-06"
-  },
-  {
-   "lineage": "EF",
-   "variant": "alefEF",
-   "seed": 3004,
-   "list": 1,
-   "cand": "EF-g6-2",
-   "brain_run": "42742725584",
-   "brain_artifact": "ladder-brain-alefEF-3004",
-   "params": "{\"alloc_gain\": 0.0, \"art_vigilance\": 0.0, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.005785749, \"covariance\": 0.752895538, \"encoding_suppression\": 0.793741714, \"hetero_ltd\": 1.0, \"inner_rate\": 0.028639165, \"learning_rate\": 0.018615563, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 1.91899976, \"pc_error\": 0.0, \"plastic_budget\": 3.768809956, \"presynaptic_bound\": 0.830989877, \"prune\": 0.0, \"trace_floor\": 2.305e-06}",
-   "args": "--set alloc_gain=0 --set art_vigilance=0 --set consolidated_budget=0.508419991 --set consolidation_rate=0.005785749 --set covariance=0.752895538 --set encoding_suppression=0.793741714 --set hetero_ltd=1 --set inner_rate=0.028639165 --set learning_rate=0.0186155627 --set link_use=0 --set order_gain=6.23346996 --set order_tau=1.91899976 --set pc_error=0 --set plastic_budget=3.76880996 --set presynaptic_bound=0.830989877 --set prune=0 --set trace_floor=2.305e-06"
-  },
-  {
-   "lineage": "EF",
-   "variant": "alefEF",
-   "seed": 3004,
-   "list": 1,
-   "cand": "EF-g6-3",
-   "brain_run": "42742725584",
-   "brain_artifact": "ladder-brain-alefEF-3004",
-   "params": "{\"alloc_gain\": 0.0, \"art_vigilance\": 0.835351052, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.005785749, \"covariance\": 0.752895538, \"encoding_suppression\": 0.793741714, \"hetero_ltd\": 1.0, \"inner_rate\": 0.043980673, \"learning_rate\": 0.020866553, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 1.298860295, \"pc_error\": 0.0, \"plastic_budget\": 3.768809956, \"presynaptic_bound\": 0.898119986, \"prune\": 1e-07, \"trace_floor\": 2.133e-06}",
-   "args": "--set alloc_gain=0 --set art_vigilance=0.835351052 --set consolidated_budget=0.508419991 --set consolidation_rate=0.005785749 --set covariance=0.752895538 --set encoding_suppression=0.793741714 --set hetero_ltd=1 --set inner_rate=0.0439806733 --set learning_rate=0.0208665527 --set link_use=0 --set order_gain=6.23346996 --set order_tau=1.2988603 --set pc_error=0 --set plastic_budget=3.76880996 --set presynaptic_bound=0.898119986 --set prune=1.00231309e-07 --set trace_floor=2.133e-06"
-  },
-  {
-   "lineage": "EF",
-   "variant": "alefEF",
-   "seed": 3004,
-   "list": 1,
-   "cand": "EF-g6-4",
-   "brain_run": "42742725584",
-   "brain_artifact": "ladder-brain-alefEF-3004",
-   "params": "{\"alloc_gain\": 0.0, \"art_vigilance\": 0.835351052, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.005785749, \"covariance\": 0.752895538, \"encoding_suppression\": 0.841367673, \"hetero_ltd\": 1.0, \"inner_rate\": 0.030564749, \"learning_rate\": 0.032111386, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 1.083030245, \"pc_error\": 0.0, \"plastic_budget\": 3.441864053, \"presynaptic_bound\": 0.898119986, \"prune\": 0.0, \"trace_floor\": 2.305e-06}",
-   "args": "--set alloc_gain=0 --set art_vigilance=0.835351052 --set consolidated_budget=0.508419991 --set consolidation_rate=0.005785749 --set covariance=0.752895538 --set encoding_suppression=0.841367673 --set hetero_ltd=1 --set inner_rate=0.0305647491 --set learning_rate=0.032111386 --set link_use=0 --set order_gain=6.23346996 --set order_tau=1.08303024 --set pc_error=0 --set plastic_budget=3.44186405 --set presynaptic_bound=0.898119986 --set prune=0 --set trace_floor=2.305e-06"
-  },
-  {
-   "lineage": "EF",
-   "variant": "alefEF",
-   "seed": 3004,
-   "list": 1,
-   "cand": "EF-g6-5",
-   "brain_run": "42742725584",
-   "brain_artifact": "ladder-brain-alefEF-3004",
-   "params": "{\"alloc_gain\": 0.0, \"art_vigilance\": 0.835351052, \"consolidated_budget\": 0.508419991, \"consolidation_rate\": 0.007079231, \"covariance\": 0.651295402, \"encoding_suppression\": 0.793741714, \"hetero_ltd\": 1.0, \"inner_rate\": 0.041047822, \"learning_rate\": 0.022220001, \"link_use\": 0.0, \"order_gain\": 6.23346996, \"order_tau\": 1.430957784, \"pc_error\": 0.0, \"plastic_budget\": 3.768809956, \"presynaptic_bound\": 1.0, \"prune\": 0.0, \"trace_floor\": 1.513e-06}",
-   "args": "--set alloc_gain=0 --set art_vigilance=0.835351052 --set consolidated_budget=0.508419991 --set consolidation_rate=0.00707923122 --set covariance=0.651295402 --set encoding_suppression=0.793741714 --set hetero_ltd=1 --set inner_rate=0.0410478216 --set learning_rate=0.022220001 --set link_use=0 --set order_gain=6.23346996 --set order_tau=1.43095778 --set pc_error=0 --set plastic_budget=3.76880996 --set presynaptic_bound=1 --set prune=0 --set trace_floor=1.513e-06"
-  }
- ]
+ "pending": []
 }
