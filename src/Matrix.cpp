@@ -907,6 +907,7 @@ void NeuralCellularMatrix::step3D() {
     const bool sweep = lattice_ ? cfg_.lattice_sweep > 0.5f : cfg_.field_sweep > 0.5f;
     const bool fourDNow = lattice_ && (tick4_ || cfg_.lattice_hold < 0.5f);
     const float* drive = drive3_.data();
+    const float traceFloor = std::max(0.0f, cfg_.learning.trace_floor);
     // Loop guard: what source u sends through learned links is its firing x its resource.
     const float* res = linkRes_.empty() ? nullptr : linkRes_.data();
     auto spent = [res](size_t u, const float* src, float* buf) -> const float* {
@@ -1381,7 +1382,10 @@ void NeuralCellularMatrix::step3D() {
         if (orderTau > 0.0f) {
             float* tr = orderTrace3_.data() + v * C3;
             const float* cell = out + v * C3;
-            for (uint32_t c = 0; c < C3; ++c) tr[c] += (cell[c] - tr[c]) / orderTau;
+            for (uint32_t c = 0; c < C3; ++c) {
+                tr[c] += (cell[c] - tr[c]) / orderTau;
+                if (tr[c] < traceFloor) tr[c] = 0.0f; // a trace this faint has ended
+            }
         }
         if (!ctx3_.empty()) {
             float* cx = ctx3_.data() + v * C3;

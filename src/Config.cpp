@@ -200,6 +200,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"consolidated_budget", &c.learning.consolidated_budget},
         {"link_bound", &c.learning.link_bound},
         {"prune", &c.learning.prune},
+        {"trace_floor", &c.learning.trace_floor},
         {"link_use", &c.learning.link_use},
         {"link_recovery", &c.learning.link_recovery},
         {"pc_error", &c.learning.pc_error},
@@ -472,6 +473,10 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                    "soma=1", "prune=0.0001"}},                                                    // Alef, links below 1e-4 pruned
         {"alefP5", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "prune=0.00001"}},                                                  // Alef, links below 1e-5 pruned
+        // Trace floor (2026-11-11): every voxel kept learning from its never-ending fading trace; with
+        // a floor of 1e-6 learning on a grown brain takes 2.9 s instead of 68 s (2264 learners, not 16384).
+        {"alefP5F", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                     "soma=1", "prune=0.00001", "trace_floor=0.000001"}},                            // alefP5, faint traces end
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the

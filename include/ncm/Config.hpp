@@ -194,6 +194,11 @@ struct LearningParams {
     // (near, long-range, 4D): r drops by link_use x r x firing each 3D step and recovers by
     // (1 - r) / link_recovery. A fresh signal passes at full strength; a signal that keeps going
     // round (an echo) wears itself out where it runs. Fixed links and held clues are not touched.
+    // Trace floor (trace_floor > 0): an order trace (each voxel's fading recent firing) below this
+    // ends: it is set to 0. A trace fades by a third every step and never reaches 0 by itself, so
+    // without a floor every voxel that fired in the last ~250 steps keeps learning (by amounts
+    // pruning removes), and the faintest values are slow for the processor. 0 = off.
+    float trace_floor = 0.0f;
     float link_use = 0.0f;
     float link_recovery = 30.0f;
     // Predictive coding (pc_error > 0, 4D lattice with the outward links split off): a slice sends
