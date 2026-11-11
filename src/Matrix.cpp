@@ -48,6 +48,11 @@ inline void sparseAdd(const uint8_t* pos, const float* w, uint32_t n, const floa
     for (uint32_t k = 0; k < n; ++k) acc[pos[k] / C3] += w[k] * x[pos[k] % C3];
     for (uint32_t r = 0; r < C3; ++r) y[r] += scale * acc[r];
 }
+inline void addLinksFast(const LinkStore::View& b, const float* x, float* y, float scale) { // fast part only
+    if (!b.n) return;
+    if (!b.pos) return matvecFixed<C3, C3>(b.fast, x, y, scale);
+    sparseAdd(b.pos, b.fast, b.n, x, y, scale);
+}
 inline void addLinks(const LinkStore::View& b, const float* x, float* y, float scale) {
     if (!b.n) return; // an empty block adds nothing
     if (!b.pos) {
@@ -532,7 +537,11 @@ void NeuralCellularMatrix::initVoxelWeights() {
     const uint32_t S4 = spreadK_;
     if (lattice_) {
         // Pharmakon: every voxel hears spreadK_ random voxels anywhere in the lattice.
-        if (cfg_.spread_plastic > 0.0f && S4 > 0) WS_.assign(V_ * S4 * C3 * C3, 0.0f);
+        if (cfg_.spread_plastic > 0.0f && S4 > 0) { // the learned cue route: blocks wsB_ + l of links_
+            wsB_ = h4B_ + hBlocks_;
+            wsLinks_ = true;
+            links_.init(V_, wsB_ + S4, links_.hasSlow());
+        }
         spreadPos_.assign(V_ * S4, 0);
         const bool local = cfg_.spread_local > 0.5f;
         for (size_t v = 0; v < V_; ++v) {
@@ -1213,9 +1222,8 @@ void NeuralCellularMatrix::step3D() {
                     const float* src = (sweep && vs / Vf_ < f ? out : s3) + vs * C3;
                     if (isSilent(src, C3)) continue;
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
-                    if (!WS_.empty() && !inhib3_[vs])
-                        matvecAdd(WS_.data() + (v * S4 + l) * C3 * C3, src, pl4, C3, C3,
-                                  afferentGain * rec4 * cfg_.spread_plastic);
+                    if (wsLinks_ && !inhib3_[vs])
+                        addLinksFast(links_.view(v, wsB_ + l), src, pl4, afferentGain * rec4 * cfg_.spread_plastic);
                 }
             for (uint32_t g = 0; g < (lattice_ ? 0u : f); ++g)
                 // Only the Input field's activity is a thin slab whose active share falls with
@@ -1589,10 +1597,10 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
                 const size_t vg = lattice4Partner(x, y, z, f, k);
                 if (vg != SIZE_MAX && !inhib3_[vg]) visit(h4B_ + k, vg, 2);
             }
-        if (!WS_.empty())
+        if (wsLinks_)
             for (uint32_t l = 0; l < spreadK_; ++l) {
                 const size_t vs = spreadPos_[v * spreadK_ + l];
-                if (vs < V_ && !inhib3_[vs]) call(WS_.data() + (v * spreadK_ + l) * C3 * C3, vs, 3);
+                if (vs < V_ && !inhib3_[vs]) visit(wsB_ + l, vs, 3);
             }
         return;
     }
@@ -2189,7 +2197,7 @@ double NeuralCellularMatrix::plasticFlow(const std::vector<double>& from, const 
 double NeuralCellularMatrix::totalPlasticStrength() const {
     double total = 0.0;
     // In the old order (near, long-range, 4D; voxel by voxel; link by link); a link not stored adds nothing.
-    const uint32_t from[3] = {0, longB_, h4B_}, to[3] = {longB_, h4B_, links_.blocksPerVoxel()};
+    const uint32_t from[3] = {0, longB_, h4B_}, to[3] = {longB_, h4B_, h4B_ + hBlocks_};
     for (int k = 0; k < 3; ++k)
         for (size_t v = 0; v < V_; ++v)
             for (uint32_t b = from[k]; b < to[k]; ++b) {
@@ -2292,7 +2300,8 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.vec(diagInput3_, "diag");
     st.vec(asmInh_, "assembly inhibition");
     st.vec(usage3_, "usage");
-    st.vec(WS_, "cue route");
+    if (wsLinks_) stateCue(st);
+    else st.vec(WS_, "cue route");
     st.vec(diagSource3_, "diag sources");
     st.vec(fatigue2_, "fatigue2");
     st.vec(fatigue3_, "fatigue3");
@@ -2315,14 +2324,27 @@ void NeuralCellularMatrix::state(StateFile& st) {
     st.value(tick4_);
     st.value(memoryPause_);
     st.value(noiseStep_);
-    const uint32_t K4 = links_.blocksPerVoxel() - h4B_;
+    const uint32_t K4 = hBlocks_;
     links_.stateKind(st, "W3", 0, 27, false); // the full (dense) layout, as before
     links_.stateKind(st, "WL", longB_, h4B_ - longB_, false);
     links_.stateKind(st, "H", h4B_, K4, false);
     links_.stateKind(st, "S3", 0, 27, true);
     links_.stateKind(st, "SL", longB_, h4B_ - longB_, true);
     links_.stateKind(st, "SH", h4B_, K4, true);
-    if (!st.writing) links_.finishLoad();
+    if (!st.writing) {
+        links_.finishLoad();
+        if (wsLinks_) { // the cue route read earlier joins its voxels now
+            for (size_t v = 0; v < wsLoad_.size(); ++v) {
+                if (wsLoad_[v].empty()) continue;
+                float* ws = links_.open(v);
+                for (const auto& [i, x] : wsLoad_[v])
+                    ws[size_t(wsB_ + i / LinkStore::kBlock) * 2 * LinkStore::kBlock + i % LinkStore::kBlock] = x;
+                links_.close(true);
+            }
+            wsLoad_.clear();
+            wsLoad_.shrink_to_fit();
+        }
+    }
     st.vec(M2_, "M2");
     stateInner(st, false);
     stateInner(st, true);
@@ -2345,6 +2367,37 @@ void NeuralCellularMatrix::state(StateFile& st) {
     if (!linkRes_.empty()) st.vec(linkRes_, "link resources");   // only brains with the loop guard
     if (!mismatch3_.empty()) st.vec(mismatch3_, "mismatch"), st.vec(reset3_, "resets"); // vigilance
     if (!excit3_.empty()) st.vec(excit3_, "excitability"), st.value(allocStep_);         // engram allocation
+}
+
+// The learned cue route (Pharmakon, in links_) in the dense layout of the old array: per voxel, its
+// spreadK_ blocks. Loading keeps the non-zero links aside until links_ is loaded (it comes later).
+void NeuralCellularMatrix::stateCue(StateFile& st) {
+    const size_t K = size_t(spreadK_) * LinkStore::kBlock;
+    uint64_t n = uint64_t(V_) * K;
+    st.value(n);
+    if (!st.writing && n != uint64_t(V_) * K) throw std::runtime_error("state file: size of cue route differs");
+    std::vector<float> buf(K);
+    if (!st.writing) wsLoad_.assign(V_, {});
+    for (size_t v = 0; v < V_; ++v) {
+        if (st.writing) {
+            std::fill(buf.begin(), buf.end(), 0.0f);
+            for (uint32_t l = 0; l < spreadK_; ++l) {
+                const LinkStore::View x = links_.view(v, wsB_ + l);
+                float* b = buf.data() + size_t(l) * LinkStore::kBlock;
+                if (x.n && !x.pos) std::memcpy(b, x.fast, LinkStore::kBlock * sizeof(float));
+                else
+                    for (uint32_t q = 0; q < x.n; ++q) b[x.pos[q]] = x.fast[q];
+            }
+            st.bytes(buf.data(), K * sizeof(float));
+        } else {
+            st.bytes(buf.data(), K * sizeof(float));
+            for (size_t i = 0; i < K; ++i) {
+                uint32_t u;
+                std::memcpy(&u, &buf[i], 4);
+                if (u) wsLoad_[v].emplace_back(uint32_t(i), buf[i]);
+            }
+        }
+    }
 }
 
 // The inner chunks in the dense layout of the old arrays (an empty vector when that path is off):
@@ -2395,11 +2448,12 @@ void NeuralCellularMatrix::stateInner(StateFile& st, bool down) {
 }
 
 std::string NeuralCellularMatrix::blockReport() const {
-    const char* names[3] = {"near", "long", "4d"};
-    const uint32_t from[3] = {0, longB_, h4B_}, to[3] = {longB_, h4B_, links_.blocksPerVoxel()};
+    const char* names[4] = {"near", "long", "4d", "cue"};
+    const uint32_t from[4] = {0, longB_, h4B_, h4B_ + hBlocks_}, to[4] = {longB_, h4B_, h4B_ + hBlocks_, links_.blocksPerVoxel()};
+    const int kinds = wsLinks_ ? 4 : 3;
     std::string s = "BLOCKS {";
     double links = 0.0, dense = 0.0;
-    for (int k = 0; k < 3; ++k) {
+    for (int k = 0; k < kinds; ++k) {
         std::array<size_t, kFields> byField{};
         size_t n = 0, whole = 0, kept = 0, nz = 0;
         for (size_t v = 0; v < V_; ++v)

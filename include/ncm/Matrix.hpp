@@ -340,6 +340,16 @@ private:
     // (longB_ + l), then the 4D links (h4B_ + k: 3 other fields, or 80 lattice neighbours).
     LinkStore links_;
     uint32_t longB_ = 27, h4B_ = 27;
+    // Pharmakon: the learned cue route (spread_plastic) lives in links_ too, as blocks wsB_ + l
+    // (no slow part); wsLinks_ says so. Loading reads it before links_, so it waits in wsLoad_.
+    uint32_t wsB_ = 0;
+    bool wsLinks_ = false;
+    std::vector<std::vector<std::pair<uint32_t, float>>> wsLoad_;
+    bool isCueBlock(const float* p) const {
+        if (!wsLinks_) return false;
+        const float* ws = LinkStore::workspace();
+        return p >= ws + size_t(wsB_) * 2 * LinkStore::kBlock && p < ws + size_t(links_.blocksPerVoxel()) * 2 * LinkStore::kBlock;
+    }
     std::vector<uint32_t> lrTarget_; // per voxel: long-range target voxels (fixed at random)
     std::vector<uint32_t> spreadPos_; // per voxel: random positions (index within a field) feeding it from earlier fields
     uint32_t spreadK_ = 0;                // random 4D sources per voxel (link4d_spread, scaled with size if set)
@@ -350,11 +360,13 @@ private:
     float* slowOf(float* fastBlock) {
         if (!links_.hasSlow()) return nullptr;
         if (!WS_.empty() && fastBlock >= WS_.data() && fastBlock < WS_.data() + WS_.size()) return nullptr;
+        if (isCueBlock(fastBlock)) return nullptr; // the cue route has no slow part
         return fastBlock + LinkStore::kBlock;
     }
     const float* slowOf(const float* fastBlock) const {
         if (!links_.hasSlow()) return nullptr;
         if (!WS_.empty() && fastBlock >= WS_.data() && fastBlock < WS_.data() + WS_.size()) return nullptr;
+        if (isCueBlock(fastBlock)) return nullptr;
         return fastBlock + LinkStore::kBlock;
     }
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
@@ -368,6 +380,7 @@ private:
     bool innerUp_ = false, innerDown_ = false;
     AVec<float> innerLearned_;
     void stateInner(StateFile& st, bool down);
+    void stateCue(StateFile& st);
     // 2D learned lateral links: per sheet cell 8 neighbours x C2 x C2 (sheet_learn).
     AVec<float> L2_;
     // Loop guard (link_use): per voxel channel, the resource of its learned links (1 = rested).

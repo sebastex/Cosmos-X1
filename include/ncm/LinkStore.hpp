@@ -85,6 +85,8 @@ public:
 
     // --- The workspace: voxel v's blocks unpacked (fast block b at b * 2 * kBlock, its slow block
     // right after it). Only one voxel per thread is open at a time.
+    // This thread's workspace (the open voxel's blocks unpacked).
+    static const float* workspace() { return work().buf.data(); }
     bool isOpen(size_t v) const {
         const Work& w = work();
         return w.owner == this && w.v == v;
