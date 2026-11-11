@@ -46,6 +46,14 @@ struct StateFile {
         const size_t done = writing ? std::fwrite(p, 1, n, f) : std::fread(p, 1, n, f);
         if (done != n) throw std::runtime_error(writing ? "state file: write failed" : "state file: truncated");
     }
+    // Reading: the next 4 bytes, without reading past them (0 at the end of the file).
+    uint32_t peekTag() {
+        if (writing || !f) return 0;
+        uint32_t t = 0;
+        const size_t got = std::fread(&t, 1, 4, f);
+        if (got) std::fseek(f, -long(got), SEEK_CUR);
+        return got == 4 ? t : 0;
+    }
     // A plain value (written, or read back into the same variable).
     template <class T>
     void value(T& x) {

@@ -2364,9 +2364,35 @@ void NeuralCellularMatrix::state(StateFile& st) {
     }
     if (soma_.on()) soma_.state(st); // only brains with the somatic network
     if (!fbTrace_.empty()) st.vec(fbTrace_, "right/wrong trace"); // only brains that learn from right and wrong
-    if (!linkRes_.empty()) st.vec(linkRes_, "link resources");   // only brains with the loop guard
-    if (!mismatch3_.empty()) st.vec(mismatch3_, "mismatch"), st.vec(reset3_, "resets"); // vigilance
-    if (!excit3_.empty()) st.vec(excit3_, "excitability"), st.value(allocStep_);         // engram allocation
+    // Parts added later (loop guard, vigilance, engram allocation): each with its own tag, so a
+    // brain saved with or without any of them loads under settings that have or lack them (a part
+    // the file lacks starts fresh; a part the settings lack is read past). Brains without them
+    // save nothing here, as before.
+    enum : uint32_t { kTagLinkRes = 0x4C524553, kTagVigil = 0x56494731, kTagAlloc = 0x414C4C31 };
+    if (st.writing) {
+        uint32_t tag;
+        if (!linkRes_.empty()) tag = kTagLinkRes, st.value(tag), st.vec(linkRes_, "link resources");
+        if (!mismatch3_.empty()) tag = kTagVigil, st.value(tag), st.vec(mismatch3_, "mismatch"), st.vec(reset3_, "resets");
+        if (!excit3_.empty()) tag = kTagAlloc, st.value(tag), st.vec(excit3_, "excitability"), st.value(allocStep_);
+    } else {
+        for (;;) {
+            const uint32_t next = st.peekTag();
+            if (next != kTagLinkRes && next != kTagVigil && next != kTagAlloc) break; // not one of these parts
+            uint32_t tag = 0;
+            st.value(tag);
+            AVec<float> skip;
+            uint64_t skipStep = 0;
+            if (tag == kTagLinkRes) st.vec(linkRes_.empty() ? skip : linkRes_, "link resources");
+            else if (tag == kTagVigil) {
+                st.vec(mismatch3_.empty() ? skip : mismatch3_, "mismatch");
+                skip.clear();
+                st.vec(reset3_.empty() ? skip : reset3_, "resets");
+            } else if (tag == kTagAlloc) {
+                st.vec(excit3_.empty() ? skip : excit3_, "excitability");
+                st.value(excit3_.empty() ? skipStep : allocStep_);
+            }
+        }
+    }
 }
 
 // The learned cue route (Pharmakon, in links_) in the dense layout of the old array: per voxel, its
