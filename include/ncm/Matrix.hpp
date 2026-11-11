@@ -358,13 +358,13 @@ private:
         return fastBlock + LinkStore::kBlock;
     }
     AVec<float> M2_;               // per voxel: C2 x C2 sheet modulation
-    // Inner-level learning: per sheet cell q (voxel q / SS), one chunk (stored once it learns):
+    // Inner-level learning: per sheet cell q (voxel q / SS), one chunk (stored link by link, LinkStore):
     // the voxel's C3 x C2 learned upward weights from that cell (path 1, [c][b]), then the cell's
     // C2 x C3 learned downward weights (path 2, [b][c]); and each voxel's learned amount
     // (critical period). Saved in the dense layout of the old arrays (up: [v][c][cell][b],
     // down: [v][cell][b][c]).
     static constexpr size_t kInnerDown = size_t(C3) * C2; // the downward part starts here in a chunk
-    BlockStore inner_;
+    LinkStore inner_; // per voxel: SS chunks (no slow part)
     bool innerUp_ = false, innerDown_ = false;
     AVec<float> innerLearned_;
     void stateInner(StateFile& st, bool down);

@@ -59,6 +59,40 @@ inline void addLinks(const LinkStore::View& b, const float* x, float* y, float s
     if (b.slow) sparseAdd(b.pos, b.slow, b.n, x, y, scale);
 }
 
+// Inner chunk (C3 x C2 upward part at 0, C2 x C3 downward part at kDown): the upward dots of a
+// voxel's channels with a sheet cell (dot[c] = sum over b in order), and the downward product
+// into the sheet cell (y[b] += scale * sum over c in order). Links not stored only added zeros.
+constexpr uint32_t kInnerDownAt = C3 * C2;
+inline void innerUpDots(const LinkStore::View& ch, const float* sc, float* dot) {
+    for (uint32_t c = 0; c < C3; ++c) dot[c] = 0.0f;
+    if (!ch.pos) {
+        for (uint32_t c = 0; c < C3; ++c) {
+            const float* row = ch.fast + size_t(c) * C2;
+            float d = 0.0f;
+            for (uint32_t b = 0; b < C2; ++b) d += row[b] * sc[b];
+            dot[c] = d;
+        }
+        return;
+    }
+    for (uint32_t k = 0; k < ch.n && ch.pos[k] < kInnerDownAt; ++k) dot[ch.pos[k] / C2] += ch.fast[k] * sc[ch.pos[k] % C2];
+}
+inline void innerDownAdd(const LinkStore::View& ch, const float* x, float* y, float scale) {
+    float acc[C2];
+    for (uint32_t b = 0; b < C2; ++b) acc[b] = 0.0f;
+    if (!ch.pos) {
+        const float* w = ch.fast + kInnerDownAt;
+        for (uint32_t c = 0; c < C3; ++c)
+            for (uint32_t b = 0; b < C2; ++b) acc[b] += w[size_t(b) * C3 + c] * x[c];
+    } else {
+        for (uint32_t k = 0; k < ch.n; ++k) {
+            if (ch.pos[k] < kInnerDownAt) continue;
+            const uint32_t i = ch.pos[k] - kInnerDownAt;
+            acc[i / C3] += ch.fast[k] * x[i % C3];
+        }
+    }
+    for (uint32_t b = 0; b < C2; ++b) y[b] += scale * acc[b];
+}
+
 // Dispatches the block sizes the matrix uses to the fixed-size kernel.
 inline void matvecAdd(const float* __restrict A, const float* __restrict x, float* __restrict y,
                       uint32_t rows, uint32_t cols, float scale) {
@@ -423,9 +457,9 @@ void NeuralCellularMatrix::initVoxelWeights() {
     M2_.assign(V_ * C2 * C2, 0.0f);
     innerUp_ = cfg_.learning.inner_up > 0.0f;
     innerDown_ = cfg_.learning.inner_down > 0.0f;
-    static_assert(2 * size_t(C3) * C2 == BlockStore::kBlock, "an inner chunk is one block");
+    static_assert(2 * size_t(C3) * C2 == LinkStore::kBlock, "an inner chunk is one block");
     if (innerUp_ || innerDown_) {
-        inner_.init(V_ * SS_, false);
+        inner_.init(V_, uint32_t(SS_), false);
         innerLearned_.assign(V_, 0.0f);
     }
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
@@ -793,9 +827,8 @@ void NeuralCellularMatrix::step2D() {
         if (!isSilent(s3 + v * C3, C3)) {
             matvecAdd(D2_.data() + cell * C2 * C3, s3 + v * C3, in, C2, C3, gd);
             if (innerDown_) // learned downward path (muted while encoding when inner_rules is on)
-                if (const float* ch = inner_.get(q)) // a chunk not yet learned adds nothing
-                    matvecAdd(ch + kInnerDown, s3 + v * C3, in, C2, C3,
-                              gd * cfg_.learning.inner_down * (cfg_.inner_rules > 0.5f ? rec2 : 1.0f));
+                if (const LinkStore::View ch = inner_.view(v, uint32_t(q - v * SS)); ch.n) // not yet learned: adds nothing
+                    innerDownAdd(ch, s3 + v * C3, in, gd * cfg_.learning.inner_down * (cfg_.inner_rules > 0.5f ? rec2 : 1.0f));
         }
         if (!parentShare2_.empty()) { // how much of this cell's drive its own voxel gave it
             float after = 0.0f;
@@ -1225,15 +1258,14 @@ void NeuralCellularMatrix::step3D() {
                 for (uint32_t c = 0; c < C2; ++c) scw[c] = own * sc[c];
                 sc = scw;
                 matvecAdd(U2_.data() + cell * C3 * C2, sc, up, C3, C2, 1.0f);
-                const float* wl = innerUp_ ? inner_.get(v * SS + cell) : nullptr; // not yet learned: adds nothing
-                if (wl) {
+                const LinkStore::View wl = innerUp_ ? inner_.view(v, uint32_t(cell)) : LinkStore::View{};
+                if (wl.n) { // not yet learned: adds nothing
                     const float k = cfg_.learning.inner_up;
+                    float dots[C3];
+                    innerUpDots(wl, sc, dots);
                     for (uint32_t c = 0; c < C3; ++c) {
-                        const float* row = wl + size_t(c) * C2;
-                        float dot = 0.0f;
-                        for (uint32_t b = 0; b < C2; ++b) dot += row[b] * sc[b];
-                        if (innerRules) upLearned[c] += k * dot;
-                        else up[c] += k * dot;
+                        if (innerRules) upLearned[c] += k * dots[c];
+                        else up[c] += k * dots[c];
                     }
                 }
             }
@@ -2057,14 +2089,14 @@ void NeuralCellularMatrix::learn(float modulator) {
             float xs = 0.0f;
             if (innerUp_)
                 for (size_t j = 0; j < J; ++j) xs += x[j];
+            float* chunks = inner_.open(v); // the voxel's chunks unpacked; packed back below
             for (size_t cell = 0; cell < SS; ++cell) {
                 const float* xc = x + cell * C2;
-                float* ch = inner_.get(v * SS + cell);
-                if (!ch) {
+                float* ch = chunks + cell * 2 * LinkStore::kBlock;
+                if (!inner_.view(v, uint32_t(cell)).n) {
                     bool any = false;
                     for (uint32_t b = 0; b < C2; ++b) any = any || xc[b] != 0.0f;
                     if (!any) continue;
-                    ch = inner_.make(v * SS + cell);
                 }
                 if (innerUp_ && xs > 0.0f)
                     for (uint32_t c = 0; c < C3; ++c) {
@@ -2080,6 +2112,7 @@ void NeuralCellularMatrix::learn(float modulator) {
                             if (a[c] > 0.0f) w[c] += r * a[c] * (xc[b] - w[c]);
                     }
             }
+            inner_.close(true);
         }
     }
     learnStats_.calls += 1;
@@ -2338,27 +2371,25 @@ void NeuralCellularMatrix::stateInner(StateFile& st, bool down) {
         return down ? (cell * C2 + b) * C3 + c : size_t(c) * J + cell * C2 + b;
     };
     for (size_t v = 0; v < V_; ++v) {
+        float* chunks = inner_.open(v); // the voxel's chunks unpacked
         if (st.writing) {
-            std::fill(buf.begin(), buf.end(), 0.0f);
-            for (size_t cell = 0; cell < SS_; ++cell)
-                if (const float* ch = inner_.get(v * SS_ + cell))
-                    for (uint32_t c = 0; c < C3; ++c)
-                        for (uint32_t b = 0; b < C2; ++b)
-                            buf[at(cell, c, b)] = down ? ch[kInnerDown + size_t(b) * C3 + c] : ch[size_t(c) * C2 + b];
+            for (size_t cell = 0; cell < SS_; ++cell) {
+                const float* ch = chunks + cell * 2 * LinkStore::kBlock;
+                for (uint32_t c = 0; c < C3; ++c)
+                    for (uint32_t b = 0; b < C2; ++b)
+                        buf[at(cell, c, b)] = down ? ch[kInnerDown + size_t(b) * C3 + c] : ch[size_t(c) * C2 + b];
+            }
             st.bytes(buf.data(), per * sizeof(float));
+            inner_.close(false);
         } else {
             st.bytes(buf.data(), per * sizeof(float));
             for (size_t cell = 0; cell < SS_; ++cell) {
-                bool any = false;
-                for (uint32_t c = 0; c < C3; ++c)
-                    for (uint32_t b = 0; b < C2; ++b) any = any || buf[at(cell, c, b)] != 0.0f;
-                float* ch = inner_.get(v * SS_ + cell);
-                if (!ch && !any) continue;
-                if (!ch) ch = inner_.make(v * SS_ + cell);
+                float* ch = chunks + cell * 2 * LinkStore::kBlock;
                 for (uint32_t c = 0; c < C3; ++c)
                     for (uint32_t b = 0; b < C2; ++b)
                         (down ? ch[kInnerDown + size_t(b) * C3 + c] : ch[size_t(c) * C2 + b]) = buf[at(cell, c, b)];
             }
+            inner_.close(true);
         }
     }
 }
@@ -2396,15 +2427,17 @@ std::string NeuralCellularMatrix::blockReport() const {
     // The inner (voxel <-> sheet) learned weights: chunks stored, and how much of them is non-zero.
     double innerN = 0.0, innerNZ = 0.0;
     size_t innerChunks = 0;
-    if (!inner_.empty()) {
+    if (inner_.voxels()) {
         innerN = double(V_) * SS_ * C3 * C2 * ((innerUp_ ? 1 : 0) + (innerDown_ ? 1 : 0));
-        for (size_t q = 0; q < inner_.slots(); ++q)
-            if (const float* ch = inner_.get(q)) {
+        for (size_t v = 0; v < V_; ++v)
+            for (uint32_t c = 0; c < SS_; ++c) {
+                const LinkStore::View ch = inner_.view(v, c);
+                if (!ch.n) continue;
                 ++innerChunks;
-                for (size_t i = 0; i < BlockStore::kBlock; ++i) innerNZ += ch[i] != 0.0f;
+                for (uint32_t i = 0; i < ch.n; ++i) innerNZ += ch.fast[i] != 0.0f;
             }
     }
-    s += ",\"inner_chunks\":[" + std::to_string(innerChunks) + "," + std::to_string(inner_.slots()) + "]";
+    s += ",\"inner_chunks\":[" + std::to_string(innerChunks) + "," + std::to_string(V_ * (inner_.voxels() ? SS_ : 0)) + "]";
     // Pruning check: per output channel, the mean of its non-zero incoming weights (fast + slow);
     // for each cut c, the share of weights under c x that mean and the share of strength they hold.
     const float cuts[6] = {0.02f, 0.05f, 0.1f, 0.2f, 0.3f, 0.5f};
