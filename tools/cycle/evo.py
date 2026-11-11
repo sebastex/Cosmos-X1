@@ -132,6 +132,14 @@ def init(values_path):
     print(f'state written: {len(s["lineages"])} lineages, list 1')
 
 
+def original(L):
+    """The lineage's untuned settings (its variant's, with the trace floor): the yardstick."""
+    if 'original' not in L:
+        vals = json.loads((ROOT / 'cycles' / 'values.json').read_text())
+        L['original'] = start_params(dict(split=L['split'], values=vals[L['variant']]))
+    return L['original']
+
+
 def propose():
     s = load()
     rng = random.Random(1000 + s['generation'])
@@ -140,12 +148,25 @@ def propose():
         if L['list'] > 10:
             continue
         tried = {key(a['params']) for a in L['archive']}
-        cands = []
+        cands, yard = [], set()
         if not L['archive']:  # first generation on a list: the lineage's settings as they are
             cands.append(dict(L['center']))
+        # Yardstick: once per list, the untuned settings on the lineage's present brain, so the gain
+        # from evolving is measured on the same words (not against another list's score).
+        if not any(a.get('yardstick') for a in L['archive']):
+            y = dict(original(L))
+            if key(y) in tried:  # already tried on this list: mark that result as the yardstick
+                for a in L['archive']:
+                    if key(a['params']) == key(y):
+                        a['yardstick'] = True
+            elif all(key(y) != key(x) for x in cands):
+                cands.append(y)
+                yard.add(key(y))
+            else:
+                yard.add(key(y))
         ranked = sorted(L['archive'], key=lambda a: -a['fitness'])[:TOP] or [dict(params=L['center'])]
         guard = 0
-        while len(cands) < PER_LINEAGE and guard < 200:
+        while len(cands) < PER_LINEAGE + len(yard) and guard < 200:
             guard += 1
             base = rng.choice(ranked)['params']
             c = mutate(base, rng, L['split'])
@@ -154,7 +175,8 @@ def propose():
         for i, c in enumerate(cands):
             jobs.append(dict(lineage=L['name'], variant=L['variant'], seed=L['seed'], list=L['list'],
                              cand=f"{L['name']}-g{s['generation']}-{i}", brain_run=L['brain']['run'],
-                             brain_artifact=L['brain']['artifact'], params=key(c), args=args_of(c)))
+                             brain_artifact=L['brain']['artifact'], params=key(c), args=args_of(c),
+                             yardstick=key(c) in yard))
     s['pending'] = jobs
     save(s)
     print(json.dumps(jobs))
@@ -179,19 +201,24 @@ def collect(results_dir, run_id):
                 continue
             entry = dict(cand=j['cand'], params=json.loads(j['params']), fitness=r['fitness'], new=r['new'],
                          old=r['old'], brain=dict(run=str(run_id), artifact=f"cycle-brain-{j['cand']}"))
+            if j.get('yardstick'):
+                entry['yardstick'] = True
             L['archive'].append(entry)
             lines.append(f"- {L['name']} list {L['list']} {j['cand']}: fitness {r['fitness']:.3f} "
-                         f"(new {r['new']:.2f}, old {r['old']:.2f})")
+                         f"(new {r['new']:.2f}, old {r['old']:.2f})" + (' **yardstick (untuned)**' if j.get('yardstick') else ''))
             if not L['best'] or entry['fitness'] > L['best']['fitness']:
                 L['best'] = entry
         L['gens_on_list'] += 1
         L['stale'] = 0 if L['best'] and L['best']['fitness'] > best_before else L['stale'] + 1
         if L['best'] and (L['stale'] >= PATIENCE or L['gens_on_list'] >= MAX_GENS):
             b = L['best']
+            y = next((a for a in L['archive'] if a.get('yardstick')), None)
             L['history'].append(dict(list=L['list'], fitness=b['fitness'], new=b['new'], old=b['old'],
-                                     params=b['params'], generations=L['gens_on_list'], brain=b['brain']))
+                                     params=b['params'], generations=L['gens_on_list'], brain=b['brain'],
+                                     yardstick=y and dict(fitness=y['fitness'], new=y['new'], old=y['old'])))
             lines.append(f"- **{L['name']} graduates from list {L['list']}**: fitness {b['fitness']:.3f} "
-                         f"(new {b['new']:.2f}, old {b['old']:.2f}) after {L['gens_on_list']} generations")
+                         f"(new {b['new']:.2f}, old {b['old']:.2f}) after {L['gens_on_list']} generations"
+                         + (f"; untuned on the same list {y['fitness']:.3f}" if y else ''))
             L.update(list=L['list'] + 1, brain=b['brain'], center=b['params'], archive=[], gens_on_list=0,
                      stale=0, best=None)
     s['generation'] += 1
@@ -209,8 +236,10 @@ def report():
     print(f"generation {s['generation']}")
     for L in s['lineages']:
         b = L['best']
+        y = next((a for a in L['archive'] if a.get('yardstick')), None)
         print(f"{L['name']:3} list {L['list']:2}  gens {L['gens_on_list']}  best "
               + (f"{b['fitness']:.3f} (new {b['new']:.2f}, old {b['old']:.2f})" if b else '-')
+              + (f"  untuned {y['fitness']:.3f}" if y else '')
               + '  done: ' + ', '.join(f"{h['list']}:{h['fitness']:.2f}" for h in L['history']))
 
 
