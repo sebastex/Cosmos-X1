@@ -19,8 +19,28 @@
 #include "ncm/Lab.hpp"
 #include "ncm/WordLists.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#else
+#include <sys/resource.h>
+#endif
+
 namespace ncm {
 namespace {
+
+// The most memory the program has held so far (peak resident set), in MB.
+double peakMemoryMB() {
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc{};
+    if (K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof pmc)) return double(pmc.PeakWorkingSetSize) / 1e6;
+    return 0.0;
+#else
+    struct rusage ru{};
+    getrusage(RUSAGE_SELF, &ru);
+    return double(ru.ru_maxrss) / 1e3; // kB on Linux
+#endif
+}
 
 using lab::Session;
 using lab::Specificity;
@@ -2184,6 +2204,8 @@ int runScriptTest(const Config& cfg) {
     if (s.matrix().somaticOn())
         std::printf("  somatic network reductions: %llu\n", (unsigned long long)s.matrix().somaticReductions());
     std::printf("%s\n", s.matrix().blockReport().c_str()); // which learned blocks are stored, and the memory they take
+    std::printf("%s\n", s.matrix().memoryReport().c_str()); // where the memory goes
+    std::printf("PEAKMEM %.1f MB\n", peakMemoryMB());           // what the whole program held at most
     { // the three parts from theories of learning: what predictive coding took away, vigilance resets, excitability
         const auto& t = s.matrix().theoryProbe();
         std::printf("THEORY {\"predicted_share\":%.4f,\"compared\":%.0f,\"mean_mismatch\":%.3f,\"resets\":%.0f,\"excitability\":%.4f}\n",

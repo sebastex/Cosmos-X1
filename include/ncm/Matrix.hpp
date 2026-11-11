@@ -178,6 +178,7 @@ public:
     bool somaticOn() const { return soma_.on(); }
     size_t microtubules() const { return mt1_.tubes() + mt2_.tubes() + mt3_.tubes(); }
     size_t memoryBytes() const;
+    std::string memoryReport() const; // where the memory goes, part by part (MEMORY json line)
     // Which learned blocks are stored (ever learned something), per kind and field, and the memory
     // they take against storing every block (one BLOCKS json line).
     std::string blockReport() const;

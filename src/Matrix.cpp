@@ -2465,6 +2465,44 @@ std::string NeuralCellularMatrix::blockReport() const {
     return s + tail;
 }
 
+// Where the memory goes: the matrix's parts, largest first (MB).
+std::string NeuralCellularMatrix::memoryReport() const {
+    std::vector<std::pair<std::string, double>> parts;
+    auto add = [&](const char* name, double bytes) { if (bytes > 0) parts.emplace_back(name, bytes / 1e6); };
+    auto b = [](const auto& vec) { return double(vec.size() * sizeof(vec[0])); };
+    add("lines (state)", b(s1_.cur) + b(s1_.next) + b(s1_.theta));
+    add("sheets (state)", b(s2_.cur) + b(s2_.next) + b(s2_.theta));
+    add("voxels (state)", b(s3_.cur) + b(s3_.next) + b(s3_.theta));
+    add("learned links", double(links_.bytes()));
+    add("inner chunks", double(inner_.bytes()));
+    add("sheet links L2", b(L2_));
+    add("cue route WS", b(WS_));
+    add("sheet modulation M2", b(M2_));
+    add("fixed weights W1 W2 U1 D1 U2 D2", b(W1_) + b(W2_) + b(U1_) + b(D1_) + b(U2_) + b(D2_));
+    add("wiring (long-range, spread, depth, 4D perm)", b(lrTarget_) + b(spreadPos_) + b(inputDepthPos_) + b(latPerm_));
+    add("sheet extras (drive, fatigue, quiet, parent share)", b(drive2_) + b(fatigue2_) + b(inhib2_) + b(sheetQuietCur_) +
+                                                             b(sheetQuietNext_) + b(sheetSkip_) + b(parentShare2_));
+    add("line extras (quiet)", b(lineQuietCur_) + b(lineQuietNext_));
+    add("voxel extras (traces, gains, diagnostics, 4D holds)",
+        b(drive3_) + b(diagPlastic3_) + b(diagInput3_) + b(asmInh_) + b(usage3_) + b(diagSource3_) + b(fatigue3_) +
+            b(average3_) + b(preRoom_) + b(orderTrace3_) + b(ctx3_) + b(fbTrace_) + b(hold4Ctx_) + b(chanTheta3_) +
+            b(hold4Fixed_) + b(hold4Learned_) + b(hold4Out_) + b(probeExc_) + b(probeInh_) + b(probeMax_) + b(probeThr_) +
+            b(innerLearned_) + b(linkRes_) + b(pred4_) + b(mismatch3_) + b(reset3_) + b(excit3_) + b(inhib3_));
+    add("senses and motor", b(sensoryQ_) + b(motorQ_) + b(sensoryDrive_) + b(motorDrive_));
+    std::sort(parts.begin(), parts.end(), [](const auto& x, const auto& y) { return x.second > y.second; });
+    double total = 0.0;
+    std::string s = "MEMORY {\"parts_mb\":{";
+    for (size_t i = 0; i < parts.size(); ++i) {
+        char buf[160];
+        std::snprintf(buf, sizeof buf, "%s\"%s\":%.1f", i ? "," : "", parts[i].first.c_str(), parts[i].second);
+        s += buf;
+        total += parts[i].second;
+    }
+    char tail[200];
+    std::snprintf(tail, sizeof tail, "},\"counted_mb\":%.1f,\"voxels\":%zu,\"sheet_cells\":%zu,\"line_cells\":%zu}", total, V_, Q_, P_);
+    return s + tail;
+}
+
 size_t NeuralCellularMatrix::memoryBytes() const {
     auto bytes = [](const auto& vec) { return vec.size() * sizeof(vec[0]); };
     auto level = [&](const LevelState& s) { return bytes(s.cur) + bytes(s.next) + bytes(s.theta); };
