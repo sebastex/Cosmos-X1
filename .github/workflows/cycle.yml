@@ -1,0 +1,134 @@
+# Cycles (tools/cycle): grown brains learn 100 new words at a time while evolution tunes their
+# settings (tools/cycle/evo.py). One run = one generation: every lineage tries its candidates on its
+# current list (each learns the list from the lineage's brain, then is tested), the results go into
+# cycles/state.json and cycles/log.md (committed), and the next generation starts by itself.
+# Start:  gh workflow run cycle.yml --ref cosmos-pharmakon -f generations=12
+# Stop:   let `generations` run out, or cancel the run.
+name: cycle
+run-name: cycle generation (${{ inputs.generations }} left)
+on:
+  workflow_dispatch:
+    inputs:
+      generations:
+        description: Generations to run, this one included
+        default: "12"
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: cycle
+  cancel-in-progress: false
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          M=$(python3 tools/cycle/evo.py propose)
+          echo "matrix=$M" >> "$GITHUB_OUTPUT"
+          echo "$M" | python3 -c "import json,sys; j=json.load(sys.stdin); print(len(j), 'candidates')"
+      - name: Save the proposal
+        run: |
+          git config user.name "cosmos-cycle"
+          git config user.email "cosmos-cycle@users.noreply.github.com"
+          git add cycles
+          git commit -m "cycle: propose generation" || true
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+  run:
+    needs: propose
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.propose.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh && pip install -q numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.brain_artifact }}
+          run-id: ${{ matrix.brain_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Learn the list, then test
+        env:
+          ARGS: ${{ matrix.args }}
+          VARIANT: ${{ matrix.variant }}
+          SEED: ${{ matrix.seed }}
+          LIST: ${{ matrix.list }}
+          CAND: ${{ matrix.cand }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          mkdir -p out
+          zstd -d -q --rm brain.bin.zst
+          T0=$(date +%s)
+          python3 tools/cycle/cycle.py lesson $LIST > lesson.txt
+          NCM_STATE_IN=brain.bin NCM_STATE_OUT=next.bin NCM_SCRIPT_FILE=lesson.txt \
+            ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > out/lesson.txt
+          grep -E "SCRIPT_DONE|BLOCKS|THEORY|PEAKMEM" out/lesson.txt || true
+          rm -f brain.bin
+          T1=$(date +%s)
+          python3 tools/cycle/cycle.py test $LIST > out/test.json
+          python3 -c "import json; print(json.load(open('out/test.json'))['puzzles'][0]['script'])" > test.txt
+          NCM_STATE_IN=next.bin NCM_SCRIPT_FILE=test.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+            ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > out/result.txt
+          : > out/report.txt
+          for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> out/report.txt; done
+          rm -rf monitor
+          python3 tools/arena/score.py cycle$LIST out/result.txt out/report.txt out/test.json > out/score.json
+          T2=$(date +%s)
+          python3 tools/cycle/cycle.py fitness out/score.json out/test.json > out/fitness.json
+          python3 -c "
+          import json
+          r = json.load(open('out/fitness.json'))
+          r.update(cand='$CAND', lesson_s=$T1 - $T0, test_s=$T2 - $T1)
+          json.dump(r, open('result-$CAND.json', 'w'))
+          print(r)"
+          zstd -3 -T0 -q --rm next.bin -o brain.bin.zst
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cycle-brain-${{ matrix.cand }}
+          path: brain.bin.zst
+          compression-level: 0
+          retention-days: 10
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cycle-result-${{ matrix.cand }}
+          path: |
+            result-*.json
+            out/fitness.json
+            out/lesson.txt
+          retention-days: 90
+  collect:
+    needs: run
+    if: always() && needs.propose.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cycle-result-*
+          path: results
+      - id: c
+        run: |
+          python3 tools/cycle/evo.py collect results ${{ github.run_id }} | tee collect.txt
+          echo "go=$(tail -1 collect.txt)" >> "$GITHUB_OUTPUT"
+          python3 tools/cycle/evo.py report
+      - name: Save the results
+        run: |
+          git config user.name "cosmos-cycle"
+          git config user.email "cosmos-cycle@users.noreply.github.com"
+          git add cycles
+          git commit -m "cycle: generation results" || true
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+      - name: Start the next generation
+        if: steps.c.outputs.go == 'continue' && fromJSON(inputs.generations) > 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run cycle.yml -R ${{ github.repository }} --ref ${{ github.ref_name }} -f generations=$(( ${{ inputs.generations }} - 1 ))
