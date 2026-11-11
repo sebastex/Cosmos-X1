@@ -146,3 +146,26 @@
 - EF list 1 EF-g6-3: fitness 0.607 (new 0.63, old 0.58)
 - EF list 1 EF-g6-4: fitness 0.558 (new 0.56, old 0.56)
 - EF list 1 EF-g6-5: fitness 0.627 (new 0.59, old 0.66)
+
+## Generation 7 (run 43047905433)
+
+- P5 list 2 P5-g7-0: fitness 0.452 (new 0.46, old 0.44)
+- P5 list 2 P5-g7-1: fitness 0.504 (new 0.49, old 0.52)
+- P5 list 2 P5-g7-2: fitness 0.437 (new 0.41, old 0.46)
+- P5 list 2 P5-g7-3: fitness 0.547 (new 0.57, old 0.52)
+- P5 list 2 P5-g7-4: fitness 0.530 (new 0.56, old 0.50)
+- P5 list 2 P5-g7-5: fitness 0.393 (new 0.43, old 0.36)
+- P list 1 P-g7-0: fitness 0.502 (new 0.54, old 0.46)
+- P list 1 P-g7-1: fitness 0.466 (new 0.53, old 0.40)
+- P list 1 P-g7-2: fitness 0.536 (new 0.53, old 0.54)
+- P list 1 P-g7-3: fitness 0.582 (new 0.54, old 0.62)
+- P list 1 P-g7-4: fitness 0.533 (new 0.51, old 0.56)
+- P list 1 P-g7-5: fitness 0.527 (new 0.59, old 0.46)
+- **P graduates from list 1**: fitness 0.582 (new 0.54, old 0.62) after 8 generations
+- EF list 1 EF-g7-0: fitness 0.644 (new 0.61, old 0.68)
+- EF list 1 EF-g7-1: fitness 0.562 (new 0.54, old 0.58)
+- EF list 1 EF-g7-2: fitness 0.490 (new 0.48, old 0.50)
+- EF list 1 EF-g7-3: fitness 0.561 (new 0.58, old 0.54)
+- EF list 1 EF-g7-4: fitness 0.567 (new 0.63, old 0.50)
+- EF list 1 EF-g7-5: fitness 0.568 (new 0.59, old 0.54)
+- **EF graduates from list 1**: fitness 0.644 (new 0.61, old 0.68) after 8 generations
