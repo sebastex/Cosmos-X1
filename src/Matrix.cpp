@@ -471,6 +471,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
     if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
     if (cfg_.learning.budget_grow > 0.0f) budgetGrow_.assign(V_ * C3 * 4, 1.0f);
+    if (cfg_.settle_bind > 0.0f) wordTrace_.assign(V_ * C3, 0.0f);
     if (cfg_.ach > 0.5f) achArea_.assign(lattice_ ? cellGain_.size() : kFields, 1.0f), achExplained_.assign(achArea_.size(), 0.0), achFired_.assign(achArea_.size(), 0.0);
     if (cfg_.homeo_tau > 0.0f) { // slow homeostasis: thresholds follow each cell's long-run activity
         homeo2_.assign(Q_, cfg_.target_activity);
@@ -1336,8 +1337,10 @@ void NeuralCellularMatrix::step3D() {
             const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
             const float recallK = sensoryOn_ ? 1.0f : cfg_.learning.recall_gain; // recall strength in silence
             float learnedC[C3];
+            const float holdK = sensoryOn_ ? 0.0f : cfg_.settle_hold; // settling: in silence a cell keeps itself on
             for (uint32_t c = 0; c < C3; ++c) {
                 in[c] *= quiet;
+                if (holdK > 0.0f) in[c] += holdK * s3[v * C3 + c];
                 const float learned = recallK * (plScale * pl[c] + pl4[c]);
                 learnedC[c] = learned;
                 in[c] += learned;
@@ -1436,6 +1439,11 @@ void NeuralCellularMatrix::step3D() {
             e = std::clamp(e, 0.0f, 1.0f);
         }
         average3_[v] += (final - average3_[v]) / avgTau;
+        if (!wordTrace_.empty() && sensoryOn_) { // settling: what this cell fired during the word
+            float* wt = wordTrace_.data() + v * C3;
+            const float* cell = out + v * C3;
+            for (uint32_t c = 0; c < C3; ++c) wt[c] = std::max(wt[c], cell[c]);
+        }
         if (!chanTheta3_.empty() && final > 0.0f) {
             const float* cell = out + v * C3;
             float mean = 0.0f;
@@ -1647,6 +1655,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
 
 void NeuralCellularMatrix::wordBoundary() {
     if (soma_.on()) soma_.onset(); // local somatic decisions start fresh with every word
+    std::fill(wordTrace_.begin(), wordTrace_.end(), 0.0f); // settling: a new word, a new trace
     if (cfg_.learning.field_roles <= 0.0f) return;
     std::fill(orderTrace3_.begin() + Vf_ * C3, orderTrace3_.begin() + 2 * Vf_ * C3, 0.0f);
     memoryPause_ = uint32_t(cfg_.learning.field_roles);
@@ -1864,14 +1873,24 @@ void NeuralCellularMatrix::learn2D(float modulator) {
     }
 }
 
+void NeuralCellularMatrix::learnWord(float modulator) {
+    if (wordTrace_.empty() || cfg_.settle_bind <= 0.0f) return;
+    learnFrom_ = wordTrace_.data();
+    learnScale_ = cfg_.settle_bind;
+    learn(modulator);
+    learnFrom_ = nullptr;
+    learnScale_ = 1.0f;
+}
+
 void NeuralCellularMatrix::learn(float modulator) {
     ScopeTimer timer_(timeLearn);
-    const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f);
+    const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f) * learnScale_;
     if (rate <= 0.0f) return;
     const float lambda = cfg_.learning.order_gain;
     // After step3D() swapped the buffers, `cur` holds the new state and `next` the previous one.
-    const float* post = s3_.cur.data();
-    const float* prev = s3_.next.data();
+    // learnWord: both sides are the word traces, so the whole word is learnt as one moment.
+    const float* post = learnFrom_ ? learnFrom_ : s3_.cur.data();
+    const float* prev = learnFrom_ ? learnFrom_ : s3_.next.data();
     const float cov = std::clamp(cfg_.learning.covariance, 0.0f, 1.0f);
     const float budget = std::max(0.0f, cfg_.learning.plastic_budget);
     const float oja = std::max(0.0f, cfg_.learning.oja);
@@ -1903,7 +1922,7 @@ void NeuralCellularMatrix::learn(float modulator) {
     // Order with a timing window (STDP): "earlier" is each cell's decaying recent activity
     // instead of only the previous step, so j -> i also forms when i starts a few steps
     // after j. The antisymmetric form cancels the shared current step.
-    const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
+    const bool useOrderTrace = cfg_.learning.order_tau > 0.0f && !learnFrom_;
     auto avgOf = [&](size_t cell) { return cov * average3_[cell]; };
     // Learning at each cell's own level: per 4D cell, how much louder the brain fires than it.
     std::vector<float> levelK;

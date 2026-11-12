@@ -85,7 +85,8 @@ public:
         lap(0, t0);
         // clock_reset 2: a word ends at its space or where silence begins; there every level takes
         // one look at once, so the top level sees the whole word (cues and lessons alike).
-        if (cfg_.clock_reset > 1.5f && ((fingerprint && heard_ == ' ') || (!fingerprint && !wasSilentBefore))) clock_.lookNow();
+        const bool wordEnd = fingerprint && heard_ == ' ';
+        if (cfg_.clock_reset > 1.5f && (wordEnd || (!fingerprint && !wasSilentBefore))) clock_.lookNow();
         const LevelScheduler::Tick t = clock_.advance();
         if (t.sheet) {
             m_->step2D();
@@ -127,6 +128,7 @@ public:
                 modSum_ += modulator;
                 ++modCount_;
                 m_->learn(modulator);
+                if (wordEnd) m_->learnWord(modulator); // settling: the whole word, learnt as one moment
                 lastModulator_ = modulator;
             }
             lap(5, t0);

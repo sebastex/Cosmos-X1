@@ -384,6 +384,17 @@ struct Config {
     float ach_tire = 0.5f;
     float ach_rest = 0.0f;  // the level an area with nothing firing drifts to in silence
     float ach_learn = 0.8f; // how much a familiar area's learning is lowered (0 = not at all)
+    // Settling (2026-11-12). A word is heard letter by letter, so its first and last cells never fire
+    // at the same moment and plain "fire together, wire together" never ties them: a beginning can
+    // only echo, never grow into the whole word. settle_bind > 0: every cell keeps what it fired
+    // during the word (its peak, cleared when a word starts); at the word's end (the end-of-word look,
+    // while learning) every learned link learns once more from those word traces, at settle_bind x the
+    // normal rate, so all of a word's cells are tied to each other (same links, same budgets).
+    // settle_hold > 0: in silence each cell also feeds itself settle_hold x its own last firing, so
+    // a cue's cells stay on long enough for the word's links to pull in the rest, while the usual
+    // competition between neighbours pushes rivals out. 0 = off.
+    float settle_bind = 0.0f;
+    float settle_hold = 0.0f;
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's

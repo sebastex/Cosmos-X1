@@ -254,6 +254,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"ach_tire", &c.ach_tire},
         {"ach_rest", &c.ach_rest},
         {"ach_learn", &c.ach_learn},
+        {"settle_bind", &c.settle_bind},
+        {"settle_hold", &c.settle_hold},
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
         {"lattice_scramble", &c.lattice_scramble},
@@ -545,6 +547,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // +slow balance +forward 4D +growing budgets 85/64, +growing budgets 79/61; whole/beginning %).
         {"primeH", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500"}},
         {"primeHFG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "budget_grow=0.05"}},
+        // Prime plus settling (2026-11-12): whole-word binding at the word's end, and holding in silence.
+        {"primeS", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1"}},
+        {"primeSH", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=0.5"}},
+        {"primeSH2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1"}},
+        {"primeS3H", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=3", "settle_hold=0.5"}},
+        {"primeH0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_hold=0.5"}},
         {"primeG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "budget_grow=0.05"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing

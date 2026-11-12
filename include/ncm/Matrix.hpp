@@ -77,6 +77,8 @@ public:
     // Learns the 3D neighbourhood, long-range and 4D connections from excitatory
     // sources, and each voxel's sheet modulation. M = 0 leaves everything frozen.
     void learn(float modulator);
+    // Settling: one more learning pass from every cell's word trace (what it fired during the word).
+    void learnWord(float modulator);
 
     // Sleep: faint random nudges (each voxel with probability `prob` gets `level` on one channel per
     // 3D step) let the brain fall into what it has learned; 0 = off.
@@ -270,6 +272,9 @@ private:
     std::vector<float> homeo2_, homeo3_;
     // Acetylcholine (ach): per area its level, 1 = new (take in, learn), 0 = familiar (recall).
     std::vector<float> achArea_;
+    std::vector<float> wordTrace_;          // settle_bind: per voxel channel, its peak firing during the current word
+    const float* learnFrom_ = nullptr;      // learnWord: learn() reads these traces instead of the state
+    float learnScale_ = 1.0f;
     std::vector<float> budgetGrow_; // budget_grow: per voxel channel and link kind, how far its budget has grown (x plastic_budget)
     std::vector<double> achExplained_, achFired_;
 public:
