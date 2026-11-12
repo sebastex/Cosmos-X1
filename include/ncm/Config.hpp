@@ -353,6 +353,10 @@ struct Config {
     float agc_rate = 0.0f;  // per 3D tick, relative adjustment toward the target (off by default)
     float agc_min = 0.25f;
     float agc_max = 16.0f;
+    // agc_wake 1: a region with nothing firing while input is heard has its gain turned up (as if it
+    // were far below target), instead of only relaxing toward 1; otherwise a field that has gone
+    // silent can never be woken (2026-11-12).
+    float agc_wake = 0.0f;
     float agc_relax_field = 0.0f; // field-wide gain control: relaxation toward 1 per 3D tick in silence
     // 1 = gain control below 1 also turns down the learned (recurrent) input, not only the input
     // path: when a field is too active because memories drive it, the memories are turned down
@@ -570,6 +574,9 @@ struct Config {
     // fresher cells wherever it differs from older, similar ones. Recall is unaffected (M = 0),
     // and the learned links from the cue lead back to the separated memory. 0 = off.
     float separation = 0.0f;
+    // separation_soft 1: the input is divided by (1 + separation x M x load) instead: never 0, so a
+    // field whose channels all carry memories still takes part in new learning (2026-11-12).
+    float separation_soft = 0.0f;
     // Learned cue route: the random feedforward sources a voxel hears from earlier fields
     // (link4d_spread) get a learned C3 x C3 block each, like the other learned links. While a
     // memory is written they learn which input pattern leads to the cells that store it; at

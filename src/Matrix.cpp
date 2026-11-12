@@ -1380,7 +1380,12 @@ void NeuralCellularMatrix::step3D() {
         if (!usage3_.empty() && (f > 0 || (lattice_ && cfg_.lattice_sep0 > 0.5f)) && modulator_ > 0.0f) {
             const float k = cfg_.separation * std::clamp(modulator_, 0.0f, 1.0f);
             const float* u = usage3_.data() + v * C3;
-            for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
+            // separation_soft 1: a nudge that never shuts a channel out (1 / (1 + k x load)): a full cell is
+            // harder to recruit but can always join, so a well-used field keeps learning new words.
+            if (cfg_.separation_soft > 0.5f)
+                for (uint32_t c = 0; c < C3; ++c) in[c] /= 1.0f + k * u[c];
+            else
+                for (uint32_t c = 0; c < C3; ++c) in[c] *= std::max(0.0f, 1.0f - k * u[c]);
         }
         // Channel balance: each channel's own threshold offset (channels that always win are held back).
         if (!chanTheta3_.empty())
@@ -1504,6 +1509,10 @@ void NeuralCellularMatrix::step3D() {
         const float inside = grain == 2 ? float(V_) : grain == 1 ? float(Vf_) : float(size_t(B_) * B_ * B_);
         for (size_t k = 0; k < regions; ++k) {
             float& g = cellGain_[k];
+            if (!anything[k] && sensoryOn_ && cfg_.agc_wake > 0.5f) { // hearing, yet silent: turn it up
+                g = std::clamp(g * std::exp(cfg_.agc_rate), cfg_.agc_min, cfg_.agc_max);
+                continue;
+            }
             if (!anything[k] || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
                 g += (1.0f - g) * std::clamp(cfg_.agc_relax_field, 0.0f, 1.0f);
                 continue;
@@ -1526,6 +1535,10 @@ void NeuralCellularMatrix::step3D() {
             // Adjust only while there is something to hear. A silent field either holds its gain
             // (agc_relax_field 0; raising it through silence over-amplified the next input) or
             // relaxes it toward 1, so every input starts from the same state (repeatability).
+            if (!anything && sensoryOn_ && cfg_.agc_wake > 0.5f) { // hearing, yet silent: turn it up
+                fieldGain_[f] = std::clamp(fieldGain_[f] * std::exp(cfg_.agc_rate), cfg_.agc_min, cfg_.agc_max);
+                continue;
+            }
             if (!anything || (cfg_.agc_input_only > 0.5f && !sensoryOn_)) {
                 fieldGain_[f] += (1.0f - fieldGain_[f]) * std::clamp(cfg_.agc_relax_field, 0.0f, 1.0f);
                 continue;
