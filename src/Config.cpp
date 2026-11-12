@@ -291,6 +291,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"soma_bias", &c.soma_bias},
         {"soma_threshold", &c.soma_threshold},
         {"soma_decay", &c.soma_decay},
+        {"soma_usual", &c.soma_usual},
         {"soma_mode", &c.soma_mode},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
@@ -506,6 +507,10 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"alefFixNo4D", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1"}},
         {"alefFixNoHomeo", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "clock_fast=1", "encoding_suppression_4d=0"}},
         {"alefFixNoLook", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=1", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0"}},
+        // Without the somatic network: with every field carrying the word its pushes made the same word
+        // come out differently each time (audit 2026-11-13); these show what the fixes do without it.
+        {"alefFixS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0", "soma=0"}},
+        {"alefFixNoFastS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d=0", "soma=0"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the

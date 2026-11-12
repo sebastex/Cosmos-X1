@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -363,6 +364,7 @@ struct Config {
     // 1 = the 2D and 3D levels step on every tick (not every phi and phi^2 ticks): more passes per
     // letter, so a word can reach the memory, reasoning and output fields while it is heard.
     float clock_fast = 0.0f;
+    float clock_scaled = 0.0f; // set by clockScaled (not a setting)
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's
@@ -504,6 +506,9 @@ struct Config {
     float soma_bias = 0.2f;
     float soma_threshold = 3.0f;
     float soma_decay = 0.9f;
+    // > 0: a channel is background when its usual firing is large against soma_usual x target_activity
+    // (a fixed level); 0 = against the mean of all channels (a rarely firing channel already counts).
+    float soma_usual = 0.0f;
     float soma_mode = 0.0f;
     // Comparing (needs soma): every cell holds what it is doing while it listens; while it hears, the
     // somatic network measures how well the brain's firing fits what it held: one brain-wide mismatch.
@@ -579,5 +584,34 @@ void applyEvolvedRule(Config& cfg);
 
 // Names accepted by applySetting.
 std::string settingNames();
+
+// clock_fast: the sheets step every tick (phi times as often) and the voxels every tick (phi^2 times
+// as often). Every time constant and per-step rate counted in those steps is rescaled so that, per
+// tick, the brain keeps the same timing (tiring, thresholds, traces, gains, the somatic network);
+// only the number of passes grows. Applied once, where a session is made.
+inline Config clockScaled(Config c) {
+    if (c.clock_fast <= 0.5f || c.clock_scaled > 0.5f) return c;
+    const float phi = 1.6180339887f, r2 = phi, r3 = phi * phi;
+    c.level2.fatigue_tau *= r2;
+    c.level2.homeostasis_rate /= r2;
+    c.level3.fatigue_tau *= r3;
+    c.level3.homeostasis_rate /= r3;
+    c.learning.average_tau *= r3;
+    c.learning.order_tau *= r3;
+    c.learning.context_tau *= r3;
+    c.learning.feedback_tau *= r3;
+    c.learning.link_recovery *= r3;
+    c.learning.link_use /= r3;
+    c.agc_rate /= r3;
+    c.soma_tau *= r3;
+    c.soma_threshold *= r3;
+    c.soma_decay = std::pow(c.soma_decay, 1.0f / r3);
+    c.soma_drive /= r3;
+    c.soma_couple /= r3;
+    c.soma_bias /= r3;
+    c.compare_tau *= r3;
+    c.clock_scaled = 1.0f;
+    return c;
+}
 
 } // namespace ncm

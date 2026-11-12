@@ -47,8 +47,8 @@ inline std::vector<uint32_t> thin(const std::vector<uint32_t>& fp, float fractio
 class Session {
 public:
     Session(const Config& cfg, bool learning, bool silenceSuppressed = true)
-        : cfg_(cfg), learning_(learning), silenceSuppressed_(silenceSuppressed),
-          m_(std::make_unique<NeuralCellularMatrix>(cfg)),
+        : cfg_(clockScaled(cfg)), learning_(learning), silenceSuppressed_(silenceSuppressed),
+          m_(std::make_unique<NeuralCellularMatrix>(cfg_)),
           codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed()), monitor_(Monitor::fromEnv(cfg)) {
         clock_.setFast(cfg.clock_fast > 0.5f);
     }

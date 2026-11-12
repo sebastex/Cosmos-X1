@@ -147,7 +147,9 @@ void SomaticNetwork::addPush(size_t cell, const float* state, float* in, const P
     const float gain = p.gain * (1.0f + p.compareGain * mismatch_); // what does not fit gets more attention
     for (uint32_t c = 0; c < C; ++c) {
         const float z = std::max(0.0f, x[c] - e[c]) / spread_;                // different from usual
-        const float usual = e[c] / (e[c] + meanExpect_ + 1e-6f);               // 0..1: how much is background
+        // 0..1: how much is background. Against the brain's mean expectation (usualRef 0) a channel that
+        // fired once in a while already counts as background where most of the brain is silent.
+        const float usual = e[c] / (e[c] + (p.usualRef > 0.0f ? p.usualRef : meanExpect_) + 1e-6f);
         in[c] += own * (gain * held * std::min(z, 3.0f) - p.quiet * usual);
     }
 }

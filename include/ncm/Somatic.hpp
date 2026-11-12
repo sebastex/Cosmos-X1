@@ -34,6 +34,7 @@ public:
         float compare = 0.0f;     // > 0: compare what is heard with what was expected (see mismatch())
         float compareTau = 2.0f;  // 3D steps: how fast the held expectation follows the brain while it listens
         float compareGain = 0.0f; // how much "does not fit" raises the push to what is different
+        float usualRef = 0.0f;    // > 0: a channel counts as background against this fixed level (not the brain's mean)
     };
     void init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare = false);
     bool on() const { return !nodeOf_.empty(); }

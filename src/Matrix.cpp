@@ -1670,6 +1670,7 @@ SomaticNetwork::Params NeuralCellularMatrix::somaParams() const {
     p.couple = cfg_.soma_couple, p.bias = cfg_.soma_bias, p.threshold = cfg_.soma_threshold, p.decay = cfg_.soma_decay;
     p.mode = int(cfg_.soma_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
     p.compare = cfg_.compare, p.compareTau = cfg_.compare_tau, p.compareGain = cfg_.compare_gain;
+    p.usualRef = cfg_.soma_usual * cfg_.target_activity;
     return p;
 }
 
