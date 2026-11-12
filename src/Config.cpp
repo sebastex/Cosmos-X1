@@ -541,6 +541,11 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // 57.5% (100 words, fresh brain). Used when no --variant is given.
         {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2"}},
+        // Prime plus the next candidates (2026-11-13, 30 words: Prime 73/50, +slow balance 81/68,
+        // +slow balance +forward 4D +growing budgets 85/64, +growing budgets 79/61; whole/beginning %).
+        {"primeH", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500"}},
+        {"primeHFG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "budget_grow=0.05"}},
+        {"primeG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "budget_grow=0.05"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the
