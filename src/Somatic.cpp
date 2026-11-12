@@ -7,7 +7,7 @@
 
 namespace ncm {
 
-void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare) {
+void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare, bool local) {
     channels_ = channels;
     nodes_ = nodes;
     seed_ = seed;
@@ -21,6 +21,15 @@ void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t>
     cellDiff_.assign(cells, 0.0f);
     compare_ = compare;
     if (compare_) guess_.assign(cells * channels, 0.0f);
+    local_ = local;
+    if (local_) nodeSup_.assign(nodes, 0.0f), nodeSeen_.assign(nodes, 0);
+}
+
+void SomaticNetwork::onset() {
+    if (!local_) return;
+    for (uint32_t m = 0; m < nodes_; ++m) a0_[m] = 1.0f, a1r_[m] = 0.0f, a1i_[m] = 0.0f;
+    std::fill(nodeSup_.begin(), nodeSup_.end(), 0.0f);
+    std::fill(nodeSeen_.begin(), nodeSeen_.end(), uint64_t(0));
 }
 
 void SomaticNetwork::step(const float* state, const Params& p, bool hearing) {
@@ -84,6 +93,8 @@ void SomaticNetwork::step(const float* state, const Params& p, bool hearing) {
     for (size_t v = 0; v < cells; ++v) { // in order, so the sums are the same every run
         evidence_[nodeOf_[v]] += cellDiff_[v];
         ++count[nodeOf_[v]];
+        // local: what this node senses, as a pattern (which of its cells are clearly different)
+        if (local_ && cellDiff_[v] > spread_ * float(C)) nodeSeen_[nodeOf_[v]] = mix64(nodeSeen_[nodeOf_[v]] ^ (uint64_t(v) + 1));
     }
     for (uint32_t m = 0; m < nodes_; ++m)
         evidence_[m] = count[m] ? evidence_[m] / (float(count[m]) * float(C) * spread_) : 0.0f;
@@ -120,7 +131,19 @@ void SomaticNetwork::step(const float* state, const Params& p, bool hearing) {
         const float p1 = c1r * c1r + c1i * c1i;
         sup += 4.0 * p1 * (1.0 - p1);
         held_[m] *= std::clamp(p.decay, 0.0f, 1.0f);
+        if (local_) { // this node alone: reduce when its own build-up passes the threshold
+            nodeSup_[m] += 4.0f * p1 * (1.0f - p1);
+            if (nodeSup_[m] >= std::max(1e-3f, p.threshold)) {
+                const float u = float(hashUniform(seed_ ^ mix64(p.stream + 11), kStreamMicrotubule, nodeSeen_[m] ^ mix64(uint64_t(m) + 0x51A)));
+                const bool one = p.mode == 1 ? p1 > 0.5f : u < p1;
+                a0_[m] = one ? 0.0f : 1.0f, a1r_[m] = one ? 1.0f : 0.0f, a1i_[m] = 0.0f;
+                held_[m] = one ? 1.0f : 0.0f;
+                nodeSup_[m] = 0.0f;
+                ++reductions_;
+            }
+        }
     }
+    if (local_) return;
     tau_ += float(sup / double(std::max<uint32_t>(1, nodes_)));
     if (tau_ < std::max(1e-3f, p.threshold)) return;
     // Reduction: all nodes at once, one shared draw.
@@ -167,6 +190,10 @@ void SomaticNetwork::state(StateFile& st) {
     st.vec(a1r_, "somatic nodes");
     st.vec(a1i_, "somatic nodes");
     st.vec(held_, "somatic nodes");
+    if (local_) { // only brains with local decisions
+        st.vec(nodeSup_, "somatic local build-up");
+        st.vec(nodeSeen_, "somatic local patterns");
+    }
     if (compare_) { // only brains that compare (older brains load unchanged)
         st.vec(guess_, "somatic held expectations");
         st.value(mismatch_);

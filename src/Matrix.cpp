@@ -498,7 +498,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.soma > 0.5f) { // the somatic network: one node per 4D cell (per field without the lattice)
         std::vector<uint32_t> node(V_);
         for (size_t v = 0; v < V_; ++v) node[v] = uint32_t(lattice_ ? cell4Of(v) : v / Vf_);
-        soma_.init(V_, C3, std::move(node), uint32_t(lattice_ ? cellGain_.size() : kFields), cfg_.seed, cfg_.compare > 0.5f);
+        soma_.init(V_, C3, std::move(node), uint32_t(lattice_ ? cellGain_.size() : kFields), cfg_.seed, cfg_.compare > 0.5f, cfg_.soma_local > 0.5f);
     }
     lrTarget_.resize(V_ * K);
 
@@ -1627,6 +1627,7 @@ void NeuralCellularMatrix::forEachLearnedBlock(size_t v, Fn&& fn, bool with4D) {
 }
 
 void NeuralCellularMatrix::wordBoundary() {
+    if (soma_.on()) soma_.onset(); // local somatic decisions start fresh with every word
     if (cfg_.learning.field_roles <= 0.0f) return;
     std::fill(orderTrace3_.begin() + Vf_ * C3, orderTrace3_.begin() + 2 * Vf_ * C3, 0.0f);
     memoryPause_ = uint32_t(cfg_.learning.field_roles);
@@ -1671,6 +1672,7 @@ SomaticNetwork::Params NeuralCellularMatrix::somaParams() const {
     p.mode = int(cfg_.soma_mode + 0.5f), p.stream = uint64_t(cfg_.mt_stream + 0.5f);
     p.compare = cfg_.compare, p.compareTau = cfg_.compare_tau, p.compareGain = cfg_.compare_gain;
     p.usualRef = cfg_.soma_usual * cfg_.target_activity;
+    p.local = cfg_.soma_local > 0.5f;
     return p;
 }
 

@@ -509,6 +509,10 @@ struct Config {
     // > 0: a channel is background when its usual firing is large against soma_usual x target_activity
     // (a fixed level); 0 = against the mean of all channels (a rarely firing channel already counts).
     float soma_usual = 0.0f;
+    // 1 = local decisions: each somatic node builds up from the start of every word and reduces alone,
+    // its draw seeded by the pattern it senses (so the same word gets the same outcome). 0 = all nodes
+    // reduce together at one moment with one shared draw.
+    float soma_local = 0.0f;
     float soma_mode = 0.0f;
     // Comparing (needs soma): every cell holds what it is doing while it listens; while it hears, the
     // somatic network measures how well the brain's firing fits what it held: one brain-wide mismatch.

@@ -34,12 +34,18 @@ public:
         float compare = 0.0f;     // > 0: compare what is heard with what was expected (see mismatch())
         float compareTau = 2.0f;  // 3D steps: how fast the held expectation follows the brain while it listens
         float compareGain = 0.0f; // how much "does not fit" raises the push to what is different
-        float usualRef = 0.0f;    // > 0: a channel counts as background against this fixed level (not the brain's mean)
+        float usualRef = 0.0f;
+        // local (soma_local): each node builds up its own superposition from the start of each word and
+        // reduces alone when it passes the threshold; its draw is seeded by the pattern it senses (the
+        // same word gives the same outcome, different words different ones, still by the Born rule).
+        bool local = false;    // > 0: a channel counts as background against this fixed level (not the brain's mean)
     };
-    void init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare = false);
+    void init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare = false, bool local = false);
     bool on() const { return !nodeOf_.empty(); }
     // After every 3D step: update expectations, sense the differences, evolve and maybe reduce.
     void step(const float* state, const Params& p, bool hearing = false);
+    // A word begins (local mode): every node starts a fresh build-up from |0> (decisions already held fade as before).
+    void onset();
     // Comparing (compare): while nothing is heard every cell holds what it is now doing beyond its
     // usual background - what it expects. While something is heard each node measures how well its
     // cells' firing (beyond the background) matches what they held; over the whole brain (weighted by
@@ -60,6 +66,9 @@ private:
     std::vector<float> evidence_;         // per node: its cells' difference, last step
     float spread_ = 1.0f, meanExpect_ = 0.0f, tau_ = 0.0f;
     std::vector<float> cellDiff_;         // scratch: per cell, summed positive difference
+    std::vector<float> nodeSup_;          // local: per node, superposition built up since the word began
+    std::vector<uint64_t> nodeSeen_;      // local: per node, a hash of the cells it senses as different (this word)
+    bool local_ = false;
     bool compare_ = false;
     std::vector<float> guess_;            // per cell channel: what it held while listening (compare)
     float mismatch_ = 0.0f;

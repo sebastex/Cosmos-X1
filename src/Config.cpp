@@ -292,6 +292,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"soma_threshold", &c.soma_threshold},
         {"soma_decay", &c.soma_decay},
         {"soma_usual", &c.soma_usual},
+        {"soma_local", &c.soma_local},
         {"soma_mode", &c.soma_mode},
         {"separation", &c.separation},
         {"spread_plastic", &c.spread_plastic},
