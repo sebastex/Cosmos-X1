@@ -543,7 +543,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // Cosmos Prime (2026-11-13): the main version - alefP5F (inner chunks, somatic network, pruning
         // 1e-5, the trace floor) with the end-of-word look. Proven: whole-word recall 34% -> 58%, beginnings
         // 57.5% (100 words, fresh brain). Used when no --variant is given.
+        // + settling's whole-word binding (2026-11-12, settle_bind=1): two brains, whole/beginning %:
+        //   30 words 73/50 -> 90/82 and 89/75 -> 100/93; 100 words 64/55 -> 82/52 and 68/41 -> 74/48.
         {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1"}},
+        // Prime before binding (yardstick).
+        {"prime0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2"}},
         // Prime plus the next candidates (2026-11-13, 30 words: Prime 73/50, +slow balance 81/68,
         // +slow balance +forward 4D +growing budgets 85/64, +growing budgets 79/61; whole/beginning %).
