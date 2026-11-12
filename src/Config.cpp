@@ -501,6 +501,11 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"alefFix", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                      "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500",
                      "clock_fast=1", "encoding_suppression_4d=0"}},                                  // alefP5F + the fixes
+        // alefFix with one fix taken out each (which fix does what):
+        {"alefFixNoFast", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d=0"}},
+        {"alefFixNo4D", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1"}},
+        {"alefFixNoHomeo", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "clock_fast=1", "encoding_suppression_4d=0"}},
+        {"alefFixNoLook", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=1", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the
