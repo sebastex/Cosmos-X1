@@ -72,7 +72,7 @@ const std::vector<std::string>& evolvedRule() {
         // Rhythm restart (adopted 2026-10-01): the 2D and 3D clocks restart their cycle after a word
         // gap and when input begins after a pause, so a word is cut into the same chunks every
         // time it is heard (a streamed word was only 25% alike to itself without it; 67-97% with).
-        "clock_reset=1",
+        "clock_reset=2", // the end-of-word look (2026-11-13): the top level sees every whole word
         // Front-to-back sweep and recency-weighted lines (adopted 2026-10-01). Each 3D step updates
         // the four fields in order, each reading the new state of the fields before it, so the
         // whole matrix looks at the same moment (no extra step of lag per field). A line's summary
@@ -508,7 +508,7 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // Trace floor (2026-11-11): every voxel kept learning from its never-ending fading trace; with
         // a floor of 1e-6 learning on a grown brain takes 2.9 s instead of 68 s (2264 learners, not 16384).
         {"alefP5F", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
-                     "soma=1", "prune=0.00001", "trace_floor=0.000001"}},                            // alefP5, faint traces end
+                     "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=1"}}, // (kept as it was: the yardstick lanes)                            // alefP5, faint traces end
         // Information-path fixes (2026-11-13): the top level looks at every word's end (clock_reset=2),
         // thresholds follow the long-run activity (homeo_tau), every level steps on every tick
         // (clock_fast), and the 4D links work while a word is taught (encoding_suppression_4d=0).
@@ -536,6 +536,11 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // come out differently each time (audit 2026-11-13); these show what the fixes do without it.
         {"alefFixS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0", "soma=0"}},
         {"alefFixNoFastS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d=0", "soma=0"}},
+        // Cosmos Prime (2026-11-13): the main version - alefP5F (inner chunks, somatic network, pruning
+        // 1e-5, the trace floor) with the end-of-word look. Proven: whole-word recall 34% -> 58%, beginnings
+        // 57.5% (100 words, fresh brain). Used when no --variant is given.
+        {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the

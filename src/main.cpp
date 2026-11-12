@@ -219,7 +219,7 @@ int main(int argc, char** argv) {
         cfg = ncm::makePreset(opt.preset);
         if (opt.rule == "evolved") ncm::applyEvolvedRule(cfg);
         else if (opt.rule != "starting") throw std::invalid_argument("unknown rule '" + opt.rule + "' (use evolved or starting)");
-        if (!opt.variant.empty()) ncm::applyVariant(cfg, opt.variant);
+        ncm::applyVariant(cfg, opt.variant.empty() ? std::string("prime") : opt.variant); // Cosmos Prime unless a variant is named
         for (const auto& s : opt.settings) ncm::applySetting(cfg, s);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\n";
