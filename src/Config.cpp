@@ -512,6 +512,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"alefFixNoLook", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=1", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0"}},
         // alefFix with the fast clock keeping per-tick timing (clockScaled), under its own name (lane titles must differ).
         {"alefFixT", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0"}},
+        // 4D links on while learning, the brain's way (Hasselmo): forward links (from the senses toward
+        // the higher fields) fully on while a word is taught, the links back and around damped (no
+        // runaway loop that turns every word into one pattern); all on at recall.
+        {"alefFwd", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0"}},
+        {"alefFwdFast", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "clock_fast=1"}},
+        {"alefFwdS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "soma=0"}},
         // Without the somatic network: with every field carrying the word its pushes made the same word
         // come out differently each time (audit 2026-11-13); these show what the fixes do without it.
         {"alefFixS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0", "soma=0"}},
