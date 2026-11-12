@@ -1811,6 +1811,7 @@ float NeuralCellularMatrix::predictSurprise() {
     const float kc = cfg_.learning.context_gain;
     const int64_t voxels = int64_t(V_);
     double fired = 0.0, explained = 0.0;
+    const bool shape = cfg_.predict_shape > 0.5f; // familiarity by pattern: how well the guess's shape matches
 #pragma omp parallel for schedule(dynamic, 64) reduction(+ : fired, explained)
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
@@ -1828,6 +1829,15 @@ float NeuralCellularMatrix::predictSurprise() {
                     for (uint32_t b = 0; b < C3; ++b) pred[a] += kc * block[size_t(a) * C3 + b] * cs[b];
             }
         });
+        if (shape) {
+            // Each firing voxel: how alike its guess and its firing are (cosine of the channel patterns),
+            // weighted by how strongly it fires. Independent of how strong the links are.
+            double pp = 0.0, ff = 0.0, pf = 0.0, s = 0.0;
+            for (uint32_t a = 0; a < C3; ++a) pp += double(pred[a]) * pred[a], ff += double(pi[a]) * pi[a], pf += double(pred[a]) * pi[a], s += pi[a];
+            fired += s;
+            if (pp > 0.0 && ff > 0.0) explained += s * std::max(0.0, pf / std::sqrt(pp * ff));
+            continue;
+        }
         for (uint32_t a = 0; a < C3; ++a) {
             fired += pi[a];
             explained += std::min(pi[a], pred[a]);

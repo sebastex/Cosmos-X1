@@ -279,6 +279,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"familiarity", &c.familiarity},
         {"predict_surprise", &c.predict_surprise},
         {"predict_watch", &c.predict_watch},
+        {"predict_shape", &c.predict_shape},
         {"microtubule", &c.microtubule},
         {"mt_len", &c.mt_len},
         {"mt_couple", &c.mt_couple},
@@ -565,6 +566,11 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"primeSBfit", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=0.5", "settle_fit=1"}},
         {"primeSB2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1"}},
         {"primeSC", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_cap=1"}},
+        // Familiarity (2026-11-12): surprise = how badly the brain's own guess matches what fires, by pattern
+        // (predict_shape), so known words learn less and are heard in recall mode; per voxel too (familiarity).
+        {"primeF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "predict_surprise=1", "predict_shape=1"}},
+        {"primeFv", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "predict_surprise=1", "predict_shape=1", "familiarity=1"}},
+        {"primeSB2F", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "predict_surprise=1", "predict_shape=1"}},
         {"primeH0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_hold=0.5"}},
         {"primeG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "budget_grow=0.05"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
