@@ -264,6 +264,16 @@ private:
 
     LearningStats learnStats_;
     float modulator_ = 0.0f;
+    // Slow homeostasis (homeo_tau > 0): per cell, its activity averaged over homeo_tau steps; the
+    // threshold follows that average, not the last step, so one word heard does not shift which
+    // cells answer the next. Empty = the threshold follows each step's activity (as before).
+    std::vector<float> homeo2_, homeo3_;
+    float homeoAvg(std::vector<float>& avg, size_t i, float now) const {
+        if (avg.empty()) return now;
+        float& a = avg[i];
+        a += (now - a) / cfg_.homeo_tau;
+        return a;
+    }
     uint32_t memoryPause_ = 0; // field roles: 3D steps left in which the Memory field does not learn
     float lastSurprise_ = 1.0f;
     float noiseLevel_ = 0.0f, noiseProb_ = 0.0f; // sleep nudges

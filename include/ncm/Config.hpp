@@ -354,8 +354,15 @@ struct Config {
     float agc_input_only = 0.0f;
     // 1 = the 2D and 3D clocks restart their cycle after every word gap (space character) and
     // when input begins after a pause, so a word is cut into the same chunks every time it is
-    // heard, wherever it appears.
+    // heard, wherever it appears. 2 = the same, but at a word's end every level first takes one look
+    // at once (on the next tick), so the top level sees the whole word, not only its first letters.
     float clock_reset = 0.0f;
+    // > 0: homeostasis follows each cell's activity averaged over this many of its steps (slow, as in
+    // the brain), so hearing a word does not change which cells answer it next time. 0 = every step.
+    float homeo_tau = 0.0f;
+    // 1 = the 2D and 3D levels step on every tick (not every phi and phi^2 ticks): more passes per
+    // letter, so a word can reach the memory, reasoning and output fields while it is heard.
+    float clock_fast = 0.0f;
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's

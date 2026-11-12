@@ -49,7 +49,9 @@ public:
     Session(const Config& cfg, bool learning, bool silenceSuppressed = true)
         : cfg_(cfg), learning_(learning), silenceSuppressed_(silenceSuppressed),
           m_(std::make_unique<NeuralCellularMatrix>(cfg)),
-          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed()), monitor_(Monitor::fromEnv(cfg)) {}
+          codebook_(cfg.surfaceLines(), cfg.target_activity, cfg.itemSeed()), monitor_(Monitor::fromEnv(cfg)) {
+        clock_.setFast(cfg.clock_fast > 0.5f);
+    }
 
     // One 1D tick. `fingerprint` is what enters the sensory surface (nullptr = silence);
     // `actual` is the full fingerprint of the character being heard, for the surprise check.
@@ -58,6 +60,7 @@ public:
         // same chunks whether it follows a pause or another word.
         if (fingerprint && wasSilent_ && cfg_.clock_reset > 0.5f) clock_.resetPhase();
         if (fingerprint && wasSilent_) m_->wordBoundary();
+        const bool wasSilentBefore = wasSilent_;
         wasSilent_ = fingerprint == nullptr;
         if (fingerprint) {
             // Surprise (spec Section 5A): read the matrix's guess before the character
@@ -80,6 +83,9 @@ public:
         auto t0 = Clock::now();
         m_->step1D();
         lap(0, t0);
+        // clock_reset 2: a word ends at its space or where silence begins; there every level takes
+        // one look at once, so the top level sees the whole word (cues and lessons alike).
+        if (cfg_.clock_reset > 1.5f && ((fingerprint && heard_ == ' ') || (!fingerprint && !wasSilentBefore))) clock_.lookNow();
         const LevelScheduler::Tick t = clock_.advance();
         if (t.sheet) {
             m_->step2D();
@@ -151,7 +157,7 @@ public:
                 const auto cue = thin(full, fraction, cfg_.itemSeed(), c);
                 tick(&cue, &full, allowLearning);
             }
-            if (cfg_.clock_reset > 0.5f && c == ' ') clock_.resetPhase();
+            if (cfg_.clock_reset > 0.5f && cfg_.clock_reset < 1.5f && c == ' ') clock_.resetPhase(); // (2: see tick)
             if (c == ' ') m_->wordBoundary();
             if (t >= recordFrom) accumulate(acc);
         }

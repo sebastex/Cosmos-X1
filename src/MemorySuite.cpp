@@ -2142,6 +2142,75 @@ int runScriptTest(const Config& cfg) {
             for (char ch : text) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
             s.silence(rest, false);
             tick += text.size() + rest;
+        } else if (op == "levels") {
+            // levels:a/b,c/d,...:AFTER:LESSON - the information-path audit. Each word is heard alone from a
+            // quiet brain (activity cleared, nothing learnt), and every level's state is recorded: 1D at the
+            // last letter, 2D at the last letter, summed over the word and over AFTER ticks after it, 3D the
+            // same plus tick by tick. For each pair, how alike the two words are at each level (cosine).
+            // LESSON=1 hears in lesson mode (as words are taught), 0 in recall mode (as cues are heard).
+            const uint64_t afterT = num(f, 2, 8);
+            const bool lesson = num(f, 3, 1) != 0;
+            const auto& m = s.matrix();
+            using Vec = std::vector<float>;
+            struct Rec { Vec l1, s2last, s2word, s2after, s3word, s3after; std::vector<Vec> s3ticks; uint64_t changes = 0; };
+            auto addTo = [](Vec& a, const AVec<float>& x) { if (a.empty()) a.assign(x.size(), 0.0f); for (size_t i = 0; i < x.size(); ++i) a[i] += x[i]; };
+            auto copyOf = [](const AVec<float>& x) { return Vec(x.begin(), x.end()); };
+            auto hear = [&](const std::string& w) {
+                Rec r;
+                s.clearActivity();
+                s.silence(30, false);
+                Vec prev = copyOf(m.voxelState());
+                const std::string text = w + " ";
+                for (size_t k = 0; k < text.size(); ++k) {
+                    s.present(std::string(1, text[k]), 1, 1.0f, lesson, UINT64_MAX);
+                    addTo(r.s2word, m.sheetState());
+                    addTo(r.s3word, m.voxelState());
+                    r.s3ticks.push_back(copyOf(m.voxelState()));
+                    if (r.s3ticks.back() != prev) ++r.changes, prev = r.s3ticks.back();
+                    if (k + 1 == w.size()) r.l1 = copyOf(m.lineState()), r.s2last = copyOf(m.sheetState());
+                }
+                for (uint64_t t = 0; t < afterT; ++t) {
+                    s.silence(1, false);
+                    addTo(r.s2after, m.sheetState());
+                    addTo(r.s3after, m.voxelState());
+                    r.s3ticks.push_back(copyOf(m.voxelState()));
+                    if (r.s3ticks.back() != prev) ++r.changes, prev = r.s3ticks.back();
+                }
+                return r;
+            };
+            auto cosv = [](const Vec& a, const Vec& b) {
+                double ab = 0, aa = 0, bb = 0;
+                for (size_t i = 0; i < std::min(a.size(), b.size()); ++i) ab += double(a[i]) * b[i], aa += double(a[i]) * a[i], bb += double(b[i]) * b[i];
+                return aa > 0 && bb > 0 ? ab / std::sqrt(aa * bb) : (aa == 0 && bb == 0 ? 1.0 : 0.0);
+            };
+            for (const std::string& pr : split(f.size() > 1 ? f[1] : "", ',')) {
+                const std::vector<std::string> ab = split(pr, '/');
+                if (ab.size() != 2) continue;
+                const Rec a = hear(ab[0]);
+                const Rec b = hear(ab[1]);
+                std::string ticks;
+                for (size_t k = 0; k < std::min(a.s3ticks.size(), b.s3ticks.size()); ++k)
+                    ticks += (k ? "," : "") + std::to_string(cosv(a.s3ticks[k], b.s3ticks[k])).substr(0, 5);
+                std::string fields;
+                {   // per field (Input, Memory, Reasoning, Output): how alike after the word, and how active (A, B)
+                    const size_t per = a.s3after.size() / kFields;
+                    for (uint32_t k = 0; k < kFields; ++k) {
+                        Vec fa(a.s3after.begin() + k * per, a.s3after.begin() + (k + 1) * per), fb(b.s3after.begin() + k * per, b.s3after.begin() + (k + 1) * per);
+                        double na = 0, nb = 0;
+                        for (float x : fa) na += double(x) * x;
+                        for (float x : fb) nb += double(x) * x;
+                        char buf[96];
+                        std::snprintf(buf, sizeof buf, "%s[%.3f,%.2f,%.2f]", k ? "," : "", cosv(fa, fb), std::sqrt(na), std::sqrt(nb));
+                        fields += buf;
+                    }
+                }
+                std::printf("LEVELS {\"fields_after\":[%s],", fields.c_str());
+                std::printf("\"pair\":\"%s\",\"lesson\":%d,\"l1_last\":%.3f,\"s2_last\":%.3f,\"s2_word\":%.3f,\"s2_after\":%.3f,"
+                            "\"s3_word\":%.3f,\"s3_after\":%.3f,\"s3_changes\":[%llu,%llu],\"s3_ticks\":[%s]}\n",
+                            pr.c_str(), lesson ? 1 : 0, cosv(a.l1, b.l1), cosv(a.s2last, b.s2last), cosv(a.s2word, b.s2word), cosv(a.s2after, b.s2after),
+                            cosv(a.s3word, b.s3word), cosv(a.s3after, b.s3after), (unsigned long long)a.changes, (unsigned long long)b.changes, ticks.c_str());
+                std::fflush(stdout);
+            }
         } else if (op == "hold") {
             const char ch = f.size() > 1 && !f[1].empty() ? f[1][0] : 'a';
             const uint64_t t = num(f, 2, 20);

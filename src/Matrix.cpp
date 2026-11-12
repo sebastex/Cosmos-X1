@@ -470,6 +470,10 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
     if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
+    if (cfg_.homeo_tau > 0.0f) { // slow homeostasis: thresholds follow each cell's long-run activity
+        homeo2_.assign(Q_, cfg_.target_activity);
+        homeo3_.assign(V_, cfg_.target_activity);
+    }
     if (lattice_ && (cfg_.learning.pc_error > 0.0f || cfg_.learning.art_vigilance > 0.0f)) {
         if (hold4Out_.empty())
             throw std::invalid_argument("pc_error and art_vigilance need the outward 4D links split off (encoding_suppression_4d_out >= 0)");
@@ -858,7 +862,7 @@ void NeuralCellularMatrix::step2D() {
         const size_t q = size_t(qi);
         const size_t v = q / SS;
         if (sheetSkip_[v]) { // exactly what the full path gives a cell with no drive
-            adaptThreshold(theta[q], 0.0f, lp, target);
+            adaptThreshold(theta[q], homeoAvg(homeo2_, q, 0.0f), lp, target);
             fatigue2_[q] += (0.0f - fatigue2_[q]) / std::max(1.0f, lp.fatigue_tau);
             continue;
         }
@@ -876,7 +880,7 @@ void NeuralCellularMatrix::step2D() {
         float final = competeCell<C2>(out + q * C2, drive[q], q, rivals, n, drive, cfg_.winners2, cfg_.fire_threshold2,
                                          cfg_.fire_gain2);
         if (divisiveFatigue && final > 0.0f) final = scaleCell<C2>(out + q * C2, 1.0f / (1.0f + lp.fatigue_gain * fatigue2_[q]));
-        adaptThreshold(theta[q], final, lp, target);
+        adaptThreshold(theta[q], homeoAvg(homeo2_, q, final), lp, target);
         // Fatigue follows the activity of the channels that fire (the mean over all channels
         // understates it by C / channel_winners, so fatigue could never build up).
         const float firing2 = final * float(C2) / float(std::clamp<uint32_t>(cfg_.channel_winners2, 1, C2));
@@ -1403,7 +1407,7 @@ void NeuralCellularMatrix::step3D() {
                 }
         const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
                                             cfg_.fire_threshold3, cfg_.fire_gain3);
-        adaptThreshold(theta[v], final, lp, target);
+        adaptThreshold(theta[v], homeoAvg(homeo3_, v, final), lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
         if (!excit3_.empty()) { // engram allocation: firing while hearing uses excitability up; rest restores it

@@ -242,6 +242,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"agc_plastic", &c.agc_plastic},
         {"agc_input_only", &c.agc_input_only},
         {"clock_reset", &c.clock_reset},
+        {"homeo_tau", &c.homeo_tau},
+        {"clock_fast", &c.clock_fast},
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
         {"lattice_scramble", &c.lattice_scramble},
@@ -493,6 +495,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // a floor of 1e-6 learning on a grown brain takes 2.9 s instead of 68 s (2264 learners, not 16384).
         {"alefP5F", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                      "soma=1", "prune=0.00001", "trace_floor=0.000001"}},                            // alefP5, faint traces end
+        // Information-path fixes (2026-11-13): the top level looks at every word's end (clock_reset=2),
+        // thresholds follow the long-run activity (homeo_tau), every level steps on every tick
+        // (clock_fast), and the 4D links work while a word is taught (encoding_suppression_4d=0).
+        {"alefFix", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                     "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500",
+                     "clock_fast=1", "encoding_suppression_4d=0"}},                                  // alefP5F + the fixes
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                     "soma=1", "encoding_suppression_4d_out=0"}},                                // Alef, outward 4D links on while hearing
         // Local loop guard (2026-11-10): grown brains put 95% of each word in the first slice (the

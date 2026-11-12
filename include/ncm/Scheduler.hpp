@@ -18,9 +18,20 @@ public:
     };
 
     Tick advance() {
+        if (look_) { // one look at every level at once, then a fresh cycle (not saved: set and used in one tick)
+            look_ = false;
+            ++ticks1_, ++ticks2_, ++ticks3_, ++ticks4_;
+            acc2_ = acc3_ = acc4_ = 0.0;
+            return Tick{true, true, true};
+        }
         ++ticks1_;
-        acc2_ += 1.0 / kPhi;
-        acc3_ += 1.0 / (kPhi * kPhi);
+        if (fast_) { // clock_fast: the sheets and voxels step on every tick (more passes per letter); 4D every phi 3D steps
+            acc2_ = 1.0;
+            acc3_ = 1.0;
+        } else {
+            acc2_ += 1.0 / kPhi;
+            acc3_ += 1.0 / (kPhi * kPhi);
+        }
         Tick t{acc2_ >= 1.0, acc3_ >= 1.0};
         if (t.sheet) {
             acc2_ -= 1.0;
@@ -46,6 +57,15 @@ public:
         acc3_ = 0.0;
         acc4_ = 0.0;
     }
+    // At the end of a word (clock_reset 2): the slower levels take one look at once, on the next
+    // tick, so the top level always sees the whole word before it fades; then a fresh cycle.
+    void lookNow() { look_ = true; }
+    void setFast(bool fast) { fast_ = fast; }
+
+private:
+    bool look_ = false;
+    bool fast_ = false;
+public:
 
     // Save or restore the clocks (continuing one brain across runs).
     void state(StateFile& s) {
