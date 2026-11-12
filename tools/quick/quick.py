@@ -96,6 +96,7 @@ def summary(n, result, monitor):
     for it in items:
         target.setdefault(it['cue'], it['word'])
     right = {'whole': [0, 0], 'beginning': [0, 0]}
+    per_field = {'whole': [0] * head['fields'], 'beginning': [0] * head['fields']}
     fields = np.zeros(head['fields'])
     for w, a, b, l in ev:
         if l or w not in target or target[w] not in wi:
@@ -108,6 +109,11 @@ def summary(n, result, monitor):
         k = 'whole' if w == target[w] else 'beginning'
         right[k][1] += 1
         right[k][0] += int(s[t] > np.delete(s, t).max())
+        for f in range(head['fields']):  # the same test on each field alone: what does each field remember?
+            sl = slice(f * Vf * C3, (f + 1) * Vf * C3)
+            cf, qf = Cn[:, sl], q[sl]
+            sf = (cf @ qf) / ((np.linalg.norm(cf, axis=1) + 1e-12) * (np.linalg.norm(qf) + 1e-12))
+            per_field[k][f] += int(sf[t] > np.delete(sf, t).max())
     shape_fields = np.mean([[np.linalg.norm(M[k][f * Vf * C3:(f + 1) * Vf * C3]) for f in range(head['fields'])] for k in range(len(ws))], axis=0)
     levels = {'lesson': None, 'recall': None}
     same, look, far = pairs(n)
@@ -122,6 +128,7 @@ def summary(n, result, monitor):
     report = next((json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('BRAINREPORT ')), None)
     out = dict(recall_whole=round(right['whole'][0] / max(1, right['whole'][1]), 3),
                recall_beginning=round(right['beginning'][0] / max(1, right['beginning'][1]), 3),
+               recall_per_field={k: [round(v / max(1, right[k][1]), 3) for v in per_field[k]] for k in per_field},
                words_alike=round(float(np.nanmean(S)), 3), words_alike_max=round(float(np.nanmax(S)), 3),
                shape_per_field=[round(float(v), 1) for v in shape_fields],
                answer_per_field=[round(float(v / max(1, right['whole'][1] + right['beginning'][1])), 1) for v in fields],

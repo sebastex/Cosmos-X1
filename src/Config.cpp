@@ -281,6 +281,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"predict_surprise", &c.predict_surprise},
         {"predict_watch", &c.predict_watch},
         {"predict_shape", &c.predict_shape},
+        {"familiar_rate_only", &c.familiar_rate_only},
         {"microtubule", &c.microtubule},
         {"mt_len", &c.mt_len},
         {"mt_couple", &c.mt_couple},
@@ -549,7 +550,12 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // + settling's whole-word binding (2026-11-12, settle_bind=1): two brains, whole/beginning %:
         //   30 words 73/50 -> 90/82 and 89/75 -> 100/93; 100 words 64/55 -> 82/52 and 68/41 -> 74/48.
         {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
-                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1"}},
+                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
+                   "settle_hold=1", "settle_cap=1", "settle_fit=1"}},
+        // + holding with brakes (settle_hold=1, cap, fit; 2026-11-12), whole/beginning % vs binding only:
+        //   100 words 82/52 -> 87/67 and 74/48 -> 83/58; 200 words 61/33 -> 74/46 and 70/40 -> 79/55.
+        {"primeB", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1"}}, // binding only
         // Prime before binding (yardstick).
         {"prime0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2"}},
@@ -577,6 +583,11 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"primeDs", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "separation_soft=1"}},
         {"primeDa", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "agc_wake=1"}},
         {"primeD", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "separation_soft=1", "agc_wake=1"}},
+        // On the new Prime (with holding): familiarity for the learning rate only; soft separation at lower strength.
+        {"pFr", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "predict_surprise=1", "predict_shape=1", "familiar_rate_only=1"}},
+        {"pFrv", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "predict_surprise=1", "predict_shape=1", "familiar_rate_only=1", "familiarity=1"}},
+        {"pS1", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "separation=1"}},
+        {"pSs", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "separation_soft=1", "separation=1"}},
         {"primeH0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_hold=0.5"}},
         {"primeG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "budget_grow=0.05"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",

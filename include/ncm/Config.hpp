@@ -499,6 +499,7 @@ struct Config {
     // predict_shape 1: familiarity is how alike each firing voxel's guess and its firing are in pattern
     // (cosine over its channels, weighted by firing), not how much of the firing the guess covers.
     float predict_shape = 0.0f;
+    float familiar_rate_only = 0.0f; // with predict_surprise: familiarity sets the learning rate only, not the mode
     // Microtubules (Orch-OR-like, local quantum mathematics): inside every cell a cylindrical
     // lattice of 13 protofilaments x mt_len tubulin units. Each unit holds a superposition
     // a0|0> + a1|1> (complex amplitudes) and evolves unitarily under H = mt_bias sz + h sx, where

@@ -74,7 +74,9 @@ public:
             // While storing, surprise sets encoding mode. During recall the cue is familiar
             // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
             // motor path learns to predict (Stage 3) surprise cannot tell the two apart itself.
-            setMode(allowLearning ? float(1.0 - guess) : 0.0f, false);
+            // familiar_rate_only: familiarity sets only how strongly a word is learnt; a lesson stays in
+            // encoding mode (learned loops muted), since recall mode in lessons made one blob.
+            setMode(allowLearning ? (cfg_.familiar_rate_only > 0.5f ? 1.0f : float(1.0 - guess)) : 0.0f, false);
         } else {
             m_->clearSensoryInput();
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
