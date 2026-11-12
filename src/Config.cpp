@@ -244,6 +244,12 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"clock_reset", &c.clock_reset},
         {"homeo_tau", &c.homeo_tau},
         {"clock_fast", &c.clock_fast},
+        {"ach", &c.ach},
+        {"ach_tau", &c.ach_tau},
+        {"ach_boost", &c.ach_boost},
+        {"ach_tire", &c.ach_tire},
+        {"ach_rest", &c.ach_rest},
+        {"ach_learn", &c.ach_learn},
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
         {"lattice_scramble", &c.lattice_scramble},
@@ -518,6 +524,10 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         {"alefFwd", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0"}},
         {"alefFwdFast", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "clock_fast=1"}},
         {"alefFwdS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "soma=0"}},
+        // Acetylcholine (2026-11-13): every area sets its own learning/recall level from how new its input
+        // is; new: loops down, input boosted, tiring eased, learning up; familiar: loops on (recall).
+        {"alefAch", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "ach=1"}},
+        {"alefAchS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "encoding_suppression_4d_out=0", "ach=1", "soma=0"}},
         // Without the somatic network: with every field carrying the word its pushes made the same word
         // come out differently each time (audit 2026-11-13); these show what the fixes do without it.
         {"alefFixS0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "homeo_tau=500", "clock_fast=1", "encoding_suppression_4d=0", "soma=0"}},

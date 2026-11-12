@@ -105,6 +105,7 @@ public:
         if (t.voxel) {
             m_->setTick4D(t.fourD);
             m_->step3D();
+            m_->updateAch(fingerprint != nullptr);
             lap(t.fourD ? 4 : 3, t0);
             if (watchActivity_) { // read only: what the brain does while hearing and in silence
                 const int b = fingerprint ? 0 : 1;

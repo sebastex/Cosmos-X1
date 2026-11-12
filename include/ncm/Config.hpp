@@ -365,6 +365,16 @@ struct Config {
     // letter, so a word can reach the memory, reasoning and output fields while it is heard.
     float clock_fast = 0.0f;
     float clock_scaled = 0.0f; // set by clockScaled (not a setting)
+    // Acetylcholine (ach = 1): every area sets its own encoding/recall level from how new its input is
+    // (what its learned links did not predict), instead of one level for the whole brain set by the
+    // lesson or the cue. Where it is high the learned loops are turned down (as encoding_suppression*),
+    // the incoming signal is boosted by up to ach_boost and tiring eased by up to ach_tire.
+    float ach = 0.0f;
+    float ach_tau = 5.0f;   // 3D steps the level takes to follow
+    float ach_boost = 0.5f;
+    float ach_tire = 0.5f;
+    float ach_rest = 0.0f;  // the level an area with nothing firing drifts to in silence
+    float ach_learn = 0.8f; // how much a familiar area's learning is lowered (0 = not at all)
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's

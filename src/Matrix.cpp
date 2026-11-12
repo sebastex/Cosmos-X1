@@ -470,6 +470,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
     if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
+    if (cfg_.ach > 0.5f) achArea_.assign(lattice_ ? cellGain_.size() : kFields, 1.0f), achExplained_.assign(achArea_.size(), 0.0), achFired_.assign(achArea_.size(), 0.0);
     if (cfg_.homeo_tau > 0.0f) { // slow homeostasis: thresholds follow each cell's long-run activity
         homeo2_.assign(Q_, cfg_.target_activity);
         homeo3_.assign(V_, cfg_.target_activity);
@@ -1087,6 +1088,18 @@ void NeuralCellularMatrix::step3D() {
         };
         // Gain control scales incoming signals only (per field).
         const float afferentGain = lattice_ ? cellGain_[gainOf(v)] : fieldGain_[f];
+        // Acetylcholine (ach): each area sets its own level from how new its input is (what its learned
+        // links did not predict, last 3D step). Where it is high (new): the learned loops (own echo, links
+        // back and around) are turned down, the incoming signal is boosted and tiring is eased - the area
+        // takes in and learns. Where it is low (familiar): the loops are fully on - recall and completion.
+        // Without ach the brain-wide mode (modulator_) does this, set by the lesson or the cue.
+        const float achV = achArea_.empty() ? std::clamp(modulator_, 0.0f, 1.0f) : achArea_[lattice_ ? cell4Of(v) : v / Vf_];
+        const float recL = achArea_.empty() ? rec : 1.0f - std::clamp(cfg_.learning.encoding_suppression, 0.0f, 1.0f) * achV;
+        const float rec4L = achArea_.empty() ? rec4 : 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d, 0.0f, 1.0f) * achV;
+        const float rec4oL = achArea_.empty() ? rec4o
+                           : split4 ? 1.0f - std::clamp(cfg_.learning.encoding_suppression_4d_out, 0.0f, 1.0f) * achV : rec4L;
+        const float achBoost = achArea_.empty() ? 1.0f : 1.0f + cfg_.ach_boost * achV;
+        const float achTire = achArea_.empty() ? 1.0f : 1.0f - std::clamp(cfg_.ach_tire, 0.0f, 1.0f) * achV;
         for (int dz = -1; dz <= 1; ++dz)
             for (int dy = -1; dy <= 1; ++dy)
                 for (int dx = -1; dx <= 1; ++dx) {
@@ -1103,7 +1116,7 @@ void NeuralCellularMatrix::step3D() {
                     } else {
                         addScaled(src, in, C3, r.voxel_neighbour);                 // scaffold
                         float sb[C3];
-                        addLinks(links_.view(v, o), spent(vn, src, sb), pl, rec); // plastic memory part
+                        addLinks(links_.view(v, o), spent(vn, src, sb), pl, recL); // plastic memory part
                     }
                 }
 
@@ -1116,7 +1129,7 @@ void NeuralCellularMatrix::step3D() {
             if (!asmInh_.empty() && asmInh_[v * K + l] > 0.0f) {
                 float strongest = 0.0f;
                 for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, src[c]);
-                const float inhibit = asmInh_[v * K + l] * strongest * rec;
+                const float inhibit = asmInh_[v * K + l] * strongest * recL;
                 for (uint32_t c = 0; c < C3; ++c) in[c] -= inhibit;
             }
             if (inhib3_[t]) {
@@ -1124,7 +1137,7 @@ void NeuralCellularMatrix::step3D() {
             } else {
                 addScaled(src, in, C3, r.long_range);
                 float sb[C3];
-                addLinks(links_.view(v, longB_ + l), spent(t, src, sb), pl, rec);
+                addLinks(links_.view(v, longB_ + l), spent(t, src, sb), pl, recL);
             }
         }
 
@@ -1142,14 +1155,14 @@ void NeuralCellularMatrix::step3D() {
                         if (o == 13 || inhib3_[vn]) continue;
                         const float* cs = ctx3_.data() + vn * C3;
                         if (isFaint(cs)) continue;
-                        addLinks(links_.view(v, o), cs, plc, rec);
+                        addLinks(links_.view(v, o), cs, plc, recL);
                     }
             for (uint32_t l = 0; l < K; ++l) {
                 const size_t t = lrTarget_[v * K + l];
                 if (inhib3_[t]) continue;
                 const float* cs = ctx3_.data() + t * C3;
                 if (isFaint(cs)) continue;
-                addLinks(links_.view(v, longB_ + l), cs, plc, rec);
+                addLinks(links_.view(v, longB_ + l), cs, plc, recL);
             }
         }
         // The 4D link is the path input takes between fields, so encoding mode does not
@@ -1158,12 +1171,12 @@ void NeuralCellularMatrix::step3D() {
             const float* hf = hold4Fixed_.data() + v * C3;
             const float* hl = hold4Learned_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) {
-                in[c] += afferentGain * hf[c];
-                pl4[c] += afferentGain * rec4 * hl[c];
+                in[c] += afferentGain * achBoost * hf[c];
+                pl4[c] += afferentGain * rec4L * hl[c];
             }
             if (split4) {
                 const float* ho = hold4Out_.data() + v * C3;
-                for (uint32_t c = 0; c < C3; ++c) pl4[c] += afferentGain * rec4o * ho[c];
+                for (uint32_t c = 0; c < C3; ++c) pl4[c] += afferentGain * rec4oL * ho[c];
             }
         }
         uint32_t gi = 0;
@@ -1191,7 +1204,7 @@ void NeuralCellularMatrix::step3D() {
             } else {
                 addScaled(src, in, C3, gain * link);
                 float sb[C3];
-                addLinks(links_.view(v, h4B_ + gi), spent(vg, src, sb), pl4, gain * plasticScale * rec4);
+                addLinks(links_.view(v, h4B_ + gi), spent(vg, src, sb), pl4, gain * plasticScale * rec4L);
             }
             ++gi;
         }
@@ -1227,7 +1240,7 @@ void NeuralCellularMatrix::step3D() {
                     if (isSilent(src, C3)) continue;
                     addScaled(src, in, C3, inhib3_[vs] ? inh * each : each);
                     if (wsLinks_ && !inhib3_[vs])
-                        addLinksFast(links_.view(v, wsB_ + l), src, pl4, afferentGain * rec4 * cfg_.spread_plastic);
+                        addLinksFast(links_.view(v, wsB_ + l), src, pl4, afferentGain * rec4L * cfg_.spread_plastic);
                 }
             for (uint32_t g = 0; g < (lattice_ ? 0u : f); ++g)
                 // Only the Input field's activity is a thin slab whose active share falls with
@@ -1241,7 +1254,7 @@ void NeuralCellularMatrix::step3D() {
                     // Learned cue route: this source's learned block (excitatory sources only).
                     if (!WS_.empty() && !inhib3_[vs])
                         matvecAdd(WS_.data() + spreadBlock(v, g, l) * C3 * C3, src, pl4, C3, C3,
-                                  afferentGain * rec4 * cfg_.spread_plastic);
+                                  afferentGain * rec4L * cfg_.spread_plastic);
                 }
         }
 
@@ -1282,7 +1295,7 @@ void NeuralCellularMatrix::step3D() {
                 }
             }
             if (anyActive)
-                for (uint32_t c = 0; c < C3; ++c) in[c] += gu * up[c];
+                for (uint32_t c = 0; c < C3; ++c) in[c] += gu * achBoost * up[c];
         }
 
         {
@@ -1303,7 +1316,7 @@ void NeuralCellularMatrix::step3D() {
                 ds[kLearned4D] += pl4[c];
             }
             if (cfg_.inner_rules > 0.5f) // learned upward path: muted while encoding, like other learned links
-                for (uint32_t c = 0; c < C3; ++c) pl[c] += gu * rec * upLearned[c];
+                for (uint32_t c = 0; c < C3; ++c) pl[c] += gu * recL * upLearned[c];
             if (!mismatch3_.empty()) { // vigilance: what the deeper partners expect vs what comes in from below
                 const float* tl = hold4Learned_.data() + v * C3;
                 float sT = 0.0f, sI = 0.0f;
@@ -1336,7 +1349,7 @@ void NeuralCellularMatrix::step3D() {
                 const float* hc = hold4Ctx_.data() + v * C3;
                 const float kg = cfg_.learning.context_gain, kj = cfg_.learning.join_gain;
                 for (uint32_t c = 0; c < C3; ++c) {
-                    const float held = plScale * plc[c] + (lattice_ ? afferentGain * rec4 * hc[c] : 0.0f);
+                    const float held = plScale * plc[c] + (lattice_ ? afferentGain * rec4L * hc[c] : 0.0f);
                     const float now = plScale * pl[c] + pl4[c];
                     float add = kg * held;
                     if (kj > 0.0f && held > 0.0f && now > 0.0f) add += kj * std::sqrt(held * now);
@@ -1388,7 +1401,7 @@ void NeuralCellularMatrix::step3D() {
             reset3_[v] -= 1.0f;
             for (uint32_t c = 0; c < C3; ++c) in[c] = -1.0f;
         }
-        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + lp.fatigue_gain * fatigue3_[v] + allocTheta, cfg_.channel_winners3);
+        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + achTire * lp.fatigue_gain * fatigue3_[v] + allocTheta, cfg_.channel_winners3);
     }
 
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
@@ -1736,6 +1749,44 @@ void NeuralCellularMatrix::feedback(float signal) {
     }
 }
 
+void NeuralCellularMatrix::updateAch(bool hearing) {
+    // Per area: how much of its firing its learned links predicted (from the activity one step
+    // before), unmuted - the weights themselves, so an area in encoding mode still knows what is
+    // familiar. Novel = 1 - that share. The level follows it over ach_tau 3D steps; an area with
+    // nothing firing drifts to the level of silence (ach_rest).
+    if (achArea_.empty()) return;
+    const float* post = s3_.cur.data();
+    const float* prev = s3_.next.data();
+    const bool useOrderTrace = cfg_.learning.order_tau > 0.0f;
+    std::fill(achExplained_.begin(), achExplained_.end(), 0.0);
+    std::fill(achFired_.begin(), achFired_.end(), 0.0);
+    std::vector<double> ex(V_, 0.0), fi(V_, 0.0);
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        const float* pi = post + v * C3;
+        if (isSilent(pi, C3)) continue;
+        float pred[C3] = {};
+        forEachLearnedBlock(v, [&](const float* block, size_t src) {
+            const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
+            for (uint32_t a = 0; a < C3; ++a)
+                for (uint32_t b = 0; b < C3; ++b) pred[a] += block[size_t(a) * C3 + b] * sq[b];
+        });
+        for (uint32_t a = 0; a < C3; ++a) fi[v] += pi[a], ex[v] += std::min(pi[a], pred[a]);
+    }
+    for (size_t v = 0; v < V_; ++v) { // in order, so the sums are the same every run
+        const size_t m = lattice_ ? cell4Of(v) : v / Vf_;
+        achExplained_[m] += ex[v], achFired_[m] += fi[v];
+    }
+    const float k = 1.0f / std::max(1.0f, cfg_.ach_tau);
+    for (size_t m = 0; m < achArea_.size(); ++m) {
+        const float target = achFired_[m] > 0.0 ? float(std::clamp(1.0 - achExplained_[m] / achFired_[m], 0.0, 1.0))
+                                                : (hearing ? 1.0f : std::clamp(cfg_.ach_rest, 0.0f, 1.0f));
+        achArea_[m] += k * (target - achArea_[m]);
+    }
+}
+
 float NeuralCellularMatrix::predictSurprise() {
     // After step3D() swapped the buffers, `cur` holds the new state and `next` the previous one.
     const float* post = s3_.cur.data();
@@ -1935,6 +1986,8 @@ void NeuralCellularMatrix::learn(float modulator) {
 
         // Familiarity: how much of this voxel's firing its learned links already predict.
         float vrate = rate;
+        // Acetylcholine raises learning where the input is new; familiar areas learn less (ach_learn).
+        if (!achArea_.empty()) vrate *= 1.0f - std::clamp(cfg_.ach_learn, 0.0f, 1.0f) * (1.0f - achArea_[lattice_ ? cell4Of(v) : v / Vf_]);
         if (cfg_.familiarity > 0.0f) {
             float pred[C3] = {};
             forEachLearnedBlock(v, [&](float* block, size_t src) {

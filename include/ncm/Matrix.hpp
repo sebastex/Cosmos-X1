@@ -268,6 +268,13 @@ private:
     // threshold follows that average, not the last step, so one word heard does not shift which
     // cells answer the next. Empty = the threshold follows each step's activity (as before).
     std::vector<float> homeo2_, homeo3_;
+    // Acetylcholine (ach): per area its level, 1 = new (take in, learn), 0 = familiar (recall).
+    std::vector<float> achArea_;
+    std::vector<double> achExplained_, achFired_;
+public:
+    void updateAch(bool hearing);
+    float achMean() const { double t = 0; for (float a : achArea_) t += a; return achArea_.empty() ? -1.0f : float(t / achArea_.size()); }
+private:
     float homeoAvg(std::vector<float>& avg, size_t i, float now) const {
         if (avg.empty()) return now;
         float& a = avg[i];
