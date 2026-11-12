@@ -79,6 +79,7 @@ public:
     void learn(float modulator);
     // Settling: one more learning pass from every cell's word trace (what it fired during the word).
     void learnWord(float modulator);
+    void settleCap(float* out, size_t b, size_t e);
 
     // Sleep: faint random nudges (each voxel with probability `prob` gets `level` on one channel per
     // 3D step) let the brain fall into what it has learned; 0 = off.
@@ -275,6 +276,7 @@ private:
     std::vector<float> wordTrace_;          // settle_bind: per voxel channel, its peak firing during the current word
     const float* learnFrom_ = nullptr;      // learnWord: learn() reads these traces instead of the state
     float learnScale_ = 1.0f;
+    std::array<size_t, kFields> heardActive_{}; // settle_cap: voxels firing per field at the last heard step
     std::vector<float> budgetGrow_; // budget_grow: per voxel channel and link kind, how far its budget has grown (x plastic_budget)
     std::vector<double> achExplained_, achFired_;
 public:

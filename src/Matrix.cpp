@@ -1340,8 +1340,13 @@ void NeuralCellularMatrix::step3D() {
             const float holdK = sensoryOn_ ? 0.0f : cfg_.settle_hold; // settling: in silence a cell keeps itself on
             for (uint32_t c = 0; c < C3; ++c) {
                 in[c] *= quiet;
-                if (holdK > 0.0f) in[c] += holdK * s3[v * C3 + c];
                 const float learned = recallK * (plScale * pl[c] + pl4[c]);
+                // Holding with a brake: a cell keeps itself on only as far as its learned links still
+                // back it up (settle_fit 1), so a stray cell nothing supports fades. settle_fit 0 = plain hold.
+                if (holdK > 0.0f) {
+                    const float own = s3[v * C3 + c];
+                    in[c] += holdK * (cfg_.settle_fit > 0.5f ? std::min(own, std::max(0.0f, learned)) : own);
+                }
                 learnedC[c] = learned;
                 in[c] += learned;
                 plSum += learned;
@@ -1472,6 +1477,7 @@ void NeuralCellularMatrix::step3D() {
             for (uint32_t c = 0; c < C3; ++c) fb[c] += (cell[c] - fb[c]) / tau;
         }
     }
+        if (cfg_.settle_cap > 0.0f) settleCap(out, size_t(vBegin), size_t(vEnd));
     } // fields (front-to-back sweep)
 
     // Gain control: each field nudges the gain on its incoming signals toward the target
@@ -1870,6 +1876,27 @@ void NeuralCellularMatrix::learn2D(float modulator) {
                 for (uint32_t k = 0; k < 8; ++k)
                     for (uint32_t b = 0; b < C2; ++b) blocks[(size_t(k) * C2 + a) * C2 + b] *= budget / total;
         }
+    }
+}
+
+// Holding with a brake (settle_cap > 0): while hearing, each field notes how many of its voxels fire;
+// in silence it may keep at most settle_cap x that many on, the strongest. A new voxel that joins
+// pushes the weakest out, so a recalled word replaces its rivals instead of piling up on them.
+void NeuralCellularMatrix::settleCap(float* out, size_t b, size_t e) {
+    for (size_t f = b / Vf_; f < kFields && f * Vf_ < e; ++f) {
+        const size_t s = std::max(b, f * Vf_), t = std::min(e, (f + 1) * Vf_);
+        std::vector<std::pair<float, size_t>> on;
+        for (size_t v = s; v < t; ++v) {
+            float a = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) a += out[v * C3 + c];
+            if (a > 0.0f) on.emplace_back(a, v);
+        }
+        if (sensoryOn_) { heardActive_[f] = on.size(); continue; }
+        if (heardActive_[f] == 0) continue; // nothing heard yet: no measure
+        const size_t cap = std::max<size_t>(1, size_t(std::ceil(cfg_.settle_cap * double(heardActive_[f]))));
+        if (on.size() <= cap) continue;
+        std::nth_element(on.begin(), on.begin() + cap, on.end(), [](const auto& x, const auto& y) { return x.first > y.first; });
+        for (size_t k = cap; k < on.size(); ++k) std::fill(out + on[k].second * C3, out + (on[k].second + 1) * C3, 0.0f);
     }
 }
 

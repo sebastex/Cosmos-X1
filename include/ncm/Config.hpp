@@ -395,6 +395,11 @@ struct Config {
     // competition between neighbours pushes rivals out. 0 = off.
     float settle_bind = 0.0f;
     float settle_hold = 0.0f;
+    // Brakes on holding. settle_cap > 0: in silence each field keeps at most settle_cap x as many voxels
+    // firing as fired at the last heard moment (the strongest; newcomers push the weakest out).
+    // settle_fit 1: a cell holds itself on only as far as its learned links still support it.
+    float settle_cap = 0.0f;
+    float settle_fit = 0.0f;
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's
