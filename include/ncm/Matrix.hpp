@@ -270,6 +270,7 @@ private:
     std::vector<float> homeo2_, homeo3_;
     // Acetylcholine (ach): per area its level, 1 = new (take in, learn), 0 = familiar (recall).
     std::vector<float> achArea_;
+    std::vector<float> budgetGrow_; // budget_grow: per voxel channel and link kind, how far its budget has grown (x plastic_budget)
     std::vector<double> achExplained_, achFired_;
 public:
     void updateAch(bool hearing);

@@ -470,6 +470,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
     if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
+    if (cfg_.learning.budget_grow > 0.0f) budgetGrow_.assign(V_ * C3 * 4, 1.0f);
     if (cfg_.ach > 0.5f) achArea_.assign(lattice_ ? cellGain_.size() : kFields, 1.0f), achExplained_.assign(achArea_.size(), 0.0), achFired_.assign(achArea_.size(), 0.0);
     if (cfg_.homeo_tau > 0.0f) { // slow homeostasis: thresholds follow each cell's long-run activity
         homeo2_.assign(Q_, cfg_.target_activity);
@@ -1886,7 +1887,8 @@ void NeuralCellularMatrix::learn(float modulator) {
     if (preSoft > 0.0f && (preRoom_.size() != V_ * C3 || learnStats_.calls % 20 == 0)) {
         std::vector<double> out(V_ * C3, 0.0);
         for (size_t t = 0; t < V_; ++t)
-            forEachLearnedBlock(t, [&](const float* block, size_t src) {
+            forEachLearnedBlock(t, [&](const float* block, size_t src, int kind) {
+                if (cfg_.learning.budget_split > 0.5f && kind == 2) return; // split budgets: 4D links leave a cell's outgoing room for words
                 double* o = out.data() + src * C3;
                 for (uint32_t a = 0; a < C3; ++a)
                     for (uint32_t b = 0; b < C3; ++b) o[b] += block[size_t(a) * C3 + b];
@@ -2014,9 +2016,15 @@ void NeuralCellularMatrix::learn(float modulator) {
         const bool ctxOn = !ctx3_.empty() && cfg_.learning.context_learn > 0.0f;
         const float kc = vrate * cfg_.learning.context_learn;
         const float prot = consolidate > 0.0f ? std::clamp(cfg_.learning.protect, 0.0f, 1.0f) : 0.0f;
-        float total[C3] = {};
-        float kept[C3] = {};
+        // Budgets (budget_split): each kind of link (near 3D, long-range, 4D, cue route) has its own
+        // budget per output channel, so one kind cannot squeeze out another; otherwise one budget for all.
+        // With budget_grow a channel's budget grows where its links keep asking for more (use), up to budget_max.
+        const bool splitB = cfg_.learning.budget_split > 0.5f;
+        constexpr int KB = 4;
+        float totalK[KB][C3] = {};
+        float keptK[KB][C3] = {};
         forEachLearnedBlock(v, [&](float* block, size_t src, int kind) {
+            const int kb = splitB ? std::clamp(kind, 0, KB - 1) : 0;
             const bool is4D = lattice_ && kind == 2;
             if (!is4D || learn4D) {
                 const float lv = levelOf(v, src);
@@ -2046,23 +2054,37 @@ void NeuralCellularMatrix::learn(float modulator) {
             // alone cannot bound a cell whose output saturates and competes); protecting what is
             // learned keeps the consolidated share of each link out of the scaling.
             for (uint32_t a = 0; a < C3; ++a)
-                for (uint32_t b = 0; b < C3; ++b) total[a] += block[size_t(a) * C3 + b];
+                for (uint32_t b = 0; b < C3; ++b) totalK[kb][a] += block[size_t(a) * C3 + b];
             if (prot > 0.0f)
                 if (const float* sl = slowOf(block))
-                    for (size_t i = 0; i < size_t(C3) * C3; ++i) kept[i / C3] += prot * std::min(block[i], sl[i]);
+                    for (size_t i = 0; i < size_t(C3) * C3; ++i) keptK[kb][i / C3] += prot * std::min(block[i], sl[i]);
         });
-        float factor[C3];
-        bool scale = false, keep[C3];
-        for (uint32_t a = 0; a < C3; ++a) {
-            keep[a] = prot > 0.0f && total[a] > budget && kept[a] < budget && total[a] > kept[a];
-            factor[a] = total[a] > budget ? (keep[a] ? (budget - kept[a]) / (total[a] - kept[a]) : budget / total[a]) : 1.0f;
-            scale = scale || factor[a] < 1.0f;
-            scaled += double(total[a]) * (1.0 - double(factor[a]));
-        }
+        float factorK[KB][C3];
+        bool scale = false, keepK[KB][C3];
+        for (int kb = 0; kb < KB; ++kb)
+            for (uint32_t a = 0; a < C3; ++a) factorK[kb][a] = 1.0f, keepK[kb][a] = false;
+        for (int kb = 0; kb < (splitB ? KB : 1); ++kb)
+            for (uint32_t a = 0; a < C3; ++a) {
+                float bud = budget * (splitB && kb == 2 ? cfg_.learning.budget_4d_share : 1.0f);
+                if (!budgetGrow_.empty()) { // grown with use: where links keep asking for more than they have
+                    float& g = budgetGrow_[(v * C3 + a) * KB + size_t(kb)];
+                    if (totalK[kb][a] > bud * g)
+                        g = std::min(std::max(1.0f, cfg_.learning.budget_max), g + cfg_.learning.budget_grow * (totalK[kb][a] / (bud * g) - 1.0f));
+                    bud *= g;
+                }
+                const float t = totalK[kb][a], kp = keptK[kb][a];
+                keepK[kb][a] = prot > 0.0f && t > bud && kp < bud && t > kp;
+                factorK[kb][a] = t > bud ? (keepK[kb][a] ? (bud - kp) / (t - kp) : bud / t) : 1.0f;
+                scale = scale || factorK[kb][a] < 1.0f;
+                scaled += double(t) * (1.0 - double(factorK[kb][a]));
+            }
         // Scaling, then consolidation (the slow part follows the fast part upward), in one pass.
         if (scale || consolidate > 0.0f) {
             float slowTotal[C3] = {};
-            forEachLearnedBlock(v, [&](float* block, size_t) {
+            forEachLearnedBlock(v, [&](float* block, size_t, int kind) {
+                const int kb = splitB ? std::clamp(kind, 0, KB - 1) : 0;
+                const float* factor = factorK[kb];
+                const bool* keep = keepK[kb];
                 if (scale) {
                     if (prot > 0.0f) {
                         const float* sl = slowOf(block);
@@ -2435,16 +2457,19 @@ void NeuralCellularMatrix::state(StateFile& st) {
     // brain saved with or without any of them loads under settings that have or lack them (a part
     // the file lacks starts fresh; a part the settings lack is read past). Brains without them
     // save nothing here, as before.
-    enum : uint32_t { kTagLinkRes = 0x4C524553, kTagVigil = 0x56494731, kTagAlloc = 0x414C4C31 };
+    enum : uint32_t { kTagLinkRes = 0x4C524553, kTagVigil = 0x56494731, kTagAlloc = 0x414C4C31, kTagBudget = 0x42554431, kTagHomeo = 0x484F4D31, kTagAch = 0x41434831 };
     if (st.writing) {
         uint32_t tag;
         if (!linkRes_.empty()) tag = kTagLinkRes, st.value(tag), st.vec(linkRes_, "link resources");
         if (!mismatch3_.empty()) tag = kTagVigil, st.value(tag), st.vec(mismatch3_, "mismatch"), st.vec(reset3_, "resets");
         if (!excit3_.empty()) tag = kTagAlloc, st.value(tag), st.vec(excit3_, "excitability"), st.value(allocStep_);
+        if (!budgetGrow_.empty()) tag = kTagBudget, st.value(tag), st.vec(budgetGrow_, "grown budgets");
+        if (!homeo3_.empty()) tag = kTagHomeo, st.value(tag), st.vec(homeo2_, "slow activity 2D"), st.vec(homeo3_, "slow activity 3D");
+        if (!achArea_.empty()) tag = kTagAch, st.value(tag), st.vec(achArea_, "acetylcholine");
     } else {
         for (;;) {
             const uint32_t next = st.peekTag();
-            if (next != kTagLinkRes && next != kTagVigil && next != kTagAlloc) break; // not one of these parts
+            if (next != kTagLinkRes && next != kTagVigil && next != kTagAlloc && next != kTagBudget && next != kTagHomeo && next != kTagAch) break; // not one of these parts
             uint32_t tag = 0;
             st.value(tag);
             AVec<float> skip;
@@ -2458,6 +2483,13 @@ void NeuralCellularMatrix::state(StateFile& st) {
                 st.vec(excit3_.empty() ? skip : excit3_, "excitability");
                 st.value(excit3_.empty() ? skipStep : allocStep_);
             }
+            std::vector<float> skipV;
+            if (tag == kTagBudget) st.vec(budgetGrow_.empty() ? skipV : budgetGrow_, "grown budgets");
+            else if (tag == kTagHomeo) {
+                st.vec(homeo2_.empty() ? skipV : homeo2_, "slow activity 2D");
+                skipV.clear();
+                st.vec(homeo3_.empty() ? skipV : homeo3_, "slow activity 3D");
+            } else if (tag == kTagAch) st.vec(achArea_.empty() ? skipV : achArea_, "acetylcholine");
         }
     }
 }

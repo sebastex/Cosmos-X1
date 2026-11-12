@@ -82,6 +82,15 @@ struct LearningParams {
     // a fixed amount of strength while its scaffold (the basic wiring) is never touched.
     // 0.5: strong enough to complete patterns. (Larger budgets only let a memory take over
     // while fatigue was mis-measured; with fatigue fixed, 0.5 passes the Stage 1 test.)
+    // Budgets (2026-11-13). budget_split 1 = every kind of link (near 3D, long-range, 4D, cue route) has its
+    // own budget per output channel (the 4D one budget_4d_share x plastic_budget), so the 80 4D links
+    // cannot squeeze out the links that hold a word; 0 = one budget for all. budget_grow > 0 = a channel's
+    // budget grows where its links keep asking for more than it allows (by budget_grow x the excess per
+    // learning step), up to budget_max x plastic_budget: synapses multiply with demand.
+    float budget_split = 0.0f;
+    float budget_4d_share = 1.0f;
+    float budget_grow = 0.0f;
+    float budget_max = 4.0f;
     float plastic_budget = 0.5f;
     // Covariance learning: association uses activity above each cell's own long-run
     // average, so features active in every pattern stop being reinforced and what makes
