@@ -38,7 +38,15 @@ public:
         // local (soma_local): each node builds up its own superposition from the start of each word and
         // reduces alone when it passes the threshold; its draw is seeded by the pattern it senses (the
         // same word gives the same outcome, different words different ones, still by the Born rule).
-        bool local = false;    // > 0: a channel counts as background against this fixed level (not the brain's mean)
+        bool local = false;
+        // referee (soma_ref): the network knows, cell by cell, what drives each cell's firing. A cell
+        // backed by learned links from other active cells (part of something stored) is pushed up,
+        // a cell driven only by raw input or noise is turned down - so the cells that fit together
+        // win. Only true hubs (cells firing far more than usual over a long time) count as background.
+        bool referee = false;
+        bool referee2 = false;   // familiarity hunch: areas, not channels (soma_ref 2)
+        float hub = 3.0f;        // referee: a channel is a hub when its long-run firing passes hub x target
+        float target = 0.02f;    // the brain's target activity    // > 0: a channel counts as background against this fixed level (not the brain's mean)
     };
     void init(size_t cells, uint32_t channels, std::vector<uint32_t> nodeOf, uint32_t nodes, uint64_t seed, bool compare = false, bool local = false);
     bool on() const { return !nodeOf_.empty(); }
@@ -53,6 +61,8 @@ public:
     float mismatch() const { return mismatch_; }
     // Into a cell's input (relative to its own mean positive drive, so it shapes, never creates).
     void addPush(size_t cell, const float* state, float* in, const Params& p) const;
+    // Referee mode: `learned` = the part of each channel's input that came through learned links.
+    void addPushRef(size_t cell, const float* state, float* in, const float* learned, const Params& p);
     void state(StateFile& st);
     uint64_t reductions() const { return reductions_; }
 
@@ -69,6 +79,11 @@ private:
     std::vector<float> nodeSup_;          // local: per node, superposition built up since the word began
     std::vector<uint64_t> nodeSeen_;      // local: per node, a hash of the cells it senses as different (this word)
     bool local_ = false;
+    std::vector<float> support_;          // referee: per cell, the learned share of its drive (last 3D step)
+    std::vector<uint8_t> fired_;          // referee: per cell, whether it was driven at all
+    float meanSup_ = 0.0f, sdSup_ = 1.0f; // referee: over driven cells, last step
+    std::vector<float> nodeFam_;          // familiarity: per area, the learned share of its cells' drive
+    float meanFam_ = 0.0f, sdFam_ = 1.0f;
     bool compare_ = false;
     std::vector<float> guess_;            // per cell channel: what it held while listening (compare)
     float mismatch_ = 0.0f;

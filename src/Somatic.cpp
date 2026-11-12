@@ -23,6 +23,9 @@ void SomaticNetwork::init(size_t cells, uint32_t channels, std::vector<uint32_t>
     if (compare_) guess_.assign(cells * channels, 0.0f);
     local_ = local;
     if (local_) nodeSup_.assign(nodes, 0.0f), nodeSeen_.assign(nodes, 0);
+    support_.assign(cells, 0.0f);
+    fired_.assign(cells, 0);
+    nodeFam_.assign(nodes, 0.0f);
 }
 
 void SomaticNetwork::onset() {
@@ -87,6 +90,27 @@ void SomaticNetwork::step(const float* state, const Params& p, bool hearing) {
         cellDiff_[v] = pos;
     }
     spread_ = float(std::sqrt(sq / double(std::max<size_t>(1, cells * C)))) + 1e-6f;
+    if (p.referee) { // what the cells' firing rests on: the learned share of each driven cell's drive
+        double n = 0.0, m1 = 0.0, m2 = 0.0;
+        for (size_t v = 0; v < cells; ++v)
+            if (fired_[v]) n += 1.0, m1 += support_[v], m2 += double(support_[v]) * support_[v];
+        meanSup_ = n > 0.0 ? float(m1 / n) : 0.0f;
+        sdSup_ = n > 1.0 ? float(std::sqrt(std::max(0.0, m2 / n - (m1 / n) * (m1 / n)))) + 1e-3f : 1.0f;
+        for (size_t v = 0; v < cells; ++v) // a node's evidence: its cells resting on learned links more than the brain's usual
+            cellDiff_[v] = fired_[v] ? std::max(0.0f, (support_[v] - meanSup_) / sdSup_) * float(C) * spread_ : 0.0f;
+        if (p.referee2) { // per area: how much of its firing rests on what was learned (familiarity)
+            std::fill(nodeFam_.begin(), nodeFam_.end(), 0.0f);
+            std::vector<uint32_t> k(nodes_, 0);
+            for (size_t v = 0; v < cells; ++v)
+                if (fired_[v]) nodeFam_[nodeOf_[v]] += support_[v], ++k[nodeOf_[v]];
+            double a = 0.0, b = 0.0, nn = 0.0;
+            for (uint32_t m = 0; m < nodes_; ++m)
+                if (k[m]) nodeFam_[m] /= float(k[m]), a += nodeFam_[m], b += double(nodeFam_[m]) * nodeFam_[m], nn += 1.0;
+            meanFam_ = nn > 0.0 ? float(a / nn) : 0.0f;
+            sdFam_ = nn > 1.0 ? float(std::sqrt(std::max(0.0, b / nn - (a / nn) * (a / nn)))) + 1e-3f : 1.0f;
+            for (uint32_t m = 0; m < nodes_; ++m) if (!k[m]) nodeFam_[m] = meanFam_;
+        }
+    }
     meanExpect_ = float(ex / double(std::max<size_t>(1, cells * C)));
     std::fill(evidence_.begin(), evidence_.end(), 0.0f);
     std::vector<uint32_t> count(nodes_, 0);
@@ -177,6 +201,41 @@ void SomaticNetwork::addPush(size_t cell, const float* state, float* in, const P
     }
 }
 
+void SomaticNetwork::addPushRef(size_t cell, const float* state, float* in, const float* learned, const Params& p) {
+    const uint32_t C = channels_;
+    float own = 0.0f, drive = 0.0f, fromLinks = 0.0f;
+    for (uint32_t c = 0; c < C; ++c) {
+        own += std::max(0.0f, in[c]);
+        drive += std::max(0.0f, in[c]);
+        fromLinks += std::max(0.0f, learned[c]);
+    }
+    support_[cell] = drive > 0.0f ? std::min(1.0f, fromLinks / drive) : 0.0f;
+    fired_[cell] = drive > 0.0f ? 1 : 0;
+    if (own <= 0.0f) return;
+    own /= float(C);
+    const float* e = expect_.data() + cell * C;
+    const float held = held_[nodeOf_[cell]];
+    const float hubLevel = std::max(1e-6f, p.hub * p.target);
+    (void)state;
+    if (p.referee2) { // familiarity, as a hunch: the whole area is pushed by how familiar the area is
+        const uint32_t m = nodeOf_[cell];
+        const float fam = std::clamp((nodeFam_[m] - meanFam_) / sdFam_, -1.0f, 2.0f);
+        for (uint32_t c = 0; c < C; ++c) {
+            if (in[c] <= 0.0f) continue;
+            const float hub = std::clamp((e[c] - hubLevel) / hubLevel, 0.0f, 1.0f);
+            in[c] += own * (p.gain * held * fam - p.quiet * hub);
+        }
+        return;
+    }
+    for (uint32_t c = 0; c < C; ++c) {
+        if (in[c] <= 0.0f) continue;
+        const float sup = std::min(1.0f, std::max(0.0f, learned[c]) / in[c]); // this channel: how much rests on what was learned
+        const float fit = std::clamp((sup - meanSup_) / sdSup_, -1.0f, 2.0f);  // above the brain's usual: fits; below: does not
+        const float hub = std::clamp((e[c] - hubLevel) / hubLevel, 0.0f, 1.0f); // only cells firing far more than usual
+        in[c] += own * (p.gain * held * fit - p.quiet * hub);
+    }
+}
+
 void SomaticNetwork::state(StateFile& st) {
     st.value(channels_);
     st.value(nodes_);
@@ -190,9 +249,24 @@ void SomaticNetwork::state(StateFile& st) {
     st.vec(a1r_, "somatic nodes");
     st.vec(a1i_, "somatic nodes");
     st.vec(held_, "somatic nodes");
-    if (local_) { // only brains with local decisions
-        st.vec(nodeSup_, "somatic local build-up");
-        st.vec(nodeSeen_, "somatic local patterns");
+    // Local decisions (tagged, optional): a brain saved without them loads into local mode fresh,
+    // and one saved with them loads into the old mode by reading past them.
+    constexpr uint32_t kTagLocal = 0x534F4C31;
+    if (st.writing) {
+        if (local_) {
+            uint32_t tag = kTagLocal;
+            st.value(tag);
+            st.vec(nodeSup_, "somatic local build-up");
+            st.vec(nodeSeen_, "somatic local patterns");
+        }
+    } else if (st.peekTag() == kTagLocal) {
+        uint32_t tag = 0;
+        st.value(tag);
+        std::vector<float> sup(nodes_, 0.0f);
+        std::vector<uint64_t> seen(nodes_, 0);
+        st.vec(sup, "somatic local build-up");
+        st.vec(seen, "somatic local patterns");
+        if (local_) nodeSup_ = std::move(sup), nodeSeen_ = std::move(seen);
     }
     if (compare_) { // only brains that compare (older brains load unchanged)
         st.vec(guess_, "somatic held expectations");

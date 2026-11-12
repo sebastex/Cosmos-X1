@@ -1321,9 +1321,11 @@ void NeuralCellularMatrix::step3D() {
             // Quiet ears: without input, the fixed paths (the echo of what was heard) turn down.
             const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
             const float recallK = sensoryOn_ ? 1.0f : cfg_.learning.recall_gain; // recall strength in silence
+            float learnedC[C3];
             for (uint32_t c = 0; c < C3; ++c) {
                 in[c] *= quiet;
                 const float learned = recallK * (plScale * pl[c] + pl4[c]);
+                learnedC[c] = learned;
                 in[c] += learned;
                 plSum += learned;
                 inSum += std::max(0.0f, in[c]);
@@ -1345,7 +1347,10 @@ void NeuralCellularMatrix::step3D() {
             // Microtubules: the pattern of the last objective reduction pushes the channels.
             if (mt3_.on()) mt3_.addPush(v, in, cfg_.mt_decay);
             // The somatic network: the different part of this cell's firing up, the usual part down.
-            if (soma_.on()) soma_.addPush(v, s3, in, somaParams());
+            if (soma_.on()) {
+                if (cfg_.soma_ref > 0.5f) soma_.addPushRef(v, s3, in, learnedC, somaParams());
+                else soma_.addPush(v, s3, in, somaParams());
+            }
             diagPlastic3_[v] = plSum;
             diagInput3_[v] = inSum;
         }
@@ -1673,6 +1678,7 @@ SomaticNetwork::Params NeuralCellularMatrix::somaParams() const {
     p.compare = cfg_.compare, p.compareTau = cfg_.compare_tau, p.compareGain = cfg_.compare_gain;
     p.usualRef = cfg_.soma_usual * cfg_.target_activity;
     p.local = cfg_.soma_local > 0.5f;
+    p.referee = cfg_.soma_ref > 0.5f, p.referee2 = cfg_.soma_ref > 1.5f, p.hub = cfg_.soma_hub, p.target = cfg_.target_activity;
     return p;
 }
 

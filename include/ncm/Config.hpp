@@ -513,6 +513,11 @@ struct Config {
     // its draw seeded by the pattern it senses (so the same word gets the same outcome). 0 = all nodes
     // reduce together at one moment with one shared draw.
     float soma_local = 0.0f;
+    // 1 = the somatic network as referee: per cell it knows what drives the firing; cells resting on
+    // learned links (part of something stored) are pushed up, cells driven only by input or noise
+    // turned down; only hubs (long-run firing above soma_hub x target) count as background.
+    float soma_ref = 0.0f;
+    float soma_hub = 3.0f;
     float soma_mode = 0.0f;
     // Comparing (needs soma): every cell holds what it is doing while it listens; while it hears, the
     // somatic network measures how well the brain's firing fits what it held: one brain-wide mismatch.
