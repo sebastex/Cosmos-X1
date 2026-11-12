@@ -31,6 +31,9 @@ def main():
     ap.add_argument('monitor')
     ap.add_argument('test')
     ap.add_argument('--out', default='diag.json')
+    ap.add_argument('--gap', type=int, default=0,
+                    help='cues = the words heard after the first silence of GAP+ ticks (for cues heard in '
+                         'encoding mode, which carry the learning flag); 0 = cues are the words heard without it')
     a = ap.parse_args()
     head, r, vox = rm.read(a.monitor)
     items = {it['cue']: it['word'] for it in json.load(open(a.test))['puzzles'][0]['items']}
@@ -56,8 +59,12 @@ def main():
             i = j
         else:
             i += 1
-    taught = [e for e in events if e['learn']]
-    cues = [e for e in events if not e['learn']]
+    if a.gap:
+        cut = next((k + 1 for k in range(len(events) - 1) if events[k + 1]['start'] - events[k]['end'] >= a.gap), len(events))
+        taught, cues = events[:cut], events[cut:]
+    else:
+        taught = [e for e in events if e['learn']]
+        cues = [e for e in events if not e['learn']]
     shapes = collections.defaultdict(list)
     for e in taught:
         shapes[e['word']].append(rm.Sparse.total(x[e['start']:min(n, e['end'] + 3)]))
