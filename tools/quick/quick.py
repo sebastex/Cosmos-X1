@@ -47,7 +47,8 @@ def test(n):
             script += [f'cue:{pre[w]}:60', 'rest:150']
     same, look, far = pairs(n)
     spec = ','.join(f'{a}/{b}' for a, b in same + look + far)
-    script += [f'levels:{spec}:8:1', f'levels:{spec}:8:0', 'still:0']
+    script += [f'levels:{spec}:8:1', f'levels:{spec}:8:0']
+    script += [f'drive:{ws[0]}:2:1', f'drive:{ws[0]}:2:0', f'drive:{ws[0]}:8:0', 'still:0']
     items = [dict(cue=w, word=w) for w in ws] + [dict(cue=pre[w], word=w) for w in ws if pre[w]]
     return ';'.join(script), items
 
@@ -125,6 +126,10 @@ def summary(n, result, monitor):
                shape_per_field=[round(float(v), 1) for v in shape_fields],
                answer_per_field=[round(float(v / max(1, right['whole'][1] + right['beginning'][1])), 1) for v in fields],
                levels=levels)
+    drives = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('DRIVE ')]
+    if drives:  # where each field's input comes from (per firing voxel), heard in lesson mode, in recall, and later in recall
+        out['drive'] = {f"{'lesson' if d['lesson'] else 'recall'}+{d['after']}": [{k: (round(v, 2) if isinstance(v, float) else v) for k, v in fd.items()}
+                                                                              for fd in d['report']['fields']] for d in drives}
     if report:  # the lesson's state report: per field link fill and hubs (how much one source dominates)
         out['links'] = [dict(fill=round(f['fill'], 3), hubs=round(f['hubs'], 3), active3d=round(f['active3d'][0], 4)) for f in report['fields']]
     return out

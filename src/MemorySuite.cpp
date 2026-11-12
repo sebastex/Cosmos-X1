@@ -2211,6 +2211,20 @@ int runScriptTest(const Config& cfg) {
                             cosv(a.s3word, b.s3word), cosv(a.s3after, b.s3after), (unsigned long long)a.changes, (unsigned long long)b.changes, ticks.c_str());
                 std::fflush(stdout);
             }
+        } else if (op == "drive") {
+            // drive:WORD:AFTER:LESSON - hear WORD from a quiet brain, wait AFTER ticks, then print where every
+            // field's input comes from (DRIVE json): 4D sideways / forward / back, fixed and learned; 3D learned.
+            const std::string w = f.size() > 1 ? f[1] : "the";
+            const uint64_t afterT = num(f, 2, 2);
+            const bool lesson = num(f, 3, 1) != 0;
+            s.clearActivity();
+            s.silence(30, false);
+            for (char ch : w + " ") s.present(std::string(1, ch), 1, 1.0f, lesson, UINT64_MAX);
+            s.silence(afterT, false);
+            auto& m = const_cast<NeuralCellularMatrix&>(s.matrix());
+            std::printf("DRIVE {\"word\":\"%s\",\"lesson\":%d,\"after\":%llu,\"report\":%s}\n", w.c_str(), lesson ? 1 : 0,
+                        (unsigned long long)afterT, m.driveReport().c_str());
+            std::fflush(stdout);
         } else if (op == "hold") {
             const char ch = f.size() > 1 && !f[1].empty() ? f[1][0] : 'a';
             const uint64_t t = num(f, 2, 20);

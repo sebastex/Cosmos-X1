@@ -2540,6 +2540,58 @@ void NeuralCellularMatrix::stateInner(StateFile& st, bool down) {
     }
 }
 
+std::string NeuralCellularMatrix::driveReport() {
+    // Where each field's input comes from, now: for the voxels that fire, the input arriving through each
+    // kind of link (fixed 4D scaffold and learned links, split by direction: sideways = same field,
+    // forward = from the field nearer the senses, back = from the field further away; learned 3D near
+    // and long-range links). Summed over channels, per field.
+    enum { kSideF, kFwdF, kBackF, kSideL, kFwdL, kBackL, kNearL, kLongL, kParts };
+    std::vector<std::array<double, kParts>> acc(kFields);
+    for (auto& a : acc) a.fill(0.0);
+    std::vector<double> nfire(kFields, 0.0);
+    const float* s3 = s3_.cur.data();
+    const uint32_t N = N_;
+    for (size_t v = 0; v < V_; ++v) {
+        if (isSilent(s3 + v * C3, C3)) continue;
+        const uint32_t f = uint32_t(v / Vf_);
+        nfire[f] += 1.0;
+        auto& a = acc[f];
+        if (lattice_) {
+            const uint32_t x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (size_t(N) * N)) % N);
+            for (uint32_t k = 0; k < hBlocks_; ++k) {
+                const size_t vg = lattice4Partner(x, y, z, f, k);
+                if (vg == SIZE_MAX || inhib3_[vg]) continue;
+                double t = 0.0;
+                for (uint32_t c = 0; c < C3; ++c) t += s3[vg * C3 + c];
+                const uint32_t g = uint32_t(vg / Vf_);
+                a[g == f ? kSideF : g < f ? kFwdF : kBackF] += cfg_.rule.lattice_link * latScale_[k] * t;
+            }
+        }
+        forEachLearnedBlock(v, [&](const float* block, size_t src, int kind) {
+            const float* q = s3 + src * C3;
+            double t = 0.0;
+            for (uint32_t r = 0; r < C3; ++r)
+                for (uint32_t c = 0; c < C3; ++c) t += double(block[size_t(r) * C3 + c]) * q[c];
+            const uint32_t g = uint32_t(src / Vf_);
+            if (kind == 2) a[g == f ? kSideL : g < f ? kFwdL : kBackL] += t * (g > f ? cfg_.lattice_back : g == f ? cfg_.lattice_side : 1.0);
+            else if (kind == 0) a[kNearL] += t;
+            else if (kind == 1) a[kLongL] += t;
+        });
+    }
+    static const char* names[kParts] = {"side_fixed", "fwd_fixed", "back_fixed", "side_learned", "fwd_learned", "back_learned", "near3d_learned", "long_learned"};
+    std::string j = "{\"fields\":[";
+    for (uint32_t f = 0; f < kFields; ++f) {
+        j += (f ? ",{" : "{") + std::string("\"firing\":") + std::to_string(int(nfire[f]));
+        for (int p = 0; p < kParts; ++p) {
+            char b[64];
+            std::snprintf(b, sizeof b, ",\"%s\":%.3f", names[p], nfire[f] > 0 ? acc[f][p] / nfire[f] : 0.0);
+            j += b;
+        }
+        j += "}";
+    }
+    return j + "]}";
+}
+
 std::string NeuralCellularMatrix::blockReport() const {
     const char* names[4] = {"near", "long", "4d", "cue"};
     const uint32_t from[4] = {0, longB_, h4B_, h4B_ + hBlocks_}, to[4] = {longB_, h4B_, h4B_ + hBlocks_, links_.blocksPerVoxel()};

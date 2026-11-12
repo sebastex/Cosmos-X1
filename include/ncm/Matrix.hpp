@@ -273,6 +273,7 @@ private:
     std::vector<double> achExplained_, achFired_;
 public:
     void updateAch(bool hearing);
+    std::string driveReport(); // where each field's input comes from, now (audit)
     float achMean() const { double t = 0; for (float a : achArea_) t += a; return achArea_.empty() ? -1.0f : float(t / achArea_.size()); }
 private:
     float homeoAvg(std::vector<float>& avg, size_t i, float now) const {
