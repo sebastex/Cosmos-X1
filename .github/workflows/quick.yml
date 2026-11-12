@@ -1,0 +1,59 @@
+# Quick test (tools/quick/quick.py): fresh brains learn the ladder's first N words and are tested at
+# once, side by side, to find what breaks (recall, how alike words are, per-field activity, links).
+# Start: gh workflow run quick.yml --ref info-path -f runs='[{"name":"base","variant":"alefP5F","args":""}]'
+name: quick
+run-name: quick ${{ inputs.words }} words
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Versions, as a list of {"name": ..., "variant": ..., "args": "--set k=v ..."}'
+        required: true
+      words:
+        description: Words to learn
+        default: "30"
+      seed:
+        default: "3004"
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        r: ${{ fromJSON(inputs.runs) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh && pip install -q numpy
+      - name: Learn, test, summarise
+        env:
+          ARGS: ${{ matrix.r.args }}
+          VARIANT: ${{ matrix.r.variant }}
+          NAME: ${{ matrix.r.name }}
+          N: ${{ inputs.words }}
+          SEED: ${{ inputs.seed }}
+        run: |
+          export OMP_NUM_THREADS=$(nproc)
+          python3 tools/quick/quick.py lesson $N > lesson_script.txt
+          python3 tools/quick/quick.py test $N > test_script.txt
+          T0=$(date +%s)
+          NCM_STATE_OUT=brain.bin NCM_SCRIPT_FILE=lesson_script.txt ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > lesson.txt
+          T1=$(date +%s)
+          NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=test_script.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > result.txt
+          T2=$(date +%s)
+          cat lesson.txt result.txt > all.txt
+          python3 tools/quick/quick.py summary $N all.txt monitor/session0.ncmmon > s.json
+          python3 -c "
+          import json; s=json.load(open('s.json')); s.update(name='$NAME', variant='$VARIANT', args='$ARGS', lesson_s=$T1-$T0, test_s=$T2-$T1)
+          json.dump(s, open('quick-$NAME.json','w')); print(json.dumps(s))"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quick-${{ matrix.r.name }}
+          path: |
+            quick-*.json
+            lesson.txt
+          retention-days: 30
