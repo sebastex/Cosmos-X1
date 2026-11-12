@@ -202,6 +202,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"link_bound", &c.learning.link_bound},
         {"prune", &c.learning.prune},
         {"trace_floor", &c.learning.trace_floor},
+        {"recall_gain", &c.learning.recall_gain},
         {"link_use", &c.learning.link_use},
         {"link_recovery", &c.learning.link_recovery},
         {"pc_error", &c.learning.pc_error},

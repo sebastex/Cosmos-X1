@@ -1316,9 +1316,10 @@ void NeuralCellularMatrix::step3D() {
             float plSum = 0.0f, inSum = 0.0f;
             // Quiet ears: without input, the fixed paths (the echo of what was heard) turn down.
             const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
+            const float recallK = sensoryOn_ ? 1.0f : cfg_.learning.recall_gain; // recall strength in silence
             for (uint32_t c = 0; c < C3; ++c) {
                 in[c] *= quiet;
-                const float learned = plScale * pl[c] + pl4[c];
+                const float learned = recallK * (plScale * pl[c] + pl4[c]);
                 in[c] += learned;
                 plSum += learned;
                 inSum += std::max(0.0f, in[c]);

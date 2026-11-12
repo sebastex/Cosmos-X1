@@ -145,6 +145,10 @@ struct LearningParams {
     // full strength, so after a word ends the cells follow what memory brings back (the
     // associate) instead of the word's own echo. 0 = off, 1 = fixed paths silent.
     float silence_gate = 0.0f;
+    // Recall strength (recall_gain): while no input arrives, every learned input (within slices
+    // and through the 4D links) is multiplied by recall_gain, so a cue's partial pattern can be
+    // pulled into the whole memory. 1 = as before.
+    float recall_gain = 1.0f;
     // Holding a clue longer (context_tau, in 3D steps; 0 = off): every voxel keeps a second, slow
     // trace of its recent firing (a few words long, where the order trace lasts about one). The
     // slow trace learns through the same links as the fast one (what fired a few words ago, before
