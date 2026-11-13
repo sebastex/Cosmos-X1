@@ -421,6 +421,10 @@ struct Config {
     // gain control per 4D cell. Senses enter at one face (w = 0, x = 0), the motor exit is the far
     // face (w = 3, x = last). 0 = Cosmos Prime's four fields.
     float lattice4d = 0.0f;
+    // Denser 4D lattice (2026-11-13): voxels per lattice cell along each axis for the 4D links
+    // (0 = a quarter of the field's side: always 4x4x4 cells per field). 2 = 8x8x8 per field at dev,
+    // growing with the brain. The 4D working areas (gain, soma, microtubules, ACh) are unchanged.
+    float lattice_cell = 0.0f;
     // Pharmakon: 1 = each 4D-lattice link joins a voxel to a scrambled counterpart: the place
     // inside the neighbouring 4D cell goes through a fixed random one-to-one shuffle (one per
     // direction, the opposite direction uses the reverse shuffle; the same for every 4D cell).

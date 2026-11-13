@@ -261,6 +261,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"settle_fit", &c.settle_fit},
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
+        {"lattice_cell", &c.lattice_cell},
         {"lattice_scramble", &c.lattice_scramble},
         {"spread_local", &c.spread_local},
         {"lattice_hold", &c.lattice_hold},
@@ -593,6 +594,9 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         // brain-wide and per cell; lessons stay in learning mode. (2026-11-13)
         {"primeAlpha", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "separation=1"}},
         {"primeBeta", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "predict_surprise=1", "predict_shape=1", "familiar_rate_only=1", "familiarity=1"}},
+        // Denser 4D lattice: 8x8x8x4 = 2048 lattice cells at dev (lattice_cell=2), or one per voxel (1).
+        {"primeL2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "lattice_cell=2"}},
+        {"primeL1", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1", "settle_hold=1", "settle_cap=1", "settle_fit=1", "lattice_cell=1"}},
         {"primeH0", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_hold=0.5"}},
         {"primeG", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1", "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "budget_grow=0.05"}},
         {"alefEF", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",

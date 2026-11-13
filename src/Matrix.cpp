@@ -325,7 +325,16 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     if (lattice_) {
         if (N_ % kFields != 0 || N_ / kFields < 2)
             throw std::invalid_argument("the 4D lattice needs field_dim divisible by 4 (at least 8)");
-        B_ = N_ / kFields;
+        // R_: the 4D cells as working areas (gain control, somatic nodes, microtubule groups,
+        // acetylcholine areas) - always a quarter of a field's side, so those parts work as before.
+        // B_: the lattice the 4D links run on. lattice_cell > 0 makes it denser: cells of that many
+        // voxels per side, so the number of lattice cells grows with the cube of the brain's width.
+        R_ = N_ / kFields;
+        B_ = R_;
+        if (cfg.lattice_cell > 0.5f) {
+            B_ = uint32_t(cfg.lattice_cell + 0.5f);
+            if (B_ < 1 || N_ % B_ != 0) throw std::invalid_argument("lattice_cell must divide field_dim");
+        }
         for (int dw = -1; dw <= 1; ++dw)
             for (int dz = -1; dz <= 1; ++dz)
                 for (int dy = -1; dy <= 1; ++dy)
@@ -368,7 +377,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
         hold4Fixed_.assign(V_ * C3, 0.0f);
         hold4Learned_.assign(V_ * C3, 0.0f);
         if (cfg.learning.encoding_suppression_4d_out >= 0.0f) hold4Out_.assign(V_ * C3, 0.0f);
-        const size_t A = N_ / B_;
+        const size_t A = N_ / R_;
         cellGain_.assign(A * A * A * kFields, 1.0f);
     }
 
@@ -1506,7 +1515,7 @@ void NeuralCellularMatrix::step3D() {
         }
         const int grain = int(cfg_.lattice_agc + 0.5f);
         const size_t regions = grain == 2 ? 1 : grain == 1 ? kFields : cells;
-        const float inside = grain == 2 ? float(V_) : grain == 1 ? float(Vf_) : float(size_t(B_) * B_ * B_);
+        const float inside = grain == 2 ? float(V_) : grain == 1 ? float(Vf_) : float(size_t(R_) * R_ * R_);
         for (size_t k = 0; k < regions; ++k) {
             float& g = cellGain_[k];
             if (!anything[k] && sensoryOn_ && cfg_.agc_wake > 0.5f) { // hearing, yet silent: turn it up

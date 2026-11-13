@@ -297,7 +297,8 @@ private:
 
     // Cosmos Pharmakon (lattice4d): the 4D lattice.
     bool lattice_ = false;
-    uint32_t B_ = 0;           // voxels per 4D cell along each inner axis
+    uint32_t B_ = 0;           // voxels per lattice cell along each inner axis (the 4D links' grid)
+    uint32_t R_ = 0;           // voxels per 4D working area along each axis (gain, soma, microtubules, ACh)
     uint32_t hBlocks_ = 3;     // learned 4D blocks per voxel: 3 other fields (Prime) or 80 lattice neighbours
     bool tick4_ = true;        // the current 3D step is a 4D step
     std::vector<int8_t> lat4_; // 80 x (dx, dy, dz, dw): the 4D neighbourhood
@@ -325,8 +326,8 @@ private:
     }
     size_t cell4Of(size_t v) const {
         const uint32_t x = uint32_t(v % N_), y = uint32_t((v / N_) % N_), z = uint32_t((v / (size_t(N_) * N_)) % N_);
-        const uint32_t A = N_ / B_;
-        return ((size_t(v / Vf_) * A + z / B_) * A + y / B_) * A + x / B_;
+        const uint32_t A = N_ / R_;
+        return ((size_t(v / Vf_) * A + z / R_) * A + y / R_) * A + x / R_;
     }
     // The counterpart of voxel (x, y, z, w) in the 4D cell at lattice offset k, or SIZE_MAX outside.
     size_t lattice4Partner(uint32_t x, uint32_t y, uint32_t z, uint32_t w, uint32_t k) const {
