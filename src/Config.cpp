@@ -552,12 +552,15 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         //   30 words 73/50 -> 90/82 and 89/75 -> 100/93; 100 words 64/55 -> 82/52 and 68/41 -> 74/48.
         {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
+                   "settle_hold=1", "settle_cap=1", "settle_fit=1"}},
+        // Tried as Prime 2026-11-16 and reverted: familiarity (Beta) + one 4D zone per area (lattice_cell=16).
+        //   Each alone ties Prime, but together they learn far too little (link fill 4-10x lower) and recall
+        //   drops: 100 words 87/67 -> 71/57 and 83/57 -> 68/48 (two brains).
+        {"primeL16B", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
                    "settle_hold=1", "settle_cap=1", "settle_fit=1", "predict_surprise=1", "predict_shape=1",
                    "familiar_rate_only=1", "familiarity=1", "lattice_cell=16"}},
-        // 2026-11-16: + familiarity (Beta: known words learn less; 200+300 words tie-or-win on two brains,
-        //   less link fill) + one 4D cell per area (lattice_cell=16: every 4D link sees the whole area;
-        //   total recall ties, deep-field recall far higher, e.g. 200 words Reasoning 21 -> 46, Output 19 -> 52%).
-        // The previous Prime (before familiarity and big 4D cells), kept as a yardstick.
+        // Same as prime (yardstick name used in the 2026-11-16 check).
         {"prime2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
                    "settle_hold=1", "settle_cap=1", "settle_fit=1"}},
