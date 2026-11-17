@@ -123,7 +123,9 @@ public:
                 if (all) ++act_.allSteps[b];
             }
             if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) m_->predictSurprise();
-            const float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
+            float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
+            // familiar_floor: a known word still learns at least this much (gentler familiarity).
+            if (cfg_.familiar_floor > 0.0f) modulator = cfg_.familiar_floor + (1.0f - cfg_.familiar_floor) * modulator;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
             if (learning_ && allowLearning) {
