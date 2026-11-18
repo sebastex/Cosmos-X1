@@ -53,6 +53,35 @@ def test(n):
     return ';'.join(script), items
 
 
+def mouth(n):
+    """Speaking step 1: hear each word's beginning, then listen to the mouth (the Output field's far face)."""
+    ws = words(n)
+    pre = ladder.prefixes(ws)
+    script = ['still:1']
+    for w in ws:
+        if pre[w]:
+            script += ['rest:150', f'mouth:{pre[w]}:30']
+    return ';'.join(script)
+
+
+def mouth_summary(n, result):
+    ws = words(n)
+    pre = ladder.prefixes(ws)
+    nxt = {pre[w]: w[len(pre[w])] for w in ws if pre[w]}
+    rows = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('MOUTH ')]
+    if not rows:
+        return None
+    first = [next((c for c, o in zip(r['top'], r['overlap']) if o >= 0.3), None) for r in rows]
+    said = sum(1 for f in first if f)
+    right = sum(1 for r, f in zip(rows, first) if f and f == nxt.get(r['cue']))
+    echo = sum(1 for r, f in zip(rows, first) if f and f == r['cue'][-1])
+    return dict(cues=len(rows), spoke=round(said / len(rows), 3), next_letter=round(right / len(rows), 3),
+                echo=round(echo / len(rows), 3),
+                mouth_lines_on=round(sum(sum(r['active']) / len(r['active']) for r in rows) / len(rows), 1),
+                best_overlap=round(sum(max(r['overlap']) for r in rows) / len(rows), 3),
+                sample={r['cue']: r['top'] for r in rows[:5]})
+
+
 def summary(n, result, monitor):
     import numpy as np
     sys.path.insert(0, os.path.join(HERE, '..', 'monitor'))
@@ -139,6 +168,9 @@ def summary(n, result, monitor):
                                                                               for fd in d['report']['fields']] for d in drives}
     if report:  # the lesson's state report: per field link fill and hubs (how much one source dominates)
         out['links'] = [dict(fill=round(f['fill'], 3), hubs=round(f['hubs'], 3), active3d=round(f['active3d'][0], 4)) for f in report['fields']]
+    m_ = mouth_summary(n, result)
+    if m_:
+        out['mouth'] = m_
     return out
 
 
@@ -148,6 +180,8 @@ def main():
         print(lesson(int(a[1])))
     elif a[:1] == ['test']:
         print(test(int(a[1]))[0])
+    elif a[:1] == ['mouth']:
+        print(mouth(int(a[1])))
     elif a[:1] == ['summary']:
         print(json.dumps(summary(int(a[1]), a[2], a[3])))
     else:

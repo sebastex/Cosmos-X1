@@ -2136,6 +2136,41 @@ int runScriptTest(const Config& cfg) {
                 tick += 1 + hold;
             }
             std::printf("  spoke: \"%s\"\n", said.c_str());
+        } else if (op == "mouth") {
+            // mouth:CUE:TICKS - speaking step 1 (listen to the mouth): hear CUE (nothing learnt), then for
+            // TICKS silent ticks read the motor face (x = N-1 of the Output field) and, per tick, how much
+            // of each letter's fingerprint (space, a-z) its exit lines show. One MOUTH json line per cue.
+            const std::string cueText = f.size() > 1 ? f[1] : "";
+            const uint64_t n = num(f, 2, 30);
+            for (char ch : cueText) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            const std::string letters = " abcdefghijklmnopqrstuvwxyz";
+            std::string top;
+            std::vector<double> topOverlap;
+            std::vector<size_t> active;
+            for (uint64_t k = 0; k < n; ++k) {
+                s.silence(1, false);
+                std::vector<uint32_t> on = s.matrix().readMotorExit();
+                std::sort(on.begin(), on.end());
+                active.push_back(on.size());
+                double best = 0.0;
+                char pick = '-';
+                for (char ch : letters) {
+                    const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(ch)));
+                    size_t hit = 0;
+                    for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                    const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                    if (ov > best) best = ov, pick = ch == ' ' ? '_' : ch;
+                }
+                top += pick;
+                topOverlap.push_back(best);
+            }
+            std::printf("MOUTH {\"cue\": \"%s\", \"lines\": %zu, \"top\": \"%s\", \"overlap\": [", cueText.c_str(),
+                        s.codebook().linesPerCharacter(), top.c_str());
+            for (size_t k = 0; k < topOverlap.size(); ++k) std::printf("%s%.3f", k ? ", " : "", topOverlap[k]);
+            std::printf("], \"active\": [");
+            for (size_t k = 0; k < active.size(); ++k) std::printf("%s%zu", k ? ", " : "", active[k]);
+            std::printf("]}\n");
+            tick += cueText.size() + n;
         } else if (op == "cue") {
             const std::string text = f.size() > 1 ? f[1] : "";
             const uint64_t rest = num(f, 2, 30);

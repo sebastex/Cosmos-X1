@@ -44,7 +44,9 @@ jobs:
           T1=$(date +%s)
           NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=test_script.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > result.txt
           T2=$(date +%s)
-          cat lesson.txt result.txt > all.txt
+          python3 tools/quick/quick.py mouth $N > mouth_script.txt
+          NCM_STATE_IN=brain.bin NCM_SCRIPT_FILE=mouth_script.txt ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > mouth.txt || true
+          cat lesson.txt result.txt mouth.txt > all.txt
           python3 tools/quick/quick.py summary $N all.txt monitor/session0.ncmmon > s.json
           python3 -c "
           import json; s=json.load(open('s.json')); s.update(name='$NAME', variant='$VARIANT', args='$ARGS', lesson_s=$T1-$T0, test_s=$T2-$T1)
