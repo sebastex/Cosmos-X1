@@ -126,6 +126,12 @@ public:
     void releaseMotor();
     // Surface line indices whose exit cells are currently active.
     std::vector<uint32_t> readMotorExit() const;
+    // Speaking step 2 (imitation): the mouth's sheet cells (the Output field's far face, one per
+    // surface line) are set to a letter's fingerprint while it is heard in a lesson, so the usual
+    // learning ties "what came before" to "the mouth says this". readMotorSheets: those that fire.
+    void clampMotorSheets(const std::vector<uint32_t>& active_lines);
+    void releaseMotorSheets() { motorSheetOn_ = false; }
+    std::vector<uint32_t> readMotorSheets() const;
 
     // Silences every cell (states only; learned connections and thresholds are kept).
     // A diagnostic, used to test whether lingering activity causes memories to merge.
@@ -464,6 +470,8 @@ private:
     std::vector<uint8_t> motorDrive_;
     bool sensoryOn_ = false;
     bool motorOn_ = false;
+    bool motorSheetOn_ = false;
+    std::vector<uint8_t> motorSheetDrive_;
 };
 
 } // namespace ncm

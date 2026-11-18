@@ -71,6 +71,8 @@ public:
             surpriseSum_ += 1.0 - guess;
             ++surpriseCount_;
             m_->setSensoryInput(*fingerprint);
+            if (cfg_.speak_learn > 0.5f && allowLearning) m_->clampMotorSheets(actual ? *actual : *fingerprint);
+            else m_->releaseMotorSheets();
             // While storing, surprise sets encoding mode. During recall the cue is familiar
             // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
             // motor path learns to predict (Stage 3) surprise cannot tell the two apart itself.
@@ -79,6 +81,7 @@ public:
             setMode(allowLearning ? (cfg_.familiar_rate_only > 0.5f ? 1.0f : float(1.0 - guess)) : 0.0f, false);
         } else {
             m_->clearSensoryInput();
+            m_->releaseMotorSheets();
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
 

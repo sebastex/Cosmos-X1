@@ -2144,9 +2144,22 @@ int runScriptTest(const Config& cfg) {
             const uint64_t n = num(f, 2, 30);
             for (char ch : cueText) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
             const std::string letters = " abcdefghijklmnopqrstuvwxyz";
-            std::string top;
-            std::vector<double> topOverlap;
-            std::vector<size_t> active;
+            std::string top, top2;
+            std::vector<double> topOverlap, topOverlap2;
+            std::vector<size_t> active, active2;
+            auto bestLetter = [&](std::vector<uint32_t> on, char& pick) {
+                std::sort(on.begin(), on.end());
+                double best = 0.0;
+                pick = '-';
+                for (char ch : letters) {
+                    const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(ch)));
+                    size_t hit = 0;
+                    for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                    const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                    if (ov > best) best = ov, pick = ch == ' ' ? '_' : ch;
+                }
+                return best;
+            };
             for (uint64_t k = 0; k < n; ++k) {
                 s.silence(1, false);
                 std::vector<uint32_t> on = s.matrix().readMotorExit();
@@ -2163,12 +2176,21 @@ int runScriptTest(const Config& cfg) {
                 }
                 top += pick;
                 topOverlap.push_back(best);
+                const std::vector<uint32_t> on2 = s.matrix().readMotorSheets();
+                active2.push_back(on2.size());
+                char pick2 = '-';
+                topOverlap2.push_back(bestLetter(on2, pick2));
+                top2 += pick2;
             }
             std::printf("MOUTH {\"cue\": \"%s\", \"lines\": %zu, \"top\": \"%s\", \"overlap\": [", cueText.c_str(),
                         s.codebook().linesPerCharacter(), top.c_str());
             for (size_t k = 0; k < topOverlap.size(); ++k) std::printf("%s%.3f", k ? ", " : "", topOverlap[k]);
             std::printf("], \"active\": [");
             for (size_t k = 0; k < active.size(); ++k) std::printf("%s%zu", k ? ", " : "", active[k]);
+            std::printf("], \"top2\": \"%s\", \"overlap2\": [", top2.c_str());
+            for (size_t k = 0; k < topOverlap2.size(); ++k) std::printf("%s%.3f", k ? ", " : "", topOverlap2[k]);
+            std::printf("], \"active2\": [");
+            for (size_t k = 0; k < active2.size(); ++k) std::printf("%s%zu", k ? ", " : "", active2[k]);
             std::printf("]}\n");
             tick += cueText.size() + n;
         } else if (op == "cue") {

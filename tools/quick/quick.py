@@ -65,21 +65,26 @@ def mouth(n):
 
 
 def mouth_summary(n, result):
+    """Per readout (exit lines = 'mouth', face sheet cells = 'mouth_sheet'): did it say a letter after the
+    cue (some letter's fingerprint >= 30% shown), was the first such letter the word's next letter, or an echo."""
     ws = words(n)
     pre = ladder.prefixes(ws)
     nxt = {pre[w]: w[len(pre[w])] for w in ws if pre[w]}
     rows = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('MOUTH ')]
     if not rows:
-        return None
-    first = [next((c for c, o in zip(r['top'], r['overlap']) if o >= 0.3), None) for r in rows]
-    said = sum(1 for f in first if f)
-    right = sum(1 for r, f in zip(rows, first) if f and f == nxt.get(r['cue']))
-    echo = sum(1 for r, f in zip(rows, first) if f and f == r['cue'][-1])
-    return dict(cues=len(rows), spoke=round(said / len(rows), 3), next_letter=round(right / len(rows), 3),
-                echo=round(echo / len(rows), 3),
-                mouth_lines_on=round(sum(sum(r['active']) / len(r['active']) for r in rows) / len(rows), 1),
-                best_overlap=round(sum(max(r['overlap']) for r in rows) / len(rows), 3),
-                sample={r['cue']: r['top'] for r in rows[:5]})
+        return {}
+    out = {}
+    for key, top, ov, act in (('mouth', 'top', 'overlap', 'active'), ('mouth_sheet', 'top2', 'overlap2', 'active2')):
+        if top not in rows[0]:
+            continue
+        first = [next((c for c, o in zip(r[top], r[ov]) if o >= 0.3), None) for r in rows]
+        out[key] = dict(cues=len(rows), spoke=round(sum(1 for f in first if f) / len(rows), 3),
+                        next_letter=round(sum(1 for r, f in zip(rows, first) if f and f == nxt.get(r['cue'])) / len(rows), 3),
+                        echo=round(sum(1 for r, f in zip(rows, first) if f and f == r['cue'][-1]) / len(rows), 3),
+                        lines_on=round(sum(sum(r[act]) / len(r[act]) for r in rows) / len(rows), 1),
+                        best_overlap=round(sum(max(r[ov]) for r in rows) / len(rows), 3),
+                        sample={r['cue']: r[top] for r in rows[:5]})
+    return out
 
 
 def summary(n, result, monitor):
@@ -168,9 +173,7 @@ def summary(n, result, monitor):
                                                                               for fd in d['report']['fields']] for d in drives}
     if report:  # the lesson's state report: per field link fill and hubs (how much one source dominates)
         out['links'] = [dict(fill=round(f['fill'], 3), hubs=round(f['hubs'], 3), active3d=round(f['active3d'][0], 4)) for f in report['fields']]
-    m_ = mouth_summary(n, result)
-    if m_:
-        out['mouth'] = m_
+    out.update(mouth_summary(n, result))
     return out
 
 

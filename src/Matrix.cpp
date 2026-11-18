@@ -661,6 +661,25 @@ void NeuralCellularMatrix::clampMotor(const std::vector<uint32_t>& active_lines)
 
 void NeuralCellularMatrix::releaseMotor() { motorOn_ = false; }
 
+void NeuralCellularMatrix::clampMotorSheets(const std::vector<uint32_t>& active_lines) {
+    motorSheetDrive_.assign(motorQ_.size(), uint8_t(0));
+    for (uint32_t s : active_lines)
+        if (s < motorSheetDrive_.size()) motorSheetDrive_[s] = 1;
+    motorSheetOn_ = true;
+}
+
+std::vector<uint32_t> NeuralCellularMatrix::readMotorSheets() const {
+    std::vector<uint32_t> active;
+    const float level = cfg_.level2.active_level;
+    for (size_t s = 0; s < motorQ_.size(); ++s) {
+        const float* cell = s2_.cur.data() + size_t(motorQ_[s]) * C2;
+        float best = 0.0f;
+        for (uint32_t c = 0; c < C2; ++c) best = std::max(best, cell[c]);
+        if (best >= level) active.push_back(uint32_t(s));
+    }
+    return active;
+}
+
 std::vector<uint32_t> NeuralCellularMatrix::readMotorExit() const {
     std::vector<uint32_t> active;
     const float level = cfg_.level1.active_level;
@@ -902,6 +921,14 @@ void NeuralCellularMatrix::step2D() {
     for (int64_t vi = 0; vi < voxels; ++vi) {
         const size_t v = size_t(vi);
         sheetQuietNext_[v] = sheetSkip_[v] ? 1 : (isSilent(out + v * SS * C2, SS * C2) ? 1 : 0);
+    }
+    if (motorSheetOn_) { // imitation: the mouth's sheet cells show the letter being heard
+        for (size_t s = 0; s < motorQ_.size(); ++s) {
+            float* cell = out + size_t(motorQ_[s]) * C2;
+            const float v = motorSheetDrive_[s] ? 1.0f : 0.0f;
+            for (uint32_t c = 0; c < C2; ++c) cell[c] = v;
+            if (v > 0.0f) sheetQuietNext_[motorQ_[s] / SS] = 0;
+        }
     }
     s2_.swap();
     sheetQuietCur_.swap(sheetQuietNext_);
