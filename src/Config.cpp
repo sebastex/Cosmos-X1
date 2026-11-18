@@ -553,7 +553,11 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         //   30 words 73/50 -> 90/82 and 89/75 -> 100/93; 100 words 64/55 -> 82/52 and 68/41 -> 74/48.
         {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
-                   "settle_hold=1", "settle_cap=1", "settle_fit=1"}},
+                   "settle_hold=1", "settle_cap=1", "settle_fit=1", "lattice_cell=16"}},
+        // 2026-11-18: + one 4D bridge zone per area (lattice_cell=16): every block reaches the whole next
+        //   area. Two brains, whole/beginning % vs before: 30 words 94/89 vs 92/96, 96/100 vs 94/93;
+        //   100 words 89/72 vs 87/67, 83/57 vs 83/57; 200 words 77/55 vs 79/55, 74/44 vs 74/46.
+        //   Deep-field recall far higher (100 words Reasoning 34 -> 67%, Output 24 -> 74%), ~1/4 the deep links.
         // Tried as Prime 2026-11-16 and reverted: familiarity (Beta) + one 4D zone per area (lattice_cell=16).
         //   Each alone ties Prime, but together they learn far too little (link fill 4-10x lower) and recall
         //   drops: 100 words 87/67 -> 71/57 and 83/57 -> 68/48 (two brains).
@@ -561,7 +565,7 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
                    "settle_hold=1", "settle_cap=1", "settle_fit=1", "predict_surprise=1", "predict_shape=1",
                    "familiar_rate_only=1", "familiarity=1", "lattice_cell=16"}},
-        // Same as prime (yardstick name used in the 2026-11-16 check).
+        // Prime before the big 4D bridge zones (yardstick).
         {"prime2", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
                    "settle_hold=1", "settle_cap=1", "settle_fit=1"}},
