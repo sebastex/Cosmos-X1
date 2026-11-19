@@ -82,6 +82,8 @@ public:
             }
             // Imitation. speak_learn 1: the mouth shows the letter being heard. speak_learn 2: the letter about
             // to come (set by the lesson with mouthTeacher), so it learns to say what comes next.
+            if (cfg_.inner_sense > 0.0f && innerFeed_) m_->clampInnerSheets(selfFingerprint()); // it feels its state
+            else m_->releaseInnerSheets();
             if (cfg_.speak_learn > 1.5f && allowLearning && mouthNext_) m_->clampMotorSheets(*mouthNext_);
             else if (cfg_.speak_learn > 0.5f && cfg_.speak_learn <= 1.5f && allowLearning) m_->clampMotorSheets(actual ? *actual : *fingerprint);
             else m_->releaseMotorSheets();
@@ -94,6 +96,7 @@ public:
         } else {
             m_->clearSensoryInput();
             m_->releaseMotorSheets();
+            m_->releaseInnerSheets();
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
 
@@ -137,7 +140,7 @@ public:
                 ++act_.steps[b];
                 if (all) ++act_.allSteps[b];
             }
-            const bool selfWatch = cfg_.self_sense > 0.0f || cfg_.valence > 0.0f;
+            const bool selfWatch = cfg_.self_sense > 0.0f || cfg_.valence > 0.0f || cfg_.inner_sense > 0.0f;
             if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f || selfWatch) m_->predictSurprise();
             if (selfWatch && fingerprint) { // how well it predicted now vs. its running average: good / bad
                 const float hit = 1.0f - m_->lastSurprise();
@@ -178,10 +181,14 @@ public:
         const float sur = m_->lastSurprise();
         const int sBin = std::clamp(int(sur * 4.0f), 0, 3);
         const int mBin = mood_ > 0.05f ? 2 : (mood_ < -0.05f ? 0 : 1);
-        const int id = sBin * 3 + mBin;
+        return stateFingerprint(sBin * 3 + mBin);
+    }
+    // Inner state id = surprise level (0..3, low to high) x 3 + mood (0 bad, 1 even, 2 good).
+    const std::vector<uint32_t>& stateFingerprint(int id) {
         if (selfFp_[id].empty()) {
             const size_t lines = cfg_.surfaceLines();
-            const size_t k = std::max<size_t>(1, size_t(cfg_.self_sense * float(codebook_.linesPerCharacter())));
+            const float k0 = cfg_.inner_sense > 0.0f ? cfg_.inner_sense : cfg_.self_sense;
+            const size_t k = std::max<size_t>(1, size_t(k0 * float(codebook_.linesPerCharacter())));
             std::mt19937_64 rng(cfg_.itemSeed() ^ (0x5E1FULL * uint64_t(id + 1)));
             std::vector<uint32_t> pick;
             while (pick.size() < k) {
@@ -194,6 +201,7 @@ public:
         return selfFp_[id];
     }
     // speak_learn 2: the letter the mouth should say next (0 = none).
+    void innerFeed(bool on) { innerFeed_ = on; } // feel test: switch the inner sense off to read the brain's guess
     void mouthTeacher(char c) { mouthNext_ = c ? &codebook_.fingerprint(char32_t(uint8_t(c))) : nullptr; }
     std::vector<double> present(const std::string& text, uint64_t ticks, float fraction, bool allowLearning,
                                 uint64_t recordFrom) {
@@ -326,6 +334,7 @@ private:
     std::unique_ptr<Monitor> monitor_; // activity monitor (NCM_MONITOR), passive
     Monitor::Event monitorEvent_;
     char heard_ = 0; // the character being heard (for the monitor)
+    bool innerFeed_ = true;
     float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
     std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
     const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next

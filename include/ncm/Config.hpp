@@ -529,6 +529,14 @@ struct Config {
     float workspace_norm = 0.0f;
     float self_sense_end = 0.0f;
     float speak_practice = 0.0f;
+    // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
+    // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
+    // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),
+    // like the mouth's face, with inner_sense x a letter's lines. The usual learning then ties
+    // "what came before" to "how I will feel", so the brain can come to predict its own state.
+    // The feel test switches the inner sense off and reads that face: does the brain show how sure it is?
+    float inner_sense = 0.0f;
+    float inner_field = 2.0f;
     float self_voice = 0.0f;
     float workspace = 0.0f;
     float workspace_top = 0.02f;

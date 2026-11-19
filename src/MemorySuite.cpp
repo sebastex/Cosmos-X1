@@ -2196,6 +2196,37 @@ int runScriptTest(const Config& cfg) {
             tick += 2 * maxN;
             std::printf("TALK {\"cue\": \"%s\", \"said\": \"%s\"}\n", cueText.c_str(), said.c_str());
             tick += cueText.size();
+        } else if (op == "feel") {
+            // feel:CUE - self-model test. The inner sense is switched off; while Cosmos hears CUE, after each
+            // letter read the inner face: which inner states does it show (overlap per state), against how
+            // surprised it really was. felt = the overlap-weighted surprise level (0 sure .. 1 lost), -1 = none.
+            const std::string cueText = f.size() > 1 ? f[1] : "";
+            s.innerFeed(false);
+            std::string actual, felt, on;
+            for (char ch : cueText) {
+                s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+                std::vector<uint32_t> act = s.matrix().readInnerSheets();
+                std::sort(act.begin(), act.end());
+                double w = 0.0, ws = 0.0;
+                for (int id = 0; id < 12; ++id) {
+                    const auto& fp = s.stateFingerprint(id);
+                    size_t hit = 0;
+                    for (uint32_t q : fp) hit += std::binary_search(act.begin(), act.end(), q) ? 1 : 0;
+                    const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                    w += ov, ws += ov * ((id / 3) + 0.5) / 4.0;
+                }
+                char buf[64];
+                std::snprintf(buf, sizeof buf, "%s%.4f", actual.empty() ? "" : ", ", double(s.matrix().lastSurprise()));
+                actual += buf;
+                std::snprintf(buf, sizeof buf, "%s%.4f", felt.empty() ? "" : ", ", w > 0.0 ? ws / w : -1.0);
+                felt += buf;
+                std::snprintf(buf, sizeof buf, "%s%zu", on.empty() ? "" : ", ", act.size());
+                on += buf;
+            }
+            s.innerFeed(true);
+            std::printf("FEEL {\"cue\": \"%s\", \"actual\": [%s], \"felt\": [%s], \"on\": [%s]}\n", cueText.c_str(),
+                        actual.c_str(), felt.c_str(), on.c_str());
+            tick += cueText.size();
         } else if (op == "mouth") {
             // mouth:CUE:TICKS - speaking step 1 (listen to the mouth): hear CUE (nothing learnt), then for
             // TICKS silent ticks read the motor face (x = N-1 of the Output field) and, per tick, how much

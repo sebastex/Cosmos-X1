@@ -132,6 +132,11 @@ public:
     void clampMotorSheets(const std::vector<uint32_t>& active_lines);
     void releaseMotorSheets() { motorSheetOn_ = false; }
     std::vector<uint32_t> readMotorSheets() const;
+    // inner_sense: the inner face's sheet cells (x = 0 of field inner_field) show the brain's own state;
+    // readInnerSheets: those that fire (read with the inner sense off, it is the brain's own guess).
+    void clampInnerSheets(const std::vector<uint32_t>& active_lines);
+    void releaseInnerSheets() { innerSheetOn_ = false; }
+    std::vector<uint32_t> readInnerSheets() const;
 
     // Silences every cell (states only; learned connections and thresholds are kept).
     // A diagnostic, used to test whether lingering activity causes memories to merge.
@@ -472,6 +477,9 @@ private:
     bool motorOn_ = false;
     bool motorSheetOn_ = false;
     std::vector<uint8_t> motorSheetDrive_;
+    std::vector<uint32_t> innerQ_;
+    bool innerSheetOn_ = false;
+    std::vector<uint8_t> innerSheetDrive_;
 };
 
 } // namespace ncm

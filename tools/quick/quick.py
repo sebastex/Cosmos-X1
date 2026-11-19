@@ -60,13 +60,28 @@ def mouth(n):
     script = ['still:1']
     for w in ws:
         if pre[w]:
-            script += ['rest:150', f'mouth:{pre[w]}:30', 'rest:150', f'talk:{pre[w]}:{len(w) - len(pre[w]) + 1}']
+            script += ['rest:150', f'feel:{pre[w]}', 'rest:150', f'mouth:{pre[w]}:30', 'rest:150',
+                       f'talk:{pre[w]}:{len(w) - len(pre[w]) + 1}']
+    for c in novel(ws, pre):  # self-model: unknown letter strings, to see if it feels the difference
+        script += ['rest:150', f'feel:{c}']
     return ';'.join(script)
+
+
+def novel(ws, pre, k=15):
+    """Unknown cues: learnt words' beginnings, spelt backwards (same letters, never heard in that order)."""
+    known = set(pre.values()) | set(ws)
+    out = []
+    for w in ws:
+        c = pre[w][::-1] if pre[w] else ''
+        if len(c) > 1 and c not in known and c not in out:
+            out.append(c)
+    return out[:k]
 
 
 def mouth_summary(n, result):
     """Per readout (exit lines = 'mouth', face sheet cells = 'mouth_sheet'): did it say a letter after the
     cue (some letter's fingerprint >= 30% shown), was the first such letter the word's next letter, or an echo."""
+    import numpy as np
     ws = words(n)
     pre = ladder.prefixes(ws)
     nxt = {pre[w]: w[len(pre[w])] for w in ws if pre[w]}
@@ -87,6 +102,29 @@ def mouth_summary(n, result):
                         lines_on=round(sum(sum(r[act]) / len(r[act]) for r in rows) / len(rows), 1),
                         best_overlap=round(sum(max(r[ov]) for r in rows) / len(rows), 3),
                         sample={r['cue']: r[top] for r in rows[:5]})
+    feels = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('FEEL ')]
+    if feels:  # self-model: does what it shows on the inner face follow how surprised it really was?
+        known = set(pre.values())
+        a = [x for r in feels for x, y in zip(r['actual'], r['felt']) if y >= 0]
+        b = [y for r in feels for y in r['felt'] if y >= 0]
+        corr = float(np.corrcoef(a, b)[0, 1]) if len(a) > 2 and np.std(a) > 0 and np.std(b) > 0 else 0.0
+        last = lambda r, k: r[k][-1] if r[k] else -1
+        kn = [r for r in feels if r['cue'] in known]
+        nv = [r for r in feels if r['cue'] not in known]
+        def auc(pos, neg):  # chance the brain feels a new cue as more surprising than a known one
+            pos, neg = [x for x in pos if x >= 0], [x for x in neg if x >= 0]
+            if not pos or not neg:
+                return None
+            return round(sum((p > n) + 0.5 * (p == n) for p in pos for n in neg) / (len(pos) * len(neg)), 3)
+        mean = lambda v: round(float(np.mean(v)), 3) if v else None
+        out['self_model'] = dict(cues=len(feels), shown=round(len(b) / max(1, sum(len(r['felt']) for r in feels)), 3),
+                                 felt_vs_real=round(corr, 3),
+                                 real_known=mean([last(r, 'actual') for r in kn]), real_new=mean([last(r, 'actual') for r in nv]),
+                                 felt_known=mean([last(r, 'felt') for r in kn if last(r, 'felt') >= 0]),
+                                 felt_new=mean([last(r, 'felt') for r in nv if last(r, 'felt') >= 0]),
+                                 knows_new_felt=auc([last(r, 'felt') for r in nv], [last(r, 'felt') for r in kn]),
+                                 knows_new_real=auc([last(r, 'actual') for r in nv], [last(r, 'actual') for r in kn]),
+                                 lines_on=mean([x for r in feels for x in r['on']]))
     talks = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('TALK ')]
     if talks:  # speaking step 3: does it spell the rest of the word on its own?
         full = {pre[w]: w for w in ws if pre[w]}
@@ -101,6 +139,13 @@ def mouth_summary(n, result):
             first += int(bool(t['said']) and t['said'][0] == rest[0])
         out['talk'] = dict(cues=len(talks), first_right=round(first / len(talks), 3), spelled=round(sum(lead) / len(lead), 3),
                            whole_words=round(exact / len(talks), 3), sample={t['cue']: t['said'] for t in talks[:8]})
+        if feels:  # knowing what it knows: does it feel surer before the words it then says right?
+            fl = {r['cue']: r['felt'][-1] for r in feels if r['felt'] and r['felt'][-1] >= 0}
+            ok = lambda t: bool(t['said']) and t['said'][0] == full[t['cue']][len(t['cue'])]
+            right = [fl[t['cue']] for t in talks if t['cue'] in fl and ok(t)]
+            wrong = [fl[t['cue']] for t in talks if t['cue'] in fl and not ok(t)]
+            out['self_model']['felt_when_right'] = round(float(np.mean(right)), 3) if right else None
+            out['self_model']['felt_when_wrong'] = round(float(np.mean(wrong)), 3) if wrong else None
     return out
 
 

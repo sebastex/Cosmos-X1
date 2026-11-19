@@ -628,6 +628,7 @@ void NeuralCellularMatrix::initSurfaces() {
     const size_t lines = cfg_.surfaceLines();
     sensoryQ_.resize(lines);
     motorQ_.resize(lines);
+    innerQ_.resize(lines);
     sensoryDrive_.assign(lines, 0);
     motorDrive_.assign(lines, 0);
 
@@ -640,6 +641,8 @@ void NeuralCellularMatrix::initSurfaces() {
                 const size_t vout = voxelIndex(uint32_t(Field::Output), N_ - 1, y, z);
                 sensoryQ_[s] = uint32_t(vin * SS_ + cell);
                 motorQ_[s] = uint32_t(vout * SS_ + cell);
+                const uint32_t fi = uint32_t(std::clamp(cfg_.inner_field, 0.0f, float(kFields - 1)) + 0.5f);
+                innerQ_[s] = uint32_t(voxelIndex(fi, 0, y, z) * SS_ + cell);
             }
 }
 
@@ -673,6 +676,25 @@ std::vector<uint32_t> NeuralCellularMatrix::readMotorSheets() const {
     const float level = cfg_.level2.active_level;
     for (size_t s = 0; s < motorQ_.size(); ++s) {
         const float* cell = s2_.cur.data() + size_t(motorQ_[s]) * C2;
+        float best = 0.0f;
+        for (uint32_t c = 0; c < C2; ++c) best = std::max(best, cell[c]);
+        if (best >= level) active.push_back(uint32_t(s));
+    }
+    return active;
+}
+
+void NeuralCellularMatrix::clampInnerSheets(const std::vector<uint32_t>& active_lines) {
+    innerSheetDrive_.assign(innerQ_.size(), uint8_t(0));
+    for (uint32_t s : active_lines)
+        if (s < innerSheetDrive_.size()) innerSheetDrive_[s] = 1;
+    innerSheetOn_ = true;
+}
+
+std::vector<uint32_t> NeuralCellularMatrix::readInnerSheets() const {
+    std::vector<uint32_t> active;
+    const float level = cfg_.level2.active_level;
+    for (size_t s = 0; s < innerQ_.size(); ++s) {
+        const float* cell = s2_.cur.data() + size_t(innerQ_[s]) * C2;
         float best = 0.0f;
         for (uint32_t c = 0; c < C2; ++c) best = std::max(best, cell[c]);
         if (best >= level) active.push_back(uint32_t(s));
@@ -928,6 +950,14 @@ void NeuralCellularMatrix::step2D() {
             const float v = motorSheetDrive_[s] ? 1.0f : 0.0f;
             for (uint32_t c = 0; c < C2; ++c) cell[c] = v;
             if (v > 0.0f) sheetQuietNext_[motorQ_[s] / SS] = 0;
+        }
+    }
+    if (innerSheetOn_) { // inner sense: the inner face's sheet cells show the brain's own state
+        for (size_t s = 0; s < innerQ_.size(); ++s) {
+            float* cell = out + size_t(innerQ_[s]) * C2;
+            const float v = innerSheetDrive_[s] ? 1.0f : 0.0f;
+            for (uint32_t c = 0; c < C2; ++c) cell[c] = v;
+            if (v > 0.0f) sheetQuietNext_[innerQ_[s] / SS] = 0;
         }
     }
     s2_.swap();
@@ -1488,7 +1518,8 @@ void NeuralCellularMatrix::step3D() {
         // settling: what this cell fired during the word. The mouth (the Output field's far face) stays
         // out of the word's binding while it is taught (speak_learn), so it is not tied to every letter.
         const bool mouthVoxel = cfg_.speak_learn > 0.5f && v / Vf_ == size_t(Field::Output) && v % N_ == N_ - 1;
-        if (!wordTrace_.empty() && sensoryOn_ && !mouthVoxel) {
+        const bool innerVoxel = cfg_.inner_sense > 0.0f && v / Vf_ == size_t(std::clamp(cfg_.inner_field, 0.0f, 3.0f) + 0.5f) && v % N_ == 0;
+        if (!wordTrace_.empty() && sensoryOn_ && !mouthVoxel && !innerVoxel) {
             float* wt = wordTrace_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) wt[c] = std::max(wt[c], cell[c]);
