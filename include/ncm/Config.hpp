@@ -547,6 +547,9 @@ struct Config {
     // inner_face 1: the inner face is the field's far face (x = N-1) instead of x = 0, so the Input field
     //   (busy, the senses) can carry it beside the ear, like the insula carries the body's feelings.
     // inner_states 2: just two felt states, surer than usual or less sure (12 was too fine to learn).
+    // v4: inner_tau k > 1: the felt surprise is smoothed over about k letters (a word's familiarity,
+    //   "this feels known"), not each letter's jumpy surprise.
+    float inner_tau = 1.0f;
     float inner_face = 0.0f;
     float inner_states = 12.0f;
     float inner_lines = 0.0f;

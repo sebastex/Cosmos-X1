@@ -155,6 +155,7 @@ public:
                 const float d = m_->lastSurprise() - surAvg_; // its usual surprise and spread
                 surAvg_ += d / 50.0f;
                 surVar_ += (d * d - surVar_) / 50.0f;
+                surFelt_ += (m_->lastSurprise() - surFelt_) / std::max(1.0f, cfg_.inner_tau); // inner_tau: smoothed
             }
             float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             // familiar_floor: a known word still learns at least this much (gentler familiarity).
@@ -187,7 +188,7 @@ public:
     // from tick `recordFrom` on (empty if recordFrom >= ticks).
     // self_sense: the inner fingerprint of the brain's present state (surprise level x mood).
     const std::vector<uint32_t>& selfFingerprint() {
-        const float sur = m_->lastSurprise();
+        const float sur = cfg_.inner_tau > 1.0f ? surFelt_ : m_->lastSurprise();
         int sBin = std::clamp(int(sur * 4.0f), 0, 3);
         if (cfg_.inner_relative > 0.5f) { // against its own usual surprise
             const float z = (sur - surAvg_) / std::sqrt(surVar_ + 1e-6f);
@@ -349,7 +350,7 @@ private:
     Monitor::Event monitorEvent_;
     char heard_ = 0; // the character being heard (for the monitor)
     bool innerFeed_ = true;
-    float surAvg_ = 0.9f, surVar_ = 0.001f;           // inner_relative: usual surprise and its spread
+    float surAvg_ = 0.9f, surVar_ = 0.001f, surFelt_ = 0.9f;           // inner_relative: usual surprise and its spread
     float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
     std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
     const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next

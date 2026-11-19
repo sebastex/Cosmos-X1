@@ -60,10 +60,10 @@ def mouth(n):
     script = ['still:1']
     for w in ws:
         if pre[w]:
-            script += ['rest:150', f'feel:{pre[w]}', 'rest:150', f'mouth:{pre[w]}:30', 'rest:150',
+            script += ['rest:150', f'feel:{pre[w]}:30', 'rest:150', f'mouth:{pre[w]}:30', 'rest:150',
                        f'talk:{pre[w]}:{len(w) - len(pre[w]) + 1}']
     for c in novel(ws, pre):  # self-model: unknown letter strings, to see if it feels the difference
-        script += ['rest:150', f'feel:{c}']
+        script += ['rest:150', f'feel:{c}:30']
     return ';'.join(script)
 
 
@@ -125,6 +125,13 @@ def mouth_summary(n, result):
                                  knows_new_felt=auc([last(r, 'felt') for r in nv], [last(r, 'felt') for r in kn]),
                                  knows_new_real=auc([last(r, 'actual') for r in nv], [last(r, 'actual') for r in kn]),
                                  lines_on=mean([x for r in feels for x in r['on']]))
+        if 'after' in feels[0]:  # in the quiet after the cue (where the mouth is read too)
+            ak = [r['after'] for r in kn if r['after'] >= 0]
+            an = [r['after'] for r in nv if r['after'] >= 0]
+            out['self_model'].update(after_shown=round((len(ak) + len(an)) / len(feels), 3), after_known=mean(ak), after_new=mean(an),
+                                     knows_new_after=auc(an, ak), after_on_known=mean([r['after_on'] for r in kn]),
+                                     after_on_new=mean([r['after_on'] for r in nv]),
+                                     knows_new_amount=auc([-r['after_on'] for r in nv], [-r['after_on'] for r in kn]))
     talks = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('TALK ')]
     if talks:  # speaking step 3: does it spell the rest of the word on its own?
         full = {pre[w]: w for w in ws if pre[w]}
@@ -140,7 +147,8 @@ def mouth_summary(n, result):
         out['talk'] = dict(cues=len(talks), first_right=round(first / len(talks), 3), spelled=round(sum(lead) / len(lead), 3),
                            whole_words=round(exact / len(talks), 3), sample={t['cue']: t['said'] for t in talks[:8]})
         if feels:  # knowing what it knows: does it feel surer before the words it then says right?
-            fl = {r['cue']: r['felt'][-1] for r in feels if r['felt'] and r['felt'][-1] >= 0}
+            fl = {r['cue']: r.get('after', r['felt'][-1] if r['felt'] else -1) for r in feels}
+            fl = {k: v for k, v in fl.items() if v >= 0}
             ok = lambda t: bool(t['said']) and t['said'][0] == full[t['cue']][len(t['cue'])]
             right = [fl[t['cue']] for t in talks if t['cue'] in fl and ok(t)]
             wrong = [fl[t['cue']] for t in talks if t['cue'] in fl and not ok(t)]
