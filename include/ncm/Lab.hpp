@@ -71,7 +71,10 @@ public:
             surpriseSum_ += 1.0 - guess;
             ++surpriseCount_;
             m_->setSensoryInput(*fingerprint);
-            if (cfg_.speak_learn > 0.5f && allowLearning) m_->clampMotorSheets(actual ? *actual : *fingerprint);
+            // Imitation. speak_learn 1: the mouth shows the letter being heard. speak_learn 2: the letter about
+            // to come (set by the lesson with mouthTeacher), so it learns to say what comes next.
+            if (cfg_.speak_learn > 1.5f && allowLearning && mouthNext_) m_->clampMotorSheets(*mouthNext_);
+            else if (cfg_.speak_learn > 0.5f && cfg_.speak_learn <= 1.5f && allowLearning) m_->clampMotorSheets(actual ? *actual : *fingerprint);
             else m_->releaseMotorSheets();
             // While storing, surprise sets encoding mode. During recall the cue is familiar
             // material being retrieved, so the matrix runs in recall mode (M = 0). Until the
@@ -154,6 +157,8 @@ public:
     // Presents `text` (cycling through its characters, one per tick) for `ticks` ticks, with
     // each fingerprint thinned to `fraction` (1 = full input). Returns the summed 3D state
     // from tick `recordFrom` on (empty if recordFrom >= ticks).
+    // speak_learn 2: the letter the mouth should say next (0 = none).
+    void mouthTeacher(char c) { mouthNext_ = c ? &codebook_.fingerprint(char32_t(uint8_t(c))) : nullptr; }
     std::vector<double> present(const std::string& text, uint64_t ticks, float fraction, bool allowLearning,
                                 uint64_t recordFrom) {
         std::vector<double> acc;
@@ -285,6 +290,7 @@ private:
     std::unique_ptr<Monitor> monitor_; // activity monitor (NCM_MONITOR), passive
     Monitor::Event monitorEvent_;
     char heard_ = 0; // the character being heard (for the monitor)
+    const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next
     LevelScheduler clock_;
     double surpriseSum_ = 0.0;
     uint64_t surpriseCount_ = 0;

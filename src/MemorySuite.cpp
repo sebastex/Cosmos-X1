@@ -2070,7 +2070,11 @@ int runScriptTest(const Config& cfg) {
             text += " ";
             const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
             for (uint64_t k = 0; k < n; ++k) {
-                for (char ch : text) s.present(std::string(1, ch), 1, 1.0f, learn, UINT64_MAX);
+                for (size_t q = 0; q < text.size(); ++q) { // speak_learn 2: the mouth is shown the letter about to come
+                    s.mouthTeacher(q + 1 < text.size() ? text[q + 1] : 0);
+                    s.present(std::string(1, text[q]), 1, 1.0f, learn, UINT64_MAX);
+                }
+                s.mouthTeacher(0);
                 s.silence(rest, learn);
                 tick += text.size() + rest;
             }
@@ -2078,7 +2082,11 @@ int runScriptTest(const Config& cfg) {
             const std::string text = (f.size() > 1 ? f[1] : "") + " ";
             const uint64_t hold = std::max<uint64_t>(1, num(f, 2, 3)), n = num(f, 3, 1), rest = num(f, 4, 30);
             for (uint64_t k = 0; k < n; ++k) {
-                for (char ch : text) s.present(std::string(1, ch), hold, 1.0f, learn, UINT64_MAX);
+                for (size_t q = 0; q < text.size(); ++q) {
+                    s.mouthTeacher(q + 1 < text.size() ? text[q + 1] : 0);
+                    s.present(std::string(1, text[q]), hold, 1.0f, learn, UINT64_MAX);
+                }
+                s.mouthTeacher(0);
                 s.silence(rest, learn);
                 tick += text.size() * hold + rest;
             }

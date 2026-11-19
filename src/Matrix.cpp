@@ -1485,7 +1485,10 @@ void NeuralCellularMatrix::step3D() {
             e = std::clamp(e, 0.0f, 1.0f);
         }
         average3_[v] += (final - average3_[v]) / avgTau;
-        if (!wordTrace_.empty() && sensoryOn_) { // settling: what this cell fired during the word
+        // settling: what this cell fired during the word. The mouth (the Output field's far face) stays
+        // out of the word's binding while it is taught (speak_learn), so it is not tied to every letter.
+        const bool mouthVoxel = cfg_.speak_learn > 0.5f && v / Vf_ == size_t(Field::Output) && v % N_ == N_ - 1;
+        if (!wordTrace_.empty() && sensoryOn_ && !mouthVoxel) {
             float* wt = wordTrace_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) wt[c] = std::max(wt[c], cell[c]);

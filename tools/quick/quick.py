@@ -74,13 +74,16 @@ def mouth_summary(n, result):
     if not rows:
         return {}
     out = {}
-    for key, top, ov, act in (('mouth', 'top', 'overlap', 'active'), ('mouth_sheet', 'top2', 'overlap2', 'active2')):
+    for key, top, ov, act, lim in (('mouth', 'top', 'overlap', 'active', 0.3), ('mouth_sheet', 'top2', 'overlap2', 'active2', 0.0)):
         if top not in rows[0]:
             continue
-        first = [next((c for c, o in zip(r[top], r[ov]) if o >= 0.3), None) for r in rows]
+        # exit lines: a letter counts once 30% of its lines show; face sheets: the best-matching letter, however faint
+        first = [next((c for c, o in zip(r[top], r[ov]) if o > lim and c != '-'), None) for r in rows]
         out[key] = dict(cues=len(rows), spoke=round(sum(1 for f in first if f) / len(rows), 3),
                         next_letter=round(sum(1 for r, f in zip(rows, first) if f and f == nxt.get(r['cue'])) / len(rows), 3),
                         echo=round(sum(1 for r, f in zip(rows, first) if f and f == r['cue'][-1]) / len(rows), 3),
+                        from_cue=round(sum(1 for r, f in zip(rows, first) if f and f in r['cue']) / len(rows), 3),
+                        next_any=round(sum(1 for r in rows if nxt.get(r['cue']) in r[top]) / len(rows), 3),
                         lines_on=round(sum(sum(r[act]) / len(r[act]) for r in rows) / len(rows), 1),
                         best_overlap=round(sum(max(r[ov]) for r in rows) / len(rows), 3),
                         sample={r['cue']: r[top] for r in rows[:5]})
