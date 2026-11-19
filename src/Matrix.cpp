@@ -1524,6 +1524,23 @@ void NeuralCellularMatrix::step3D() {
         if (cfg_.settle_cap > 0.0f) settleCap(out, size_t(vBegin), size_t(vEnd));
     } // fields (front-to-back sweep)
 
+    if (cfg_.workspace > 0.0f) { // shared stage: the brain-wide strongest voxels win, the rest are dimmed
+        std::vector<std::pair<float, size_t>> on;
+        on.reserve(4096);
+        for (size_t v = 0; v < V_; ++v) {
+            float a = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) a += out[v * C3 + c];
+            if (a > 0.0f) on.emplace_back(a, v);
+        }
+        const size_t win = std::max<size_t>(1, size_t(double(cfg_.workspace_top) * double(V_)));
+        if (on.size() > win) {
+            std::nth_element(on.begin(), on.begin() + win, on.end(), [](const auto& x, const auto& y) { return x.first > y.first; });
+            const float keep = 1.0f - std::clamp(cfg_.workspace, 0.0f, 1.0f);
+            for (size_t k = win; k < on.size(); ++k)
+                for (uint32_t c = 0; c < C3; ++c) out[on[k].second * C3 + c] *= keep;
+        }
+    }
+
     // Gain control: each field nudges the gain on its incoming signals toward the target
     // share of clearly firing voxels (strongest channel at or above the active level;
     // faint traces do not count). Multiplicative and bounded. With no input the field stays

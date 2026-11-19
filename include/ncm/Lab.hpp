@@ -14,6 +14,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <random>
+#include <array>
 
 #include "ncm/CharacterCodebook.hpp"
 #include "ncm/Matrix.hpp"
@@ -70,7 +72,14 @@ public:
                                                                        : actual ? m_->motorOverlap(*actual) : 0.0;
             surpriseSum_ += 1.0 - guess;
             ++surpriseCount_;
-            m_->setSensoryInput(*fingerprint);
+            if (cfg_.self_sense > 0.0f) { // the brain feels its own state as an extra inner fingerprint
+                std::vector<uint32_t> merged = *fingerprint;
+                const auto& inner = selfFingerprint();
+                merged.insert(merged.end(), inner.begin(), inner.end());
+                m_->setSensoryInput(merged);
+            } else {
+                m_->setSensoryInput(*fingerprint);
+            }
             // Imitation. speak_learn 1: the mouth shows the letter being heard. speak_learn 2: the letter about
             // to come (set by the lesson with mouthTeacher), so it learns to say what comes next.
             if (cfg_.speak_learn > 1.5f && allowLearning && mouthNext_) m_->clampMotorSheets(*mouthNext_);
@@ -128,12 +137,19 @@ public:
                 ++act_.steps[b];
                 if (all) ++act_.allSteps[b];
             }
-            if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f) m_->predictSurprise();
+            const bool selfWatch = cfg_.self_sense > 0.0f || cfg_.valence > 0.0f;
+            if (cfg_.predict_surprise > 0.5f || cfg_.predict_watch > 0.5f || selfWatch) m_->predictSurprise();
+            if (selfWatch && fingerprint) { // how well it predicted now vs. its running average: good / bad
+                const float hit = 1.0f - m_->lastSurprise();
+                mood_ = hit - hitAvg_;
+                hitAvg_ += (hit - hitAvg_) / 50.0f;
+            }
             float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             // familiar_floor: a known word still learns at least this much (gentler familiarity).
             if (cfg_.familiar_floor > 0.0f) modulator = cfg_.familiar_floor + (1.0f - cfg_.familiar_floor) * modulator;
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
+            if (cfg_.valence > 0.0f && fingerprint) modulator *= std::clamp(1.0f + cfg_.valence * mood_, 0.0f, 2.0f); // a need
             if (learning_ && allowLearning) {
                 modSum_ += modulator;
                 ++modCount_;
@@ -157,6 +173,26 @@ public:
     // Presents `text` (cycling through its characters, one per tick) for `ticks` ticks, with
     // each fingerprint thinned to `fraction` (1 = full input). Returns the summed 3D state
     // from tick `recordFrom` on (empty if recordFrom >= ticks).
+    // self_sense: the inner fingerprint of the brain's present state (surprise level x mood).
+    const std::vector<uint32_t>& selfFingerprint() {
+        const float sur = m_->lastSurprise();
+        const int sBin = std::clamp(int(sur * 4.0f), 0, 3);
+        const int mBin = mood_ > 0.05f ? 2 : (mood_ < -0.05f ? 0 : 1);
+        const int id = sBin * 3 + mBin;
+        if (selfFp_[id].empty()) {
+            const size_t lines = cfg_.surfaceLines();
+            const size_t k = std::max<size_t>(1, size_t(cfg_.self_sense * float(codebook_.linesPerCharacter())));
+            std::mt19937_64 rng(cfg_.itemSeed() ^ (0x5E1FULL * uint64_t(id + 1)));
+            std::vector<uint32_t> pick;
+            while (pick.size() < k) {
+                const uint32_t q = uint32_t(rng() % lines);
+                if (std::find(pick.begin(), pick.end(), q) == pick.end()) pick.push_back(q);
+            }
+            std::sort(pick.begin(), pick.end());
+            selfFp_[id] = pick;
+        }
+        return selfFp_[id];
+    }
     // speak_learn 2: the letter the mouth should say next (0 = none).
     void mouthTeacher(char c) { mouthNext_ = c ? &codebook_.fingerprint(char32_t(uint8_t(c))) : nullptr; }
     std::vector<double> present(const std::string& text, uint64_t ticks, float fraction, bool allowLearning,
@@ -290,6 +326,8 @@ private:
     std::unique_ptr<Monitor> monitor_; // activity monitor (NCM_MONITOR), passive
     Monitor::Event monitorEvent_;
     char heard_ = 0; // the character being heard (for the monitor)
+    float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
+    std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
     const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next
     LevelScheduler clock_;
     double surpriseSum_ = 0.0;

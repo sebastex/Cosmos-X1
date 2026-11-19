@@ -60,7 +60,7 @@ def mouth(n):
     script = ['still:1']
     for w in ws:
         if pre[w]:
-            script += ['rest:150', f'mouth:{pre[w]}:30']
+            script += ['rest:150', f'mouth:{pre[w]}:30', 'rest:150', f'talk:{pre[w]}:{len(w) - len(pre[w]) + 1}']
     return ';'.join(script)
 
 
@@ -87,6 +87,20 @@ def mouth_summary(n, result):
                         lines_on=round(sum(sum(r[act]) / len(r[act]) for r in rows) / len(rows), 1),
                         best_overlap=round(sum(max(r[ov]) for r in rows) / len(rows), 3),
                         sample={r['cue']: r[top] for r in rows[:5]})
+    talks = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('TALK ')]
+    if talks:  # speaking step 3: does it spell the rest of the word on its own?
+        full = {pre[w]: w for w in ws if pre[w]}
+        lead, exact, first = [], 0, 0
+        for t in talks:
+            rest = full[t['cue']][len(t['cue']):]
+            k = 0
+            while k < min(len(rest), len(t['said'])) and rest[k] == t['said'][k]:
+                k += 1
+            lead.append(k / max(1, len(rest)))
+            exact += int(t['said'] == rest)
+            first += int(bool(t['said']) and t['said'][0] == rest[0])
+        out['talk'] = dict(cues=len(talks), first_right=round(first / len(talks), 3), spelled=round(sum(lead) / len(lead), 3),
+                           whole_words=round(exact / len(talks), 3), sample={t['cue']: t['said'] for t in talks[:8]})
     return out
 
 
@@ -177,6 +191,16 @@ def summary(n, result, monitor):
     if report:  # the lesson's state report: per field link fill and hubs (how much one source dominates)
         out['links'] = [dict(fill=round(f['fill'], 3), hubs=round(f['hubs'], 3), active3d=round(f['active3d'][0], 4)) for f in report['fields']]
     out.update(mouth_summary(n, result))
+    # Integration (rough): do the four fields rise and fall together during the test (coupling), while
+    # words stay distinct (differentiation)? coupling x differentiation; 0 = parts apart or all one blob.
+    test_ticks = [t for t in range(m) if not learn[t]]
+    if test_ticks:
+        per = np.array([np.bincount(x[t].idx // (Vf * C3), weights=x[t].val, minlength=head['fields'])[:head['fields']] for t in test_ticks])
+        if per.std(axis=0).min() > 0:
+            cc = np.corrcoef(per.T)
+            coupling = float(cc[~np.eye(len(cc), dtype=bool)].mean())
+            out['integration'] = dict(coupling=round(coupling, 3), differentiation=round(1 - out['words_alike'], 3),
+                                      score=round(max(0.0, coupling) * (1 - out['words_alike']), 3))
     return out
 
 

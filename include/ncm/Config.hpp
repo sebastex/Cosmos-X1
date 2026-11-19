@@ -506,6 +506,22 @@ struct Config {
     float familiar_rate_only = 0.0f; // with predict_surprise: familiarity sets the learning rate only, not the mode
     // Speaking step 2: speak_learn 1 = imitation; in lessons the mouth (the Output field's far-face
     // sheet cells) is set to the letter being heard, so learning ties what came before to saying it.
+    // Toward sentience (2026-11-19), each a switch, 0 = off:
+    // self_voice k: a letter Cosmos says itself is heard at (1 - k) strength (thinner), like a self-echo
+    //   the brain expects (corollary discharge), so its own voice does not swamp what it heard.
+    // workspace k: a shared stage. After every 3D step the strongest workspace_top share of voxels across
+    //   the WHOLE brain win; every other firing voxel is dimmed by k, so one pattern dominates everywhere
+    //   and is broadcast through the usual links (global ignition). Same rule in every field.
+    // self_sense k: the brain feels its own state. Its surprise (4 levels) and mood (3 levels, from
+    //   valence) form one of 12 inner states, heard as an extra fingerprint of k x a letter's lines on
+    //   the sensory face while it hears, so it can learn what its own states go with.
+    // valence k: a need. Predicting better than usual feels good: learning is scaled by 1 + k x (how much
+    //   better than its running average the brain predicted this moment), worse feels bad (less learning).
+    float self_voice = 0.0f;
+    float workspace = 0.0f;
+    float workspace_top = 0.02f;
+    float self_sense = 0.0f;
+    float valence = 0.0f;
     float speak_ahead = 1.0f; // speak_learn 2: the mouth is shown the letter this many places ahead
     float speak_learn = 0.0f; // 2 = show the mouth the NEXT letter (learn to say what comes next)
     float familiar_floor = 0.0f;     // learning never drops below this share of full strength, however familiar (0 = no floor)

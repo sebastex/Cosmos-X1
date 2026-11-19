@@ -2145,6 +2145,42 @@ int runScriptTest(const Config& cfg) {
                 tick += 1 + hold;
             }
             std::printf("  spoke: \"%s\"\n", said.c_str());
+        } else if (op == "talk") {
+            // talk:CUE:MAX - speaking step 3: hear CUE, then speak: wait (up to 8 silent ticks) for the
+            // mouth's sheet cells to show a letter (the best match, not the one just said), say it, hear
+            // itself say it (at 1 - self_voice strength), and go on, until a space, silence or MAX letters.
+            const std::string cueText = f.size() > 1 ? f[1] : "";
+            const uint64_t maxN = num(f, 2, 8);
+            for (char ch : cueText) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            const std::string letters = " abcdefghijklmnopqrstuvwxyz";
+            const float selfFrac = std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f);
+            std::string said;
+            char last = 0;
+            for (uint64_t k = 0; k < maxN; ++k) {
+                char pick = 0;
+                for (int w = 0; w < 8 && !pick; ++w) {
+                    s.silence(1, false);
+                    ++tick;
+                    std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                    std::sort(on.begin(), on.end());
+                    double best = 0.0;
+                    for (char ch : letters) {
+                        if (ch == last) continue;
+                        const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(ch)));
+                        size_t hit = 0;
+                        for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                        const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                        if (ov > best) best = ov, pick = ch;
+                    }
+                }
+                if (!pick || pick == ' ') break;
+                said += pick;
+                last = pick;
+                s.present(std::string(1, pick), 1, selfFrac, false, UINT64_MAX); // it hears itself
+                ++tick;
+            }
+            std::printf("TALK {\"cue\": \"%s\", \"said\": \"%s\"}\n", cueText.c_str(), said.c_str());
+            tick += cueText.size();
         } else if (op == "mouth") {
             // mouth:CUE:TICKS - speaking step 1 (listen to the mouth): hear CUE (nothing learnt), then for
             // TICKS silent ticks read the motor face (x = N-1 of the Output field) and, per tick, how much
