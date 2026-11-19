@@ -537,6 +537,14 @@ struct Config {
     // The feel test switches the inner sense off and reads that face: does the brain show how sure it is?
     float inner_sense = 0.0f;
     float inner_field = 2.0f;
+    // v2 (after step 1: surprise sat near 0.91 so the felt state hardly changed, and the sheet clamp
+    // overrode the whole face, wiping that field's recall):
+    // inner_lines 1: the inner state enters like the ear, on the inner face's line entries (position 0),
+    //   and flows up through sheets and voxels by the usual rules, instead of overriding the sheet cells.
+    // inner_relative 1: the surprise level is judged against the brain's own usual surprise (running
+    //   mean and spread): much surer than usual, a bit surer, a bit less sure, much less sure.
+    float inner_lines = 0.0f;
+    float inner_relative = 0.0f;
     float self_voice = 0.0f;
     float workspace = 0.0f;
     float workspace_top = 0.02f;

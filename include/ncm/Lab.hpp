@@ -82,8 +82,13 @@ public:
             }
             // Imitation. speak_learn 1: the mouth shows the letter being heard. speak_learn 2: the letter about
             // to come (set by the lesson with mouthTeacher), so it learns to say what comes next.
-            if (cfg_.inner_sense > 0.0f && innerFeed_) m_->clampInnerSheets(selfFingerprint()); // it feels its state
-            else m_->releaseInnerSheets();
+            if (cfg_.inner_sense > 0.0f && innerFeed_) { // it feels its own state
+                if (cfg_.inner_lines > 0.5f) m_->setInnerLines(selfFingerprint());
+                else m_->clampInnerSheets(selfFingerprint());
+            } else {
+                m_->releaseInnerSheets();
+                m_->clearInnerLines();
+            }
             if (cfg_.speak_learn > 1.5f && allowLearning && mouthNext_) m_->clampMotorSheets(*mouthNext_);
             else if (cfg_.speak_learn > 0.5f && cfg_.speak_learn <= 1.5f && allowLearning) m_->clampMotorSheets(actual ? *actual : *fingerprint);
             else m_->releaseMotorSheets();
@@ -97,6 +102,7 @@ public:
             m_->clearSensoryInput();
             m_->releaseMotorSheets();
             m_->releaseInnerSheets();
+            m_->clearInnerLines();
             setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
 
@@ -146,6 +152,9 @@ public:
                 const float hit = 1.0f - m_->lastSurprise();
                 mood_ = hit - hitAvg_;
                 hitAvg_ += (hit - hitAvg_) / 50.0f;
+                const float d = m_->lastSurprise() - surAvg_; // its usual surprise and spread
+                surAvg_ += d / 50.0f;
+                surVar_ += (d * d - surVar_) / 50.0f;
             }
             float modulator = surpriseCount_ ? float(surpriseSum_ / double(surpriseCount_)) : 0.0f;
             // familiar_floor: a known word still learns at least this much (gentler familiarity).
@@ -179,7 +188,11 @@ public:
     // self_sense: the inner fingerprint of the brain's present state (surprise level x mood).
     const std::vector<uint32_t>& selfFingerprint() {
         const float sur = m_->lastSurprise();
-        const int sBin = std::clamp(int(sur * 4.0f), 0, 3);
+        int sBin = std::clamp(int(sur * 4.0f), 0, 3);
+        if (cfg_.inner_relative > 0.5f) { // against its own usual surprise
+            const float z = (sur - surAvg_) / std::sqrt(surVar_ + 1e-6f);
+            sBin = z < -1.0f ? 0 : z < 0.0f ? 1 : z < 1.0f ? 2 : 3;
+        }
         const int mBin = mood_ > 0.05f ? 2 : (mood_ < -0.05f ? 0 : 1);
         return stateFingerprint(sBin * 3 + mBin);
     }
@@ -335,6 +348,7 @@ private:
     Monitor::Event monitorEvent_;
     char heard_ = 0; // the character being heard (for the monitor)
     bool innerFeed_ = true;
+    float surAvg_ = 0.9f, surVar_ = 0.001f;           // inner_relative: usual surprise and its spread
     float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
     std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
     const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next

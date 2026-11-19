@@ -136,6 +136,8 @@ public:
     // readInnerSheets: those that fire (read with the inner sense off, it is the brain's own guess).
     void clampInnerSheets(const std::vector<uint32_t>& active_lines);
     void releaseInnerSheets() { innerSheetOn_ = false; }
+    void setInnerLines(const std::vector<uint32_t>& active_lines); // inner_lines: enter like the ear
+    void clearInnerLines() { innerLineOn_ = false; }
     std::vector<uint32_t> readInnerSheets() const;
 
     // Silences every cell (states only; learned connections and thresholds are kept).
@@ -479,6 +481,8 @@ private:
     std::vector<uint8_t> motorSheetDrive_;
     std::vector<uint32_t> innerQ_;
     bool innerSheetOn_ = false;
+    bool innerLineOn_ = false;
+    std::vector<uint8_t> innerLineDrive_;
     std::vector<uint8_t> innerSheetDrive_;
 };
 

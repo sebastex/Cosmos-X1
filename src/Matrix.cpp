@@ -690,6 +690,13 @@ void NeuralCellularMatrix::clampInnerSheets(const std::vector<uint32_t>& active_
     innerSheetOn_ = true;
 }
 
+void NeuralCellularMatrix::setInnerLines(const std::vector<uint32_t>& active_lines) {
+    innerLineDrive_.assign(innerQ_.size(), uint8_t(0));
+    for (uint32_t s : active_lines)
+        if (s < innerLineDrive_.size()) innerLineDrive_[s] = 1;
+    innerLineOn_ = true;
+}
+
 std::vector<uint32_t> NeuralCellularMatrix::readInnerSheets() const {
     std::vector<uint32_t> active;
     const float level = cfg_.level2.active_level;
@@ -721,6 +728,15 @@ void NeuralCellularMatrix::applySurfaceClamps() {
             const float v = sensoryDrive_[s] ? 1.0f : 0.0f;
             for (uint32_t c = 0; c < C1; ++c) entry[c] = v;
             const size_t q = sensoryQ_[s];
+            lineQuietNext_[q] = isSilent(s1_.next.data() + q * L_ * C1, size_t(L_) * C1);
+        }
+    }
+    if (innerLineOn_) { // inner sense, entering like the ear
+        for (size_t s = 0; s < innerQ_.size(); ++s) {
+            float* entry = s1_.next.data() + size_t(innerQ_[s]) * L_ * C1; // position 0
+            const float v = innerLineDrive_[s] ? 1.0f : 0.0f;
+            for (uint32_t c = 0; c < C1; ++c) entry[c] = v;
+            const size_t q = innerQ_[s];
             lineQuietNext_[q] = isSilent(s1_.next.data() + q * L_ * C1, size_t(L_) * C1);
         }
     }
