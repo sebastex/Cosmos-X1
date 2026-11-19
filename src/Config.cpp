@@ -563,6 +563,14 @@ const std::vector<std::pair<std::string, std::vector<std::string>>>& variants() 
         //   30 words 73/50 -> 90/82 and 89/75 -> 100/93; 100 words 64/55 -> 82/52 and 68/41 -> 74/48.
         {"prime", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
                    "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
+                   "settle_hold=1", "settle_cap=1", "settle_fit=1", "lattice_cell=16",
+                   "speak_learn=2", "speak_ahead=2", "valence=1", "speak_practice=1", "self_voice=0.5"}},
+        // 2026-11-19: + speaking (mouth taught 2 letters ahead), a need (valence), practising out loud and
+        //   hearing its own voice thinner. Two brains, 100 words whole/beginning: 91/68, 85/49 (memory same);
+        //   says the right next letter ~1 in 5 (chance ~1 in 27); field integration .75 -> .78 on all 4 runs.
+        // Prime before speaking (yardstick).
+        {"prime3", {"downward_gain=0.0672", "inner_up=1", "inner_down=4", "up_evidence=1", "inner_rules=1",
+                   "soma=1", "prune=0.00001", "trace_floor=0.000001", "clock_reset=2", "settle_bind=1",
                    "settle_hold=1", "settle_cap=1", "settle_fit=1", "lattice_cell=16"}},
         // 2026-11-18: + one 4D bridge zone per area (lattice_cell=16): every block reaches the whole next
         //   area. Two brains, whole/beginning % vs before: 30 words 94/89 vs 92/96, 96/100 vs 94/93;
