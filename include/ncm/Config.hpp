@@ -506,6 +506,7 @@ struct Config {
     float familiar_rate_only = 0.0f; // with predict_surprise: familiarity sets the learning rate only, not the mode
     // Speaking step 2: speak_learn 1 = imitation; in lessons the mouth (the Output field's far-face
     // sheet cells) is set to the letter being heard, so learning ties what came before to saying it.
+    float speak_ahead = 1.0f; // speak_learn 2: the mouth is shown the letter this many places ahead
     float speak_learn = 0.0f; // 2 = show the mouth the NEXT letter (learn to say what comes next)
     float familiar_floor = 0.0f;     // learning never drops below this share of full strength, however familiar (0 = no floor)
     // Microtubules (Orch-OR-like, local quantum mathematics): inside every cell a cylindrical

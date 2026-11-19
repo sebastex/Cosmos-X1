@@ -285,6 +285,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"familiar_rate_only", &c.familiar_rate_only},
         {"familiar_floor", &c.familiar_floor},
         {"speak_learn", &c.speak_learn},
+        {"speak_ahead", &c.speak_ahead},
         {"microtubule", &c.microtubule},
         {"mt_len", &c.mt_len},
         {"mt_couple", &c.mt_couple},
