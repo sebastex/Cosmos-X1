@@ -2047,6 +2047,36 @@ int runScriptTest(const Config& cfg) {
         voice.push_back(mean); // last entry: the mean (to centre what is heard)
     };
     bool learn = true;
+    // Speaking loop (talk, practice): wait up to 8 silent ticks for the mouth's sheet cells to show a
+    // letter (best match, not the one just said), say it, hear itself (at selfFrac strength), go on, until
+    // a space, silence or maxN letters. learnOn: whether hearing itself is learnt (practice).
+    auto speakOut = [&](Session& ss, uint64_t maxN, float selfFrac, bool learnOn) {
+        const std::string letters = " abcdefghijklmnopqrstuvwxyz";
+        std::string said;
+        char last = 0;
+        for (uint64_t k = 0; k < maxN; ++k) {
+            char pick = 0;
+            for (int w = 0; w < 8 && !pick; ++w) {
+                ss.silence(1, false);
+                std::vector<uint32_t> on = ss.matrix().readMotorSheets();
+                std::sort(on.begin(), on.end());
+                double best = 0.0;
+                for (char ch : letters) {
+                    if (ch == last) continue;
+                    const auto& fp = ss.codebook().fingerprint(char32_t(uint8_t(ch)));
+                    size_t hit = 0;
+                    for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                    const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                    if (ov > best) best = ov, pick = ch;
+                }
+            }
+            if (!pick || pick == ' ') break;
+            said += pick;
+            last = pick;
+            ss.present(std::string(1, pick), 1, selfFrac, learnOn, UINT64_MAX); // it hears itself
+        }
+        return said;
+    };
     const bool learns = s.learning(); // the twin never learns, whatever the script says
     if (script.find("report:") != std::string::npos) s.watchActivity(true); // reports show activity while hearing
     uint64_t tick = 0, index = 0;
@@ -2078,6 +2108,16 @@ int runScriptTest(const Config& cfg) {
                 s.mouthTeacher(0);
                 s.silence(rest, learn);
                 tick += text.size() + rest;
+                if (cfg.speak_practice > 0.5f && learn && k + 1 == n / 2 && text.size() > 3) { // practise out loud
+                    for (size_t q = 0; q < 2; ++q) {
+                        s.mouthTeacher(q + ahead < text.size() ? text[q + ahead] : 0);
+                        s.present(std::string(1, text[q]), 1, 1.0f, true, UINT64_MAX);
+                    }
+                    s.mouthTeacher(0);
+                    speakOut(s, text.size() - 2, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), true);
+                    s.silence(rest, learn);
+                    tick += text.size() + rest;
+                }
             }
         } else if (op == "slow") {
             const std::string text = (f.size() > 1 ? f[1] : "") + " ";
@@ -2152,33 +2192,8 @@ int runScriptTest(const Config& cfg) {
             const std::string cueText = f.size() > 1 ? f[1] : "";
             const uint64_t maxN = num(f, 2, 8);
             for (char ch : cueText) s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
-            const std::string letters = " abcdefghijklmnopqrstuvwxyz";
-            const float selfFrac = std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f);
-            std::string said;
-            char last = 0;
-            for (uint64_t k = 0; k < maxN; ++k) {
-                char pick = 0;
-                for (int w = 0; w < 8 && !pick; ++w) {
-                    s.silence(1, false);
-                    ++tick;
-                    std::vector<uint32_t> on = s.matrix().readMotorSheets();
-                    std::sort(on.begin(), on.end());
-                    double best = 0.0;
-                    for (char ch : letters) {
-                        if (ch == last) continue;
-                        const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(ch)));
-                        size_t hit = 0;
-                        for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
-                        const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
-                        if (ov > best) best = ov, pick = ch;
-                    }
-                }
-                if (!pick || pick == ' ') break;
-                said += pick;
-                last = pick;
-                s.present(std::string(1, pick), 1, selfFrac, false, UINT64_MAX); // it hears itself
-                ++tick;
-            }
+            const std::string said = speakOut(s, maxN, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), false);
+            tick += 2 * maxN;
             std::printf("TALK {\"cue\": \"%s\", \"said\": \"%s\"}\n", cueText.c_str(), said.c_str());
             tick += cueText.size();
         } else if (op == "mouth") {

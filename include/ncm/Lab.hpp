@@ -72,7 +72,7 @@ public:
                                                                        : actual ? m_->motorOverlap(*actual) : 0.0;
             surpriseSum_ += 1.0 - guess;
             ++surpriseCount_;
-            if (cfg_.self_sense > 0.0f) { // the brain feels its own state as an extra inner fingerprint
+            if (cfg_.self_sense > 0.0f && (cfg_.self_sense_end < 0.5f || heard_ == ' ')) { // the brain feels its own state
                 std::vector<uint32_t> merged = *fingerprint;
                 const auto& inner = selfFingerprint();
                 merged.insert(merged.end(), inner.begin(), inner.end());

@@ -1527,11 +1527,15 @@ void NeuralCellularMatrix::step3D() {
     if (cfg_.workspace > 0.0f) { // shared stage: the brain-wide strongest voxels win, the rest are dimmed
         std::vector<std::pair<float, size_t>> on;
         on.reserve(4096);
+        std::array<double, kFields> fsum{};
+        std::array<size_t, kFields> fn{};
         for (size_t v = 0; v < V_; ++v) {
             float a = 0.0f;
             for (uint32_t c = 0; c < C3; ++c) a += out[v * C3 + c];
-            if (a > 0.0f) on.emplace_back(a, v);
+            if (a > 0.0f) on.emplace_back(a, v), fsum[v / Vf_] += a, ++fn[v / Vf_];
         }
+        if (cfg_.workspace_norm > 0.5f) // each area competes against its own loudness
+            for (auto& p : on) p.first /= float(fsum[p.second / Vf_] / double(std::max<size_t>(1, fn[p.second / Vf_])));
         const size_t win = std::max<size_t>(1, size_t(double(cfg_.workspace_top) * double(V_)));
         if (on.size() > win) {
             std::nth_element(on.begin(), on.begin() + win, on.end(), [](const auto& x, const auto& y) { return x.first > y.first; });

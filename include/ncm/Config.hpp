@@ -517,6 +517,18 @@ struct Config {
     //   the sensory face while it hears, so it can learn what its own states go with.
     // valence k: a need. Predicting better than usual feels good: learning is scaled by 1 + k x (how much
     //   better than its running average the brain predicted this moment), worse feels bad (less learning).
+    // Alternatives (2026-11-19, after round 1: stage pulled the areas apart, self_sense hurt memory,
+    // self_voice changed nothing):
+    // workspace_norm 1: the shared stage ranks each voxel against its OWN field's mean strength, so every
+    //   area competes fairly for the stage (the Input field no longer wins it by being loudest).
+    // self_sense_end 1: the inner state is felt only at a word's end (its space), not on every letter,
+    //   so it no longer blurs the letters ("I knew that word" / "that was new").
+    // speak_practice 1: practise out loud. Halfway through a lesson word's repetitions Cosmos hears the
+    //   word's first two letters, then says the rest itself and hears itself (at 1 - self_voice
+    //   strength), learning on; the next real repetitions correct it.
+    float workspace_norm = 0.0f;
+    float self_sense_end = 0.0f;
+    float speak_practice = 0.0f;
     float self_voice = 0.0f;
     float workspace = 0.0f;
     float workspace_top = 0.02f;
