@@ -194,6 +194,7 @@ public:
             sBin = z < -1.0f ? 0 : z < 0.0f ? 1 : z < 1.0f ? 2 : 3;
         }
         const int mBin = mood_ > 0.05f ? 2 : (mood_ < -0.05f ? 0 : 1);
+        if (cfg_.inner_states > 1.5f && cfg_.inner_states < 2.5f) return stateFingerprint(sBin < 2 ? 1 : 10); // surer / less sure
         return stateFingerprint(sBin * 3 + mBin);
     }
     // Inner state id = surprise level (0..3, low to high) x 3 + mood (0 bad, 1 even, 2 good).

@@ -2201,7 +2201,7 @@ int runScriptTest(const Config& cfg) {
             // letter read the inner face: which inner states does it show (overlap per state), against how
             // surprised it really was. felt = the overlap-weighted surprise level (0 sure .. 1 lost), -1 = none.
             const std::string cueText = f.size() > 1 ? f[1] : "";
-            s.innerFeed(false);
+            s.innerFeed(std::getenv("NCM_FEEL_FED") != nullptr); // debug: read with the inner sense on
             std::string actual, felt, on;
             for (char ch : cueText) {
                 s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
@@ -2209,6 +2209,7 @@ int runScriptTest(const Config& cfg) {
                 std::sort(act.begin(), act.end());
                 double w = 0.0, ws = 0.0;
                 for (int id = 0; id < 12; ++id) {
+                    if (cfg.inner_states > 1.5f && cfg.inner_states < 2.5f && id != 1 && id != 10) continue; // two states only
                     const auto& fp = s.stateFingerprint(id);
                     size_t hit = 0;
                     for (uint32_t q : fp) hit += std::binary_search(act.begin(), act.end(), q) ? 1 : 0;

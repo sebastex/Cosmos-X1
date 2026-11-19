@@ -292,6 +292,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"inner_sense", &c.inner_sense},
         {"inner_field", &c.inner_field},
         {"inner_lines", &c.inner_lines},
+        {"inner_face", &c.inner_face},
+        {"inner_states", &c.inner_states},
         {"inner_relative", &c.inner_relative},
         {"speak_practice", &c.speak_practice},
         {"workspace", &c.workspace},

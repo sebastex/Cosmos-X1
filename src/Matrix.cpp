@@ -642,7 +642,7 @@ void NeuralCellularMatrix::initSurfaces() {
                 sensoryQ_[s] = uint32_t(vin * SS_ + cell);
                 motorQ_[s] = uint32_t(vout * SS_ + cell);
                 const uint32_t fi = uint32_t(std::clamp(cfg_.inner_field, 0.0f, float(kFields - 1)) + 0.5f);
-                innerQ_[s] = uint32_t(voxelIndex(fi, 0, y, z) * SS_ + cell);
+                innerQ_[s] = uint32_t(voxelIndex(fi, cfg_.inner_face > 0.5f ? N_ - 1 : 0, y, z) * SS_ + cell);
             }
 }
 
@@ -1534,7 +1534,7 @@ void NeuralCellularMatrix::step3D() {
         // settling: what this cell fired during the word. The mouth (the Output field's far face) stays
         // out of the word's binding while it is taught (speak_learn), so it is not tied to every letter.
         const bool mouthVoxel = cfg_.speak_learn > 0.5f && v / Vf_ == size_t(Field::Output) && v % N_ == N_ - 1;
-        const bool innerVoxel = cfg_.inner_sense > 0.0f && v / Vf_ == size_t(std::clamp(cfg_.inner_field, 0.0f, 3.0f) + 0.5f) && v % N_ == 0;
+        const bool innerVoxel = cfg_.inner_sense > 0.0f && v / Vf_ == size_t(std::clamp(cfg_.inner_field, 0.0f, 3.0f) + 0.5f) && v % N_ == (cfg_.inner_face > 0.5f ? N_ - 1 : 0);
         if (!wordTrace_.empty() && sensoryOn_ && !mouthVoxel && !innerVoxel) {
             float* wt = wordTrace_.data() + v * C3;
             const float* cell = out + v * C3;

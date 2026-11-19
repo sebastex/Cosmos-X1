@@ -543,6 +543,12 @@ struct Config {
     //   and flows up through sheets and voxels by the usual rules, instead of overriding the sheet cells.
     // inner_relative 1: the surprise level is judged against the brain's own usual surprise (running
     //   mean and spread): much surer than usual, a bit surer, a bit less sure, much less sure.
+    // v3 (v2: the brain still did not show its state by itself, and the state swamped quiet deep fields):
+    // inner_face 1: the inner face is the field's far face (x = N-1) instead of x = 0, so the Input field
+    //   (busy, the senses) can carry it beside the ear, like the insula carries the body's feelings.
+    // inner_states 2: just two felt states, surer than usual or less sure (12 was too fine to learn).
+    float inner_face = 0.0f;
+    float inner_states = 12.0f;
     float inner_lines = 0.0f;
     float inner_relative = 0.0f;
     float self_voice = 0.0f;
