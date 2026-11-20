@@ -7,3 +7,4 @@ tools/results/legacy_laptop_search/baseline_report.json
 tools/results/legacy_laptop_search/evolve.py
 tools/results/legacy_laptop_search/evolve_report.py
 __pycache__/
+console/

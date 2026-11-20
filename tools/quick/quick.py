@@ -64,6 +64,8 @@ def mouth(n):
                        f'talk:{pre[w]}:{len(w) - len(pre[w]) + 1}']
     for c in novel(ws, pre):  # self-model: unknown letter strings, to see if it feels the difference
         script += ['rest:150', f'feel:{c}:30']
+    for w in ws:  # the console: hear each word, say it back
+        script += ['rest:150', f'repeat:{w}']
     return ';'.join(script)
 
 
@@ -102,6 +104,26 @@ def mouth_summary(n, result):
                         lines_on=round(sum(sum(r[act]) / len(r[act]) for r in rows) / len(rows), 1),
                         best_overlap=round(sum(max(r[ov]) for r in rows) / len(rows), 3),
                         sample={r['cue']: r[top] for r in rows[:5]})
+    reps = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('REPEAT ')]
+    if reps:  # the console: hear a word, say it back
+        def lead(a, b):
+            k = 0
+            while k < min(len(a), len(b)) and a[k] == b[k]:
+                k += 1
+            return k
+        def sim(a, b):  # letters right, any position (1 - edit distance / longer length)
+            d = list(range(len(b) + 1))
+            for i, ca in enumerate(a, 1):
+                p, d[0] = d[0], i
+                for j, cb in enumerate(b, 1):
+                    p, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, p + (ca != cb))
+            return 1 - d[len(b)] / max(1, len(a), len(b))
+        out['repeat'] = dict(words=len(reps), right=round(sum(r['said'] == r['heard'] for r in reps) / len(reps), 3),
+                             spoke=round(sum(bool(r['said']) for r in reps) / len(reps), 3),
+                             first_letter=round(sum(bool(r['said']) and r['said'][0] == r['heard'][0] for r in reps) / len(reps), 3),
+                             in_order=round(sum(lead(r['heard'], r['said']) / len(r['heard']) for r in reps) / len(reps), 3),
+                             alike=round(sum(sim(r['heard'], r['said']) for r in reps) / len(reps), 3),
+                             transcript=[[r['heard'], r['said']] for r in reps])
     feels = [json.loads(l.split(' ', 1)[1]) for l in open(result) if l.startswith('FEEL ')]
     if feels:  # self-model: does what it shows on the inner face follow how surprised it really was?
         known = set(pre.values())

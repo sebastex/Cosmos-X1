@@ -529,6 +529,11 @@ struct Config {
     float workspace_norm = 0.0f;
     float self_sense_end = 0.0f;
     float speak_practice = 0.0f;
+    // speak_onset 1 (2026-11-20, "repeat after me"): while a lesson word's end is heard and another
+    // repetition follows, the mouth is shown the word's first letters (what comes next: "same s-a..").
+    // Without it nothing ever teaches the mouth how a word starts, so it cannot begin one. (Teaching in
+    // the pause does nothing: learning needs something heard.)
+    float speak_onset = 0.0f;
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
     // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),

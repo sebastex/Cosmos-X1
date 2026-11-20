@@ -2050,19 +2050,24 @@ int runScriptTest(const Config& cfg) {
     // Speaking loop (talk, practice): wait up to 8 silent ticks for the mouth's sheet cells to show a
     // letter (best match, not the one just said), say it, hear itself (at selfFrac strength), go on, until
     // a space, silence or maxN letters. learnOn: whether hearing itself is learnt (practice).
-    auto speakOut = [&](Session& ss, uint64_t maxN, float selfFrac, bool learnOn) {
+    // firstWait: silent ticks it may wait for its first letter; doubles: the letter just said may come again
+    // once a silent tick has passed (for "apple"); leadSpace: a space before any letter does not end it.
+    auto speakOut = [&](Session& ss, uint64_t maxN, float selfFrac, bool learnOn, int firstWait = 8, bool doubles = false,
+                        bool leadSpace = false) {
         const std::string letters = " abcdefghijklmnopqrstuvwxyz";
         std::string said;
         char last = 0;
         for (uint64_t k = 0; k < maxN; ++k) {
             char pick = 0;
-            for (int w = 0; w < 8 && !pick; ++w) {
+            const int wait = said.empty() ? firstWait : 8;
+            for (int w = 0; w < wait && !pick; ++w) {
                 ss.silence(1, false);
                 std::vector<uint32_t> on = ss.matrix().readMotorSheets();
                 std::sort(on.begin(), on.end());
                 double best = 0.0;
                 for (char ch : letters) {
-                    if (ch == last) continue;
+                    if (ch == last && !(doubles && w > 0)) continue;
+                    if (ch == ' ' && leadSpace && said.empty()) continue;
                     const auto& fp = ss.codebook().fingerprint(char32_t(uint8_t(ch)));
                     size_t hit = 0;
                     for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
@@ -2101,8 +2106,10 @@ int runScriptTest(const Config& cfg) {
             text += " ";
             const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
             for (uint64_t k = 0; k < n; ++k) {
+                // speak_onset: another repetition follows, so after the word's end comes its start again
+                const bool wrap = cfg.speak_onset > 0.5f && learn && k + 1 < n;
                 for (size_t q = 0; q < text.size(); ++q) { // speak_learn 2: the mouth is shown the letter about to come
-                    s.mouthTeacher(q + ahead < text.size() ? text[q + ahead] : 0);
+                    s.mouthTeacher(q + ahead < text.size() ? text[q + ahead] : wrap ? text[(q + ahead) % text.size()] : 0);
                     s.present(std::string(1, text[q]), 1, 1.0f, learn, UINT64_MAX);
                 }
                 s.mouthTeacher(0);
@@ -2196,6 +2203,19 @@ int runScriptTest(const Config& cfg) {
             tick += 2 * maxN;
             std::printf("TALK {\"cue\": \"%s\", \"said\": \"%s\"}\n", cueText.c_str(), said.c_str());
             tick += cueText.size();
+        } else if (op == "repeat") {
+            // repeat:WORD:MAX:WAIT - the console. Cosmos hears WORD (and its space, as in lessons), then has
+            // WAIT silent ticks to start saying it back (letters may double, a leading space is skipped), up to
+            // MAX letters, hearing itself. No learning. Prints a JSON line and a line to read.
+            const std::string word = f.size() > 1 ? f[1] : "";
+            const uint64_t maxN = num(f, 2, word.size() + 3);
+            const int wait = int(num(f, 3, 30));
+            for (char ch : word + " ") s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            const std::string said = speakOut(s, maxN, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), false, wait, true, true);
+            std::printf("REPEAT {\"heard\": \"%s\", \"said\": \"%s\"}\n", word.c_str(), said.c_str());
+            std::printf("CONSOLE you: %-14s cosmos: %-14s %s\n", word.c_str(), said.empty() ? "(silent)" : said.c_str(),
+                        said == word ? "RIGHT" : "");
+            tick += word.size() + 1 + 2 * maxN;
         } else if (op == "feel") {
             // feel:CUE:WAIT - self-model test. The inner sense is switched off; while Cosmos hears CUE, after each
             // letter read the inner face: which inner states does it show (overlap per state), against how
