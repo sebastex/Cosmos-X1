@@ -218,6 +218,20 @@ public:
     // speak_learn 2: the letter the mouth should say next (0 = none).
     void innerFeed(bool on) { innerFeed_ = on; } // feel test: switch the inner sense off to read the brain's guess
     void mouthTeacher(char c) { mouthNext_ = c ? &codebook_.fingerprint(char32_t(uint8_t(c))) : nullptr; }
+    // speak_plan: the mouth is shown a word's plan (all its letters, fainter with their place).
+    void mouthPlan(const std::string& word, float fall) {
+        plan_.clear();
+        const size_t n = word.size();
+        for (size_t i = 0; i < n; ++i) {
+            const auto& fp = codebook_.fingerprint(char32_t(uint8_t(word[i])));
+            const float share = 1.0f - fall * float(i) / float(std::max<size_t>(1, n - 1));
+            const size_t keep = std::max<size_t>(1, size_t(std::ceil(share * float(fp.size()))));
+            plan_.insert(plan_.end(), fp.begin(), fp.begin() + std::min(keep, fp.size()));
+        }
+        std::sort(plan_.begin(), plan_.end());
+        plan_.erase(std::unique(plan_.begin(), plan_.end()), plan_.end());
+        mouthNext_ = &plan_;
+    }
     std::vector<double> present(const std::string& text, uint64_t ticks, float fraction, bool allowLearning,
                                 uint64_t recordFrom) {
         std::vector<double> acc;
@@ -353,6 +367,7 @@ private:
     float surAvg_ = 0.9f, surVar_ = 0.001f, surFelt_ = 0.9f;           // inner_relative: usual surprise and its spread
     float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
     std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
+    std::vector<uint32_t> plan_;                      // speak_plan: the word's plan on the mouth
     const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next
     LevelScheduler clock_;
     double surpriseSum_ = 0.0;

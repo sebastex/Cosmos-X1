@@ -298,6 +298,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"inner_relative", &c.inner_relative},
         {"speak_practice", &c.speak_practice},
         {"speak_onset", &c.speak_onset},
+        {"speak_gapless", &c.speak_gapless},
+        {"speak_plan", &c.speak_plan},
         {"workspace", &c.workspace},
         {"workspace_top", &c.workspace_top},
         {"self_sense", &c.self_sense},

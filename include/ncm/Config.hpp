@@ -534,6 +534,16 @@ struct Config {
     // Without it nothing ever teaches the mouth how a word starts, so it cannot begin one. (Teaching in
     // the pause does nothing: learning needs something heard.)
     float speak_onset = 0.0f;
+    // speak_gapless 1 (2026-11-22): while speaking, read the mouth in the same tick Cosmos hears its own
+    // letter, so its letters follow each other like in lessons. With a silent tick before each letter,
+    // every letter it says comes "after a pause", which the brain takes as a new word's start (clocks
+    // reset, word boundary), so it loses its place in the word.
+    float speak_gapless = 0.0f;
+    // speak_plan k (2026-11-22, the speaking plan / competitive queuing): at a lesson word's end (its space)
+    // the mouth is shown the WHOLE word at once, each letter by a share of its lines that falls with its
+    // place (first letter all, last 1 - k), so the whole-word state learns the word's plan. To say a word
+    // back it reads the plan once, says the strongest letter, blocks it, says the next strongest, and so on.
+    float speak_plan = 0.0f;
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
     // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),

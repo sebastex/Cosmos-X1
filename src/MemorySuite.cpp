@@ -2060,13 +2060,15 @@ int runScriptTest(const Config& cfg) {
         for (uint64_t k = 0; k < maxN; ++k) {
             char pick = 0;
             const int wait = said.empty() ? firstWait : 8;
-            for (int w = 0; w < wait && !pick; ++w) {
-                ss.silence(1, false);
+            // speak_gapless: first look right away (the tick it heard the last letter), then wait in silence
+            const int w0 = cfg.speak_gapless > 0.5f ? -1 : 0;
+            for (int w = w0; w < wait && !pick; ++w) {
+                if (w >= 0) ss.silence(1, false);
                 std::vector<uint32_t> on = ss.matrix().readMotorSheets();
                 std::sort(on.begin(), on.end());
                 double best = 0.0;
                 for (char ch : letters) {
-                    if (ch == last && !(doubles && w > 0)) continue;
+                    if (ch == last && !(doubles && w != w0)) continue; // a double needs a second look
                     if (ch == ' ' && leadSpace && said.empty()) continue;
                     const auto& fp = ss.codebook().fingerprint(char32_t(uint8_t(ch)));
                     size_t hit = 0;
@@ -2110,6 +2112,8 @@ int runScriptTest(const Config& cfg) {
                 const bool wrap = cfg.speak_onset > 0.5f && learn && k + 1 < n;
                 for (size_t q = 0; q < text.size(); ++q) { // speak_learn 2: the mouth is shown the letter about to come
                     s.mouthTeacher(q + ahead < text.size() ? text[q + ahead] : wrap ? text[(q + ahead) % text.size()] : 0);
+                    if (cfg.speak_plan > 0.0f && learn && q + 1 == text.size() && text.find(' ') + 1 == text.size())
+                        s.mouthPlan(text.substr(0, q), cfg.speak_plan); // at the word's end: the whole word's plan
                     s.present(std::string(1, text[q]), 1, 1.0f, learn, UINT64_MAX);
                 }
                 s.mouthTeacher(0);
@@ -2203,6 +2207,39 @@ int runScriptTest(const Config& cfg) {
             tick += 2 * maxN;
             std::printf("TALK {\"cue\": \"%s\", \"said\": \"%s\"}\n", cueText.c_str(), said.c_str());
             tick += cueText.size();
+        } else if (op == "trace") {
+            // trace:WORD:GAP:FRAC - speaking diagnosis, teacher-forced: Cosmos hears WORD's letters itself (at FRAC
+            // strength, GAP silent ticks after each, as when it speaks); after each letter (and its gap) the
+            // mouth's best letter and its overlap. Right = the word's next letter (a space after the last).
+            const std::string word = f.size() > 1 ? f[1] : "";
+            const uint64_t gap = num(f, 2, 0);
+            const float frac = f.size() > 3 && !f[3].empty() ? float(std::atof(f[3].c_str())) : 1.0f;
+            const std::string letters = " abcdefghijklmnopqrstuvwxyz";
+            std::string top, ovs, second;
+            char buf[32];
+            for (char ch : word) {
+                s.present(std::string(1, ch), 1, frac, false, UINT64_MAX);
+                if (gap) s.silence(gap, false);
+                std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                std::sort(on.begin(), on.end());
+                double best = 0.0, best2 = 0.0;
+                char pick = '-', pick2 = '-';
+                for (char c : letters) {
+                    const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(c)));
+                    size_t hit = 0;
+                    for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                    const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                    if (ov > best) best2 = best, pick2 = pick, best = ov, pick = c;
+                    else if (ov > best2) best2 = ov, pick2 = c;
+                }
+                top += pick == ' ' ? '_' : pick;
+                second += pick2 == ' ' ? '_' : pick2;
+                std::snprintf(buf, sizeof buf, "%s%.3f", ovs.empty() ? "" : ", ", best);
+                ovs += buf;
+            }
+            std::printf("TRACE {\"word\": \"%s\", \"gap\": %llu, \"frac\": %.2f, \"top\": \"%s\", \"second\": \"%s\", \"ov\": [%s]}\n",
+                        word.c_str(), (unsigned long long)gap, double(frac), top.c_str(), second.c_str(), ovs.c_str());
+            tick += word.size() * (1 + gap);
         } else if (op == "repeat") {
             // repeat:WORD:MAX:WAIT - the console. Cosmos hears WORD (and its space, as in lessons), then has
             // WAIT silent ticks to start saying it back (letters may double, a leading space is skipped), up to
@@ -2211,8 +2248,44 @@ int runScriptTest(const Config& cfg) {
             const uint64_t maxN = num(f, 2, word.size() + 3);
             const int wait = int(num(f, 3, 30));
             for (char ch : word + " ") s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
-            const std::string said = speakOut(s, maxN, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), false, wait, true, true);
-            std::printf("REPEAT {\"heard\": \"%s\", \"said\": \"%s\"}\n", word.c_str(), said.c_str());
+            std::string said, plan;
+            if (cfg.speak_plan > 0.0f) { // read the plan once (the quiet tick where it shows most), then say it in order
+                const std::string letters = "abcdefghijklmnopqrstuvwxyz";
+                std::vector<double> best(letters.size(), 0.0);
+                double bestSum = -1.0;
+                for (int w = 0; w < wait; ++w) {
+                    std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                    std::sort(on.begin(), on.end());
+                    std::vector<double> ov(letters.size(), 0.0);
+                    double sum = 0.0;
+                    for (size_t i = 0; i < letters.size(); ++i) {
+                        const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(letters[i])));
+                        size_t hit = 0;
+                        for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                        ov[i] = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                        sum += ov[i];
+                    }
+                    if (sum > bestSum) bestSum = sum, best = ov;
+                    s.silence(1, false);
+                }
+                // competitive queuing: the strongest letter goes first and is then blocked; letters at least
+                // a third as strong as the first are said
+                std::vector<size_t> order(letters.size());
+                for (size_t i = 0; i < order.size(); ++i) order[i] = i;
+                std::sort(order.begin(), order.end(), [&](size_t x, size_t y) { return best[x] > best[y]; });
+                char buf[32];
+                for (size_t r = 0; r < order.size() && r < 8; ++r) {
+                    std::snprintf(buf, sizeof buf, "%s%c%.2f", plan.empty() ? "" : " ", letters[order[r]], best[order[r]]);
+                    plan += buf;
+                }
+                for (size_t i : order) {
+                    if (said.size() >= maxN || best[i] <= 0.0 || best[i] < best[order[0]] / 3.0) break;
+                    said += letters[i];
+                }
+            } else {
+                said = speakOut(s, maxN, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), false, wait, true, true);
+            }
+            std::printf("REPEAT {\"heard\": \"%s\", \"said\": \"%s\", \"plan\": \"%s\"}\n", word.c_str(), said.c_str(), plan.c_str());
             std::printf("CONSOLE you: %-14s cosmos: %-14s %s\n", word.c_str(), said.empty() ? "(silent)" : said.c_str(),
                         said == word ? "RIGHT" : "");
             tick += word.size() + 1 + 2 * maxN;
