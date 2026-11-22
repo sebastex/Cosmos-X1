@@ -544,6 +544,18 @@ struct Config {
     // place (first letter all, last 1 - k), so the whole-word state learns the word's plan. To say a word
     // back it reads the plan once, says the strongest letter, blocks it, says the next strongest, and so on.
     float speak_plan = 0.0f;
+    // speak_plan_chain 1: the plan says WHICH letters, the next-letter mouth says their ORDER. It says the
+    // plan's strongest letter, hears itself, then for a few quiet ticks reads which letter its mouth wants
+    // next; of the plan's letters not yet said it picks the best of plan strength + that wish. It stops
+    // when the plan's letters are used up.
+    float speak_plan_chain = 0.0f;
+    // speak_plan_whole 1: the plan is shown on every tick the lesson word is heard (not only at its space),
+    // in place of the next letter, so the plan is learnt about word-length times more strongly.
+    float speak_plan_whole = 0.0f;
+    // speak_soft 1: the mouth's teacher only switches ON the cells it shows and leaves the rest of the
+    // face alone (the hard clamp also switched every other face cell OFF, wiping the Output field's own
+    // activity; Output recall fell ~70% -> ~18%, and the mouth hangs on that field).
+    float speak_soft = 0.0f;
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
     // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),

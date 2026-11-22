@@ -2112,8 +2112,8 @@ int runScriptTest(const Config& cfg) {
                 const bool wrap = cfg.speak_onset > 0.5f && learn && k + 1 < n;
                 for (size_t q = 0; q < text.size(); ++q) { // speak_learn 2: the mouth is shown the letter about to come
                     s.mouthTeacher(q + ahead < text.size() ? text[q + ahead] : wrap ? text[(q + ahead) % text.size()] : 0);
-                    if (cfg.speak_plan > 0.0f && learn && q + 1 == text.size() && text.find(' ') + 1 == text.size())
-                        s.mouthPlan(text.substr(0, q), cfg.speak_plan); // at the word's end: the whole word's plan
+                    if (cfg.speak_plan > 0.0f && learn && (q + 1 == text.size() || cfg.speak_plan_whole > 0.5f) && text.find(' ') + 1 == text.size())
+                        s.mouthPlan(text.substr(0, text.size() - 1), cfg.speak_plan); // at the word's end: the whole word's plan
                     s.present(std::string(1, text[q]), 1, 1.0f, learn, UINT64_MAX);
                 }
                 s.mouthTeacher(0);
@@ -2278,9 +2278,43 @@ int runScriptTest(const Config& cfg) {
                     std::snprintf(buf, sizeof buf, "%s%c%.2f", plan.empty() ? "" : " ", letters[order[r]], best[order[r]]);
                     plan += buf;
                 }
+                std::vector<size_t> pool; // the plan's letters
                 for (size_t i : order) {
-                    if (said.size() >= maxN || best[i] <= 0.0 || best[i] < best[order[0]] / 3.0) break;
-                    said += letters[i];
+                    if (pool.size() >= maxN || best[i] <= 0.0 || best[i] < best[order[0]] / 3.0) break;
+                    pool.push_back(i);
+                }
+                if (cfg.speak_plan_chain < 0.5f) {
+                    for (size_t i : pool) said += letters[i];
+                } else if (!pool.empty()) { // the order from the next-letter mouth, among the plan's letters
+                    said += letters[pool[0]];
+                    pool.erase(pool.begin());
+                    const float selfFrac = std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f);
+                    while (!pool.empty()) {
+                        s.present(std::string(1, said.back()), 1, selfFrac, false, UINT64_MAX); // it hears itself
+                        std::vector<double> wish(letters.size(), 0.0);
+                        for (int w = 0; w < 3; ++w) {
+                            s.silence(1, false);
+                            std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                            std::sort(on.begin(), on.end());
+                            for (size_t i : pool) {
+                                const auto& fp = s.codebook().fingerprint(char32_t(uint8_t(letters[i])));
+                                size_t hit = 0;
+                                for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                                wish[i] += fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                            }
+                        }
+                        double wmax = 0.0, pmax = 0.0;
+                        for (size_t i : pool) wmax = std::max(wmax, wish[i]), pmax = std::max(pmax, best[i]);
+                        size_t pick = 0;
+                        double top = -1.0;
+                        for (size_t k = 0; k < pool.size(); ++k) {
+                            const size_t i = pool[k];
+                            const double sc = (pmax > 0 ? best[i] / pmax : 0.0) + (wmax > 0 ? wish[i] / wmax : 0.0);
+                            if (sc > top) top = sc, pick = k;
+                        }
+                        said += letters[pool[pick]];
+                        pool.erase(pool.begin() + long(pick));
+                    }
                 }
             } else {
                 said = speakOut(s, maxN, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), false, wait, true, true);

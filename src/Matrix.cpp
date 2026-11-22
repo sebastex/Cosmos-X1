@@ -964,6 +964,7 @@ void NeuralCellularMatrix::step2D() {
         for (size_t s = 0; s < motorQ_.size(); ++s) {
             float* cell = out + size_t(motorQ_[s]) * C2;
             const float v = motorSheetDrive_[s] ? 1.0f : 0.0f;
+            if (cfg_.speak_soft > 0.5f && v == 0.0f) continue; // soft: only switch on, never off
             for (uint32_t c = 0; c < C2; ++c) cell[c] = v;
             if (v > 0.0f) sheetQuietNext_[motorQ_[s] / SS] = 0;
         }
