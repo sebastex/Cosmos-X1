@@ -16,6 +16,7 @@
 #include <vector>
 #include <random>
 #include <array>
+#include <map>
 
 #include "ncm/CharacterCodebook.hpp"
 #include "ncm/Matrix.hpp"
@@ -232,6 +233,33 @@ public:
         plan_.erase(std::unique(plan_.begin(), plan_.end()), plan_.end());
         mouthNext_ = &plan_;
     }
+    // word_shape: a word's own fixed random shape (made from the word on first use; as big as a letter's).
+    const std::vector<uint32_t>& wordShape(const std::string& w) {
+        auto it = wordFp_.find(w);
+        if (it != wordFp_.end()) return it->second;
+        uint64_t h = 1469598103934665603ULL; // FNV-1a of the word
+        for (char c : w) h = (h ^ uint64_t(uint8_t(c))) * 1099511628211ULL;
+        std::mt19937_64 rng(cfg_.itemSeed() ^ mix64(h ^ 0x30D5ULL));
+        const size_t lines = cfg_.surfaceLines(), k = codebook_.linesPerCharacter();
+        std::vector<uint8_t> taken(lines, 0);
+        std::vector<uint32_t> pick;
+        while (pick.size() < k) {
+            const uint32_t q = uint32_t(rng() % lines);
+            if (!taken[q]) taken[q] = 1, pick.push_back(q);
+        }
+        std::sort(pick.begin(), pick.end());
+        return wordFp_[w] = pick;
+    }
+    const std::map<std::string, std::vector<uint32_t>>& wordShapes() const { return wordFp_; }
+    void mouthShape(const std::vector<uint32_t>* fp) { mouthNext_ = fp; } // the mouth is shown a whole shape
+    // word_shape: hear a whole word as its own shape, held for `hold` ticks (its space comes separately).
+    void presentShape(const std::string& w, uint64_t hold, bool allowLearning) {
+        const auto& fp = wordShape(w);
+        for (uint64_t t = 0; t < hold; ++t) {
+            heard_ = '#';
+            tick(&fp, &fp, allowLearning);
+        }
+    }
     std::vector<double> present(const std::string& text, uint64_t ticks, float fraction, bool allowLearning,
                                 uint64_t recordFrom) {
         std::vector<double> acc;
@@ -368,6 +396,7 @@ private:
     float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
     std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
     std::vector<uint32_t> plan_;                      // speak_plan: the word's plan on the mouth
+    std::map<std::string, std::vector<uint32_t>> wordFp_; // word_shape: each word's own shape
     const std::vector<uint32_t>* mouthNext_ = nullptr; // speak_learn 2: the letter the mouth is taught to say next
     LevelScheduler clock_;
     double surpriseSum_ = 0.0;

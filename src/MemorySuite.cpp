@@ -2107,6 +2107,18 @@ int runScriptTest(const Config& cfg) {
             for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) text += (text.empty() ? "" : " ") + w;
             text += " ";
             const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
+            if (cfg.word_shape > 0.5f && text.find(' ') + 1 == text.size()) { // the word as its own shape
+                const std::string w = text.substr(0, text.size() - 1);
+                const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(w.size());
+                for (uint64_t k = 0; k < n; ++k) {
+                    s.mouthShape(learn ? &s.wordShape(w) : nullptr); // imitation: the mouth shows the same word
+                    s.presentShape(w, hold, learn);
+                    s.present(" ", 1, 1.0f, learn, UINT64_MAX);    // its end: the whole word, learnt as one moment
+                    s.mouthShape(nullptr);
+                    s.silence(rest, learn);
+                    tick += hold + 1 + rest;
+                }
+            } else
             for (uint64_t k = 0; k < n; ++k) {
                 // speak_onset: another repetition follows, so after the word's end comes its start again
                 const bool wrap = cfg.speak_onset > 0.5f && learn && k + 1 < n;
@@ -2240,6 +2252,9 @@ int runScriptTest(const Config& cfg) {
             std::printf("TRACE {\"word\": \"%s\", \"gap\": %llu, \"frac\": %.2f, \"top\": \"%s\", \"second\": \"%s\", \"ov\": [%s]}\n",
                         word.c_str(), (unsigned long long)gap, double(frac), top.c_str(), second.c_str(), ovs.c_str());
             tick += word.size() * (1 + gap);
+        } else if (op == "lexicon") {
+            // lexicon:a,b,c - word_shape: words it could say (their shapes exist), without hearing them
+            for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) if (!w.empty()) s.wordShape(w);
         } else if (op == "repeat") {
             // repeat:WORD:MAX:WAIT - the console. Cosmos hears WORD (and its space, as in lessons), then has
             // WAIT silent ticks to start saying it back (letters may double, a leading space is skipped), up to
@@ -2249,7 +2264,32 @@ int runScriptTest(const Config& cfg) {
             const int wait = int(num(f, 3, 30));
             for (char ch : word + " ") s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
             std::string said, plan;
-            if (cfg.speak_plan > 0.0f) { // read the plan once (the quiet tick where it shows most), then say it in order
+            if (cfg.word_shape > 0.5f) { // hear the word as its shape, then read which word the mouth shows
+                const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(word.size());
+                s.presentShape(word, hold, false);
+                s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                std::vector<std::pair<double, std::string>> best;
+                double top = -1.0;
+                for (int w = -1; w < wait; ++w) { // first look at once, then in silence
+                    if (w >= 0) s.silence(1, false);
+                    std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                    std::sort(on.begin(), on.end());
+                    std::vector<std::pair<double, std::string>> ov;
+                    for (const auto& [name, fp] : s.wordShapes()) {
+                        size_t hit = 0;
+                        for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                        ov.push_back({fp.empty() ? 0.0 : double(hit) / double(fp.size()), name});
+                    }
+                    std::sort(ov.rbegin(), ov.rend());
+                    if (!ov.empty() && ov[0].first > top) top = ov[0].first, best = ov;
+                }
+                char buf[96];
+                for (size_t r = 0; r < best.size() && r < 4; ++r) {
+                    std::snprintf(buf, sizeof buf, "%s%s %.2f", plan.empty() ? "" : ", ", best[r].second.c_str(), best[r].first);
+                    plan += buf;
+                }
+                if (!best.empty() && best[0].first >= cfg.word_say_min) said = best[0].second;
+            } else if (cfg.speak_plan > 0.0f) { // read the plan once (the quiet tick where it shows most), then say it in order
                 const std::string letters = "abcdefghijklmnopqrstuvwxyz";
                 std::vector<double> best(letters.size(), 0.0);
                 double bestSum = -1.0;

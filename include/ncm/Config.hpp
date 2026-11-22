@@ -556,6 +556,15 @@ struct Config {
     // face alone (the hard clamp also switched every other face cell OFF, wiping the Output field's own
     // activity; Output recall fell ~70% -> ~18%, and the mouth hangs on that field).
     float speak_soft = 0.0f;
+    // word_shape 1 (2026-11-22, "a word and a letter are not the same thing"): a word is heard as its OWN
+    // shape (a fixed random set of ear lines, as big as a letter's, made from the word itself), held for
+    // word_hold ticks (0 = as long as the word has letters), then its space. Letters keep their own shapes;
+    // nothing tells the brain which letters a word has (that is for it to learn later, from facts).
+    // In lessons the mouth is shown the same word shape (imitation); to repeat a word it reads which known
+    // word shape its mouth shows most. word_say_min: the least overlap it needs to say anything.
+    float word_shape = 0.0f;
+    float word_hold = 0.0f;
+    float word_say_min = 0.2f;
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
     // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),
