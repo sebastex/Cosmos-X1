@@ -2086,7 +2086,7 @@ int runScriptTest(const Config& cfg) {
     };
     const bool learns = s.learning(); // the twin never learns, whatever the script says
     if (script.find("report:") != std::string::npos) s.watchActivity(true); // reports show activity while hearing
-    uint64_t tick = 0, index = 0;
+    uint64_t tick = 0, index = 0, shapeLessons = 0;
     for (const std::string& step : split(script, ';')) {
         if (step.empty()) continue;
         const std::vector<std::string> f = split(step, ':');
@@ -2109,15 +2109,21 @@ int runScriptTest(const Config& cfg) {
             const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
             if (cfg.word_shape > 0.5f && text.find(' ') + 1 == text.size()) { // the word as its own shape
                 const std::string w = text.substr(0, text.size() - 1);
+                const bool modOut = std::getenv("NCM_SAY_MOD") != nullptr; // debug: learning strength per word
+                if (modOut) s.resetModulatorMean();
                 const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(w.size());
                 for (uint64_t k = 0; k < n; ++k) {
-                    s.mouthShape(learn ? &s.wordShape(w) : nullptr); // imitation: the mouth shows the same word
+                    const bool teach = learn && double(shapeLessons) + 0.5 >= double(cfg.word_mouth_from);
+                    s.mouthShape(teach ? &s.wordShape(w) : nullptr); // imitation: the mouth shows the same word
                     s.presentShape(w, hold, learn);
                     s.present(" ", 1, 1.0f, learn, UINT64_MAX);    // its end: the whole word, learnt as one moment
                     s.mouthShape(nullptr);
                     s.silence(rest, learn);
                     tick += hold + 1 + rest;
                 }
+                ++shapeLessons;
+                if (modOut) std::printf("SAYMOD %s %.4f change %.2f scaled %.2f\n", w.c_str(), s.meanModulator(),
+                                        s.matrix().learningStats().change, s.matrix().learningStats().scaled);
             } else
             for (uint64_t k = 0; k < n; ++k) {
                 // speak_onset: another repetition follows, so after the word's end comes its start again
@@ -2269,6 +2275,7 @@ int runScriptTest(const Config& cfg) {
                 s.presentShape(word, hold, false);
                 s.present(" ", 1, 1.0f, false, UINT64_MAX);
                 std::vector<std::pair<double, std::string>> best;
+                std::vector<float> bestDr, bestVa, bestW;
                 double top = -1.0;
                 for (int w = -1; w < wait; ++w) { // first look at once, then in silence
                     if (w >= 0) s.silence(1, false);
@@ -2281,14 +2288,39 @@ int runScriptTest(const Config& cfg) {
                         ov.push_back({fp.empty() ? 0.0 : double(hit) / double(fp.size()), name});
                     }
                     std::sort(ov.rbegin(), ov.rend());
-                    if (!ov.empty() && ov[0].first > top) top = ov[0].first, best = ov;
+                    if (!ov.empty() && ov[0].first > top) {
+                        top = ov[0].first, best = ov;
+                        if (std::getenv("NCM_MOUTH_DRIVE")) s.matrix().mouthDrive(bestDr, bestVa, &bestW); // at the best moment
+                    }
                 }
                 char buf[96];
                 for (size_t r = 0; r < best.size() && r < 4; ++r) {
                     std::snprintf(buf, sizeof buf, "%s%s %.2f", plan.empty() ? "" : ", ", best[r].second.c_str(), best[r].first);
                     plan += buf;
                 }
-                if (!best.empty() && best[0].first >= cfg.word_say_min) said = best[0].second;
+                if (!best.empty() && best[0].first >= cfg.word_say_min &&
+                    (cfg.word_say_margin <= 0.0f || best.size() < 2 || best[0].first >= double(cfg.word_say_margin) * best[1].first))
+                    said = best[0].second; // loud enough (and, with a margin, clearly the one)
+                if (std::getenv("NCM_MOUTH_DRIVE") && !best.empty()) { // where the mouth's activity comes from
+                    const std::vector<float>& dr = bestDr;
+                    const std::vector<float>& va = bestVa;
+                    auto mean = [&](const std::vector<uint32_t>& fp, const std::vector<float>& x) {
+                        double t = 0; for (uint32_t q : fp) t += x[q]; return fp.empty() ? 0.0 : t / double(fp.size()); };
+                    double allD = 0, allV = 0;
+                    for (size_t q = 0; q < dr.size(); ++q) allD += dr[q], allV += va[q];
+                    const auto& own = s.wordShape(word);
+                    const auto& win = s.wordShapes().at(best[0].second);
+                    std::printf("MOUTH {\"heard\":\"%s\",\"winner\":\"%s\",\"drive_own\":%.4f,\"drive_win\":%.4f,\"drive_all\":%.4f,"
+                                "\"value_own\":%.4f,\"value_win\":%.4f,\"value_all\":%.4f,\"w_own\":%.4f,\"w_win\":%.4f,\"w_all\":%.4f}\n", word.c_str(), best[0].second.c_str(),
+                                mean(own, dr), mean(win, dr), allD / double(dr.size()), mean(own, va), mean(win, va), allV / double(va.size()),
+                                mean(own, bestW), mean(win, bestW), [&] { double t = 0; for (float x : bestW) t += x; return bestW.empty() ? 0.0 : t / double(bestW.size()); }());
+                }
+                for (const auto& [ov, name] : best) // the heard word's own strength on the mouth
+                    if (name == word) { std::snprintf(buf, sizeof buf, " | own %.3f", ov); plan += buf; }
+                {   // and its strength at its own best moment (any tick), against the mouth's usual background
+                    std::snprintf(buf, sizeof buf, " | top %.3f", top);
+                    plan += buf;
+                }
             } else if (cfg.speak_plan > 0.0f) { // read the plan once (the quiet tick where it shows most), then say it in order
                 const std::string letters = "abcdefghijklmnopqrstuvwxyz";
                 std::vector<double> best(letters.size(), 0.0);
@@ -2493,14 +2525,17 @@ int runScriptTest(const Config& cfg) {
                 s.clearActivity();
                 s.silence(30, false);
                 Vec prev = copyOf(m.voxelState());
-                const std::string text = w + " ";
+                const bool shape = cfg.word_shape > 0.5f; // word_shape: the word heard as its own shape, then its space
+                const size_t hold = shape ? (cfg.word_hold > 0.5f ? size_t(cfg.word_hold + 0.5f) : w.size()) : w.size();
+                const std::string text = shape ? std::string(hold, '#') + " " : w + " ";
                 for (size_t k = 0; k < text.size(); ++k) {
-                    s.present(std::string(1, text[k]), 1, 1.0f, lesson, UINT64_MAX);
+                    if (shape && text[k] == '#') s.presentShape(w, 1, lesson);
+                    else s.present(std::string(1, text[k]), 1, 1.0f, lesson, UINT64_MAX);
                     addTo(r.s2word, m.sheetState());
                     addTo(r.s3word, m.voxelState());
                     r.s3ticks.push_back(copyOf(m.voxelState()));
                     if (r.s3ticks.back() != prev) ++r.changes, prev = r.s3ticks.back();
-                    if (k + 1 == w.size()) r.l1 = copyOf(m.lineState()), r.s2last = copyOf(m.sheetState());
+                    if (k + 1 == hold) r.l1 = copyOf(m.lineState()), r.s2last = copyOf(m.sheetState());
                 }
                 for (uint64_t t = 0; t < afterT; ++t) {
                     s.silence(1, false);
@@ -2537,7 +2572,22 @@ int runScriptTest(const Config& cfg) {
                         fields += buf;
                     }
                 }
-                std::printf("LEVELS {\"fields_after\":[%s],", fields.c_str());
+                {   // the mouth-side face of the Output field (the only way into the mouth): how alike, how many voxels on
+                    const uint32_t N = uint32_t(cfg.field_dim);
+                    Vec fa, fb;
+                    size_t ona = 0, onb = 0;
+                    for (uint32_t z = 0; z < N; ++z)
+                        for (uint32_t y = 0; y < N; ++y) {
+                            const size_t v = m.voxelIndex(uint32_t(Field::Output), N - 1, y, z);
+                            float sa = 0, sb = 0;
+                            for (uint32_t c = 0; c < C3; ++c) fa.push_back(a.s3after[v * C3 + c]), fb.push_back(b.s3after[v * C3 + c]), sa += a.s3after[v * C3 + c], sb += b.s3after[v * C3 + c];
+                            ona += sa > 0, onb += sb > 0;
+                        }
+                    char buf[96];
+                    std::snprintf(buf, sizeof buf, "\"face\":[%.3f,%zu,%zu],", cosv(fa, fb), ona, onb);
+                    std::printf("LEVELS {%s", buf);
+                }
+                std::printf("\"fields_after\":[%s],", fields.c_str());
                 std::printf("\"pair\":\"%s\",\"lesson\":%d,\"l1_last\":%.3f,\"s2_last\":%.3f,\"s2_word\":%.3f,\"s2_after\":%.3f,"
                             "\"s3_word\":%.3f,\"s3_after\":%.3f,\"s3_changes\":[%llu,%llu],\"s3_ticks\":[%s]}\n",
                             pr.c_str(), lesson ? 1 : 0, cosv(a.l1, b.l1), cosv(a.s2last, b.s2last), cosv(a.s2word, b.s2word), cosv(a.s2after, b.s2after),

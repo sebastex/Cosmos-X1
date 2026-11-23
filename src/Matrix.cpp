@@ -671,6 +671,28 @@ void NeuralCellularMatrix::clampMotorSheets(const std::vector<uint32_t>& active_
     motorSheetOn_ = true;
 }
 
+void NeuralCellularMatrix::mouthDrive(std::vector<float>& drive, std::vector<float>& value, std::vector<float>* weight) const {
+    drive.assign(motorQ_.size(), 0.0f);
+    if (weight) weight->assign(motorQ_.size(), 0.0f);
+    value.assign(motorQ_.size(), 0.0f);
+    for (size_t s = 0; s < motorQ_.size(); ++s) {
+        const size_t q = motorQ_[s], v = q / SS_, cell = q % SS_;
+        const float* cv = s2_.cur.data() + q * C2;
+        float acc[C2] = {};
+        if (!innerLearned_.empty()) {
+            const LinkStore::View vw = inner_.view(v, uint32_t(cell));
+            if (vw.n) innerDownAdd(vw, s3_.cur.data() + v * C3, acc, 1.0f);
+            if (weight && vw.n) { // the cell's total learned downward strength (strongest channel)
+                float w1[C2] = {}, ones[C3];
+                for (uint32_t c = 0; c < C3; ++c) ones[c] = 1.0f;
+                innerDownAdd(vw, ones, w1, 1.0f);
+                for (uint32_t b = 0; b < C2; ++b) (*weight)[s] = std::max((*weight)[s], w1[b]);
+            }
+        }
+        for (uint32_t b = 0; b < C2; ++b) drive[s] = std::max(drive[s], acc[b]), value[s] = std::max(value[s], cv[b]);
+    }
+}
+
 std::vector<uint32_t> NeuralCellularMatrix::readMotorSheets() const {
     std::vector<uint32_t> active;
     const float level = cfg_.level2.active_level;
@@ -2348,6 +2370,7 @@ void NeuralCellularMatrix::learn(float modulator) {
         const size_t SS = SS_, J = SS * C2;
         const float baseRate = std::max(0.0f, cfg_.learning.inner_rate) * std::clamp(modulator, 0.0f, 1.0f);
         const float period = cfg_.learning.inner_period;
+        const float downBudget = std::max(0.0f, cfg_.learning.inner_down_budget);
 #pragma omp parallel for schedule(dynamic, 64)
         for (int64_t vi = 0; vi < voxels; ++vi) {
             const size_t v = size_t(vi);
@@ -2384,6 +2407,12 @@ void NeuralCellularMatrix::learn(float modulator) {
                         float* w = ch + kInnerDown + size_t(b) * C3;
                         for (uint32_t c = 0; c < C3; ++c)
                             if (a[c] > 0.0f) w[c] += r * a[c] * (xc[b] - w[c]);
+                        if (downBudget > 0.0f) { // fair share: the cell's total learned input stays within the budget
+                            float total = 0.0f;
+                            for (uint32_t c = 0; c < C3; ++c) total += std::max(0.0f, w[c]);
+                            if (total > downBudget)
+                                for (uint32_t c = 0; c < C3; ++c) w[c] *= downBudget / total;
+                        }
                     }
             }
             inner_.close(true);

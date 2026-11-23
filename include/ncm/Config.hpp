@@ -273,6 +273,10 @@ struct LearningParams {
     float inner_down = 0.0f;
     float inner_rate = 0.05f;
     float inner_period = 0.0f;
+    // inner_down_budget b (2026-11-22, the fair-share rule of the voxel links, also on the learned
+    // downward path): each sheet cell channel's total learned downward strength is capped at b, so a
+    // few early words cannot own the cells below (the mouth) and drown later words. 0 = no cap.
+    float inner_down_budget = 0.0f;
     // 2D level learns (every level influences its neighbours): each sheet cell gets a learned
     // C2 x C2 block from each of its 8 neighbours on top of the fixed rule, learned on every 2D
     // step with the voxels' rule (fire together / in order, Oja, per-link bound sheet_link_bound,
@@ -565,6 +569,10 @@ struct Config {
     float word_shape = 0.0f;
     float word_hold = 0.0f;
     float word_say_min = 0.2f;
+    // word_say_margin k: it says a word only when that word stands out, at least k times as strong on the
+    // mouth as the next one (sure of it), instead of over a fixed loudness. 0 = loudness only.
+    float word_say_margin = 0.0f;
+    float word_mouth_from = 0.0f; // diagnostic: the mouth is taught only from the Nth word lesson on (0 = all)
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
     // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),

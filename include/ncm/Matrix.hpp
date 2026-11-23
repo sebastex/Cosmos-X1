@@ -132,6 +132,9 @@ public:
     void clampMotorSheets(const std::vector<uint32_t>& active_lines);
     void releaseMotorSheets() { motorSheetOn_ = false; }
     std::vector<uint32_t> readMotorSheets() const;
+    // Diagnostic: per mouth line, the learned downward drive into its sheet cell right now (strongest
+    // channel of sum_c w[b][c] x voxel_c) and the cell's present value (strongest channel).
+    void mouthDrive(std::vector<float>& drive, std::vector<float>& value, std::vector<float>* weight = nullptr) const;
     // inner_sense: the inner face's sheet cells (x = 0 of field inner_field) show the brain's own state;
     // readInnerSheets: those that fire (read with the inner sense off, it is the brain's own guess).
     void clampInnerSheets(const std::vector<uint32_t>& active_lines);
