@@ -2258,6 +2258,24 @@ int runScriptTest(const Config& cfg) {
             std::printf("TRACE {\"word\": \"%s\", \"gap\": %llu, \"frac\": %.2f, \"top\": \"%s\", \"second\": \"%s\", \"ov\": [%s]}\n",
                         word.c_str(), (unsigned long long)gap, double(frac), top.c_str(), second.c_str(), ovs.c_str());
             tick += word.size() * (1 + gap);
+        } else if (op == "read" && cfg.word_shape > 0.5f) {
+            // read:WORD:N:REST - reading aloud (word_shape): it sees the word's letters one by one, then hears the
+            // word as its own shape (and its space) while the mouth shows that shape. Nothing says the letters
+            // make the word; any letter->word link must be learnt from the letters coming just before the shape.
+            // read_mouth 1: the mouth shows the shape already while the letters are seen (it reads aloud).
+            const std::string w = f.size() > 1 ? f[1] : "";
+            const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
+            const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(w.size());
+            for (uint64_t k = 0; k < n && !w.empty(); ++k) {
+                s.mouthShape(learn && cfg.read_mouth > 0.5f ? &s.wordShape(w) : nullptr);
+                for (char ch : w) s.present(std::string(1, ch), 1, 1.0f, learn, UINT64_MAX);
+                s.mouthShape(learn ? &s.wordShape(w) : nullptr);
+                s.presentShape(w, hold, learn);
+                s.present(" ", 1, 1.0f, learn, UINT64_MAX);
+                s.mouthShape(nullptr);
+                s.silence(rest, learn);
+                tick += w.size() + hold + 1 + rest;
+            }
         } else if (op == "lexicon") {
             // lexicon:a,b,c - word_shape: words it could say (their shapes exist), without hearing them
             for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) if (!w.empty()) s.wordShape(w);
@@ -2268,12 +2286,17 @@ int runScriptTest(const Config& cfg) {
             const std::string word = f.size() > 1 ? f[1] : "";
             const uint64_t maxN = num(f, 2, word.size() + 3);
             const int wait = int(num(f, 3, 30));
-            for (char ch : word + " ") s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
+            // repeat:WORD:MAX:WAIT:read - reading: it sees only the word's letters (and space), then the mouth is read
+            const bool readIt = cfg.word_shape > 0.5f && f.size() > 4 && f[4] == "read";
+            if (cfg.word_shape < 0.5f || readIt || cfg.word_repeat_letters > 0.5f) // word_shape: the shape alone
+                for (char ch : word + " ") s.present(std::string(1, ch), 1, 1.0f, false, UINT64_MAX);
             std::string said, plan;
             if (cfg.word_shape > 0.5f) { // hear the word as its shape, then read which word the mouth shows
                 const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(word.size());
-                s.presentShape(word, hold, false);
-                s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                if (!readIt) {
+                    s.presentShape(word, hold, false);
+                    s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                }
                 std::vector<std::pair<double, std::string>> best;
                 std::vector<float> bestDr, bestVa, bestW;
                 double top = -1.0;
@@ -2391,7 +2414,8 @@ int runScriptTest(const Config& cfg) {
             } else {
                 said = speakOut(s, maxN, std::clamp(1.0f - cfg.self_voice, 0.05f, 1.0f), false, wait, true, true);
             }
-            std::printf("REPEAT {\"heard\": \"%s\", \"said\": \"%s\", \"plan\": \"%s\"}\n", word.c_str(), said.c_str(), plan.c_str());
+            std::printf("%s {\"heard\": \"%s\", \"said\": \"%s\", \"plan\": \"%s\"}\n", readIt ? "READ" : "REPEAT",
+                        word.c_str(), said.c_str(), plan.c_str());
             std::printf("CONSOLE you: %-14s cosmos: %-14s %s\n", word.c_str(), said.empty() ? "(silent)" : said.c_str(),
                         said == word ? "RIGHT" : "");
             tick += word.size() + 1 + 2 * maxN;
