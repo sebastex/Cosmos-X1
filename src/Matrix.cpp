@@ -453,6 +453,20 @@ void NeuralCellularMatrix::initPositionWeights() {
     Rng u2(mix64(cfg_.seed ^ kStreamPositionUp2));
     Rng d2(mix64(cfg_.seed ^ kStreamPositionDown2));
     fillNormal(U1_, u1, 1.0 / std::sqrt(double(L_) * C1));
+    // line_shared a (fix S4, learning-limits.md L3): every slot's upward weights = sqrt(1-a) x its own
+    // random part (WHEN the line fired) + sqrt(a) x one part shared by all slots (THAT it fired), so a
+    // letter keeps one identity wherever it sits on the belt; the variance (signal size) is unchanged.
+    if (const float a = std::clamp(cfg_.line_shared, 0.0f, 1.0f); a > 0.0f) {
+        AVec<float> shared(size_t(C2) * C1);
+        Rng us(mix64(cfg_.seed ^ kStreamLineShared));
+        fillNormal(shared, us, 1.0 / std::sqrt(double(L_) * C1));
+        const float kp = std::sqrt(1.0f - a), ks = std::sqrt(a);
+        for (uint32_t k = 0; k < L_; ++k)
+            for (size_t i = 0; i < shared.size(); ++i) {
+                float& u = U1_[size_t(k) * C2 * C1 + i];
+                u = kp * u + ks * shared[i];
+            }
+    }
     fillNormal(D1_, d1, 1.0 / std::sqrt(double(C2)));
     fillNormal(U2_, u2, 1.0 / std::sqrt(double(SS_) * C2));
     fillNormal(D2_, d2, 1.0 / std::sqrt(double(C3)));

@@ -54,6 +54,7 @@ enum Stream : uint64_t {
     kStreamMicrotubule,
     kStreamSleep,
     kStreamAlloc,
+    kStreamLineShared, // line_shared: the slot-independent part of the belt's upward weights
 };
 
 } // namespace ncm

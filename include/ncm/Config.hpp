@@ -700,6 +700,10 @@ struct Config {
     // letter's strength) is unchanged. In a stream the newest letters dominate, so a word is not
     // drowned by the words before it. 1 = all positions count the same.
     float line_recency = 1.0f;
+    // Share (0..1) of each belt slot's upward weights that is the same for every slot (line_shared, fix
+    // S4): the sheet then hears THAT its line fired recently as well as WHEN, so a letter has one identity
+    // at any slot. 0 = every slot fully its own random weights (as before).
+    float line_shared = 0.0f;
     float downward_gain = 0.3f;
     // 1 = divisive fatigue in the 2D sheets (they relay the input; a weak but real input is
     // never silenced there): a tired cell fires more slowly instead of having its threshold
