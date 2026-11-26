@@ -2107,6 +2107,22 @@ int runScriptTest(const Config& cfg) {
             for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) text += (text.empty() ? "" : " ") + w;
             text += " ";
             const uint64_t n = num(f, 2, 1), rest = num(f, 3, 30);
+            if (cfg.word_shape > 0.5f && text.find(' ') + 1 != text.size()) { // a sentence: each word as its own shape
+                const std::vector<std::string> sent = split(f.size() > 1 ? f[1] : "", ',');
+                const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : 8;
+                for (uint64_t k = 0; k < n; ++k) {
+                    for (const std::string& w : sent) {
+                        if (w.empty()) continue;
+                        s.mouthShape(learn ? &s.wordShape(w) : nullptr);
+                        s.presentShape(w, hold, learn);
+                        s.present(" ", 1, 1.0f, learn, UINT64_MAX);
+                        s.mouthShape(nullptr);
+                        tick += hold + 1;
+                    }
+                    s.silence(rest, learn);
+                    tick += rest;
+                }
+            } else
             if (cfg.word_shape > 0.5f && text.find(' ') + 1 == text.size()) { // the word as its own shape
                 const std::string w = text.substr(0, text.size() - 1);
                 const bool modOut = std::getenv("NCM_SAY_MOD") != nullptr; // debug: learning strength per word
@@ -2949,6 +2965,48 @@ int runScriptTest(const Config& cfg) {
             std::printf("BRAINREPORT %s\n", j.c_str());
         } else if (op == "still") { // still:1 = hear as in a lesson (shapes are recorded) but change nothing
             s.setLearning(learns && num(f, 1, 1) == 0);
+        } else if (op == "charge") {
+            // charge:X - an emotionally charged stretch (Jung's feeling-toned complexes): learning while hearing is
+            // X times stronger until charge:1.
+            s.setArousal(float(std::atof(f.size() > 1 ? f[1].c_str() : "1")));
+        } else if (op == "assoc" && cfg.word_shape > 0.5f) {
+            // assoc:WORD:WAIT - Jung's word association experiment. Cosmos hears WORD, then in silence the mouth answers
+            // with the first OTHER known word clear enough to say (word_say_min, word_say_margin). Prints the answer,
+            // its latency (ticks; WAIT = no answer), its peak, whether the mouth only echoed the cue, and the brain's
+            // mean surprise while answering (the "skin response"). No learning.
+            const std::string word = f.size() > 1 ? f[1] : "";
+            const int wait = int(num(f, 2, 40));
+            const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : 8;
+            s.presentShape(word, hold, false);
+            s.present(" ", 1, 1.0f, false, UINT64_MAX);
+            std::string answer;
+            int latency = wait;
+            double peak = 0.0, cuePeak = 0.0, sur = 0.0;
+            std::string peakWord;
+            for (int t = 0; t < wait; ++t) {
+                s.silence(1, false);
+                sur += s.matrix().lastSurprise();
+                std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                std::sort(on.begin(), on.end());
+                double best = 0.0, second = 0.0, cue = 0.0;
+                std::string bestW;
+                for (const auto& [name, fp] : s.wordShapes()) {
+                    size_t hit = 0;
+                    for (uint32_t q : fp) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                    const double ov = fp.empty() ? 0.0 : double(hit) / double(fp.size());
+                    if (name == word) { cue = ov; continue; }
+                    if (ov > best) second = best, best = ov, bestW = name;
+                    else if (ov > second) second = ov;
+                }
+                cuePeak = std::max(cuePeak, cue);
+                if (best > peak) peak = best, peakWord = bestW;
+                if (answer.empty() && best >= cfg.word_say_min &&
+                    (cfg.word_say_margin <= 0.0f || best >= double(cfg.word_say_margin) * second) && best >= cue)
+                    answer = bestW, latency = t;
+            }
+            std::printf("ASSOC {\"cue\":\"%s\",\"answer\":\"%s\",\"latency\":%d,\"peak\":%.4f,\"peak_word\":\"%s\",\"echo\":%.4f,\"arousal\":%.4f}\n",
+                        word.c_str(), answer.c_str(), latency, peak, peakWord.c_str(), cuePeak, sur / double(std::max(1, wait)));
+            tick += hold + 1 + uint64_t(wait);
         } else if (op == "good" || op == "bad") {
             if (learn) s.feedback(op == "good" ? 1.0f : -1.0f);
         } else if (op == "rest") {

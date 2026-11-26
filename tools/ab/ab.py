@@ -49,8 +49,43 @@ def lessons(words, op, sleep=False):
     return out
 
 
+def jung_design():
+    """20 words: 4 core (only in charged sentences), 8 ring (share the charged sentences), 8 free (calm sentences
+    only); every word in 6 sentences, so frequency is matched."""
+    W = quick.words(100)[10:30]
+    core, ring, free = W[:4], W[4:12], W[12:20]
+    rng = random.Random(77)
+    charged, calm = [], []
+    for i in range(24):  # each core word 6x, each ring word 6x (2 per charged sentence)
+        c = core[i % 4]
+        r = [ring[(2 * i) % 8], ring[(2 * i + 1 + 2 * (i // 4)) % 8]]
+        if r[0] == r[1]:
+            r[1] = ring[(2 * i + 3) % 8]
+        s = [c] + r
+        rng.shuffle(s)
+        charged.append(s)
+    for i in range(16):  # each free word 6x
+        s = [free[(3 * i + k) % 8] for k in range(3)]
+        rng.shuffle(s)
+        calm.append(s)
+    return W, core, ring, free, charged, calm
+
+
 def script(test):
-    sleep = test.endswith('s')  # rep100s / read30s: the same test with a sleep after every pass
+    if test.startswith('jung'):  # jung = charged complexes; jungcalm = the same lessons without charge (control)
+        W, core, ring, free, charged, calm = jung_design()
+        k = 1 if test == 'jungcalm' else 3
+        out = ['lexicon:' + ','.join(quick.words(100) + NEW)]
+        for r in range(1, ROUNDS + 1):
+            items = [('c', s) for s in charged] + [('n', s) for s in calm]
+            random.Random(r).shuffle(items)
+            for kind, s in items:
+                out += ([f'charge:{k}'] if kind == 'c' else []) + [f'say:{",".join(s)}:1:40'] + (['charge:1'] if kind == 'c' else [])
+        order = list(W)
+        random.Random(5).shuffle(order)
+        t = ['still:1'] + [f'rest:120;assoc:{w}:40' for w in order] + ['rest:300'] + [f'rest:120;assoc:{w}:40' for w in order]
+        return ';'.join(out + t)
+    sleep = test.endswith('s') and not test.startswith('jung')  # rep100s / read30s: the same test with a sleep after every pass
     test = test.rstrip('s') if sleep else test
     if test.startswith('rep'):
         words = quick.words(100)[:int(test[3:])]
@@ -171,6 +206,32 @@ def score_word(test, path):
         return {'said': sum(r['said'] == r['heard'] for r in known), 'top': sum(top(r) == r['heard'] for r in known),
                 'wrong': sum(bool(r['said']) and r['said'] != r['heard'] for r in known), 'quarters': q,
                 'new_said': [r['said'] or '-' for r in rows if r['heard'] in NEW]}
+    if test.startswith('jung'):
+        W, core, ring, free, charged, calm = jung_design()
+        rows = rows_of(path, 'ASSOC')
+        if len(rows) < 2 * len(W):
+            return None
+        first, second = rows[:len(W)], rows[len(W):2 * len(W)]
+        med = sorted(r['latency'] for r in first)[len(first) // 2]
+        rep = {r['cue']: r['answer'] for r in second}
+        ind = {}
+        prev = None
+        for r in first:
+            n = 0
+            n += r['latency'] > med            # slow
+            n += not r['answer']               # no answer
+            n += r['echo'] > r['peak']         # echoed the stimulus
+            n += bool(r['answer']) and r['answer'] == prev  # perseveration
+            n += rep.get(r['cue']) != r['answer']           # failed reproduction
+            ind[r['cue']] = n
+            prev = r['answer']
+        g = lambda ws: round(sum(ind[w] for w in ws) / len(ws), 2)
+        lat = lambda ws: round(sum(r['latency'] for r in first if r['cue'] in ws) / len(ws), 1)
+        aro = lambda ws: round(sum(r['arousal'] for r in first if r['cue'] in ws) / len(ws), 3)
+        into = sum(1 for r in first if r['cue'] not in core and r['answer'] in core)  # answers pulled into the core
+        return {'indicators core/ring/free': [g(core), g(ring), g(free)], 'latency': [lat(core), lat(ring), lat(free)],
+                'arousal': [aro(core), aro(ring), aro(free)], 'answers_into_core': into,
+                'answered': sum(bool(r['answer']) for r in first), 'sample': [(r['cue'], r['answer'] or '-', r['latency']) for r in first[:6]]}
     if test.startswith('mind'):
         m = rows_of(path, 'MIND')
         if not m:

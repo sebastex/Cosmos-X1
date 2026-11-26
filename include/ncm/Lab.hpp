@@ -164,6 +164,7 @@ public:
             surpriseSum_ = 0.0;
             surpriseCount_ = 0;
             if (cfg_.valence > 0.0f && fingerprint) modulator *= std::clamp(1.0f + cfg_.valence * mood_, 0.0f, 2.0f); // a need
+            if (fingerprint) modulator = std::min(1.0f, modulator * arousal_); // charge: an emotionally charged moment learns harder
             if (learning_ && allowLearning) {
                 modSum_ += modulator;
                 ++modCount_;
@@ -320,6 +321,8 @@ public:
     }
     // Right or wrong for what was just done (+1 good, -1 bad), brain-wide; only while learning.
     void feedback(float signal) { if (learning_) m_->feedback(signal); }
+    // charge (amygdala-like arousal, for Jung's complexes): learning strength x a while something is heard.
+    void setArousal(float a) { arousal_ = std::max(0.0f, a); }
     // NCM_PROFILE=1: where the time goes (seconds per part of a tick), printed by profileReport().
     using Clock = std::chrono::steady_clock;
     void lap(int part, Clock::time_point& t0) {
@@ -406,6 +409,7 @@ private:
     uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
     bool wasSilent_ = true; // the previous tick had no input
+    float arousal_ = 1.0f; // charge: learning multiplier while hearing (1 = calm)
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input
     // ends, suppression builds up gradually, so memory circuits stay in recall mode briefly
