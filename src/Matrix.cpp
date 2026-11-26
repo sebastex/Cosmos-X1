@@ -1520,7 +1520,9 @@ void NeuralCellularMatrix::step3D() {
             reset3_[v] -= 1.0f;
             for (uint32_t c = 0; c < C3; ++c) in[c] = -1.0f;
         }
-        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + achTire * lp.fatigue_gain * fatigue3_[v] + allocTheta, cfg_.channel_winners3);
+        // fatigue_divisive3 (fix S8): tiring slows a voxel's firing (pass 2) instead of raising its threshold.
+        const float tire3 = cfg_.fatigue_divisive3 > 0.5f ? 0.0f : achTire * lp.fatigue_gain * fatigue3_[v];
+        drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + tire3 + allocTheta, cfg_.channel_winners3);
     }
 
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
@@ -1542,8 +1544,12 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
-                                            cfg_.fire_threshold3, cfg_.fire_gain3);
+        float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
+                                      cfg_.fire_threshold3, cfg_.fire_gain3);
+        // fatigue_divisive3: a tired voxel fires more slowly but keeps its pattern, so a word held for a
+        // while keeps the same deep shape instead of handing over to fresh cells (learning-limits.md L15).
+        if (cfg_.fatigue_divisive3 > 0.5f && final > 0.0f)
+            final = scaleCell<C3>(out + v * C3, 1.0f / (1.0f + lp.fatigue_gain * fatigue3_[v]));
         adaptThreshold(theta[v], homeoAvg(homeo3_, v, final), lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);

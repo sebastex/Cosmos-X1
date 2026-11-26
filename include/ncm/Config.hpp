@@ -705,6 +705,9 @@ struct Config {
     // never silenced there): a tired cell fires more slowly instead of having its threshold
     // raised. The 3D cells (where memories live) always use the threshold rise.
     float fatigue_divisive2 = 0.0f;
+    // The same for the voxels (fatigue_divisive3, fix S8): a tired voxel fires more slowly instead of having
+    // its threshold raised, so a held word keeps one deep pattern while it is heard. 0 = threshold rise.
+    float fatigue_divisive3 = 0.0f;
 
     // 1D lines carry sequences intact, so homeostasis is off there by default (spec Section 3C).
     // theta_max is high enough that homeostasis can always catch up with a cell's drive;
