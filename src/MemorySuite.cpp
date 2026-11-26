@@ -2300,6 +2300,72 @@ int runScriptTest(const Config& cfg) {
             std::printf("DRIFT {\"word\":\"%s\",\"vs_tick4\":%s]]}\n", w.c_str(), out.c_str());
             s.silence(60, false);
             tick += hold + 60;
+        } else if (op == "complete") {
+            // complete:WORD:FRACTION:TICKS - completion gauge (I-01b, read only, nothing learns; needs word_shape).
+            // 1. Hear the FULL shape (and its space, as in repeat); in the 30 silent ticks after it (first look at
+            //    once, as repeat does), the deep state at the moment the word's own shape is strongest on the mouth
+            //    is the target. 2. 150 silent ticks. 3. Hear a FRACTION of the shape (lab::thin, as repeat's partial
+            //    cue), then its space. 4. After each of TICKS silent ticks: cosine of the deep state with the target,
+            //    per field. Rising = the rest of the pattern is filled in (completion); falling = only an echo.
+            const std::string word = f.size() > 1 ? f[1] : "";
+            const double part = f.size() > 2 && !f[2].empty() ? std::atof(f[2].c_str()) : 0.4;
+            const uint64_t T = num(f, 3, 30);
+            if (cfg.word_shape < 0.5f || word.empty()) {
+                std::printf("COMPLETE {\"word\":\"%s\",\"frac\":%.2f,\"error\":\"needs word_shape\"}\n", word.c_str(), part);
+            } else {
+                const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(word.size());
+                const std::vector<uint32_t> full = s.wordShape(word);
+                auto mouthOwn = [&]() { // the share of the word's own shape that is on the mouth now
+                    std::vector<uint32_t> on = s.matrix().readMotorSheets();
+                    std::sort(on.begin(), on.end());
+                    size_t hit = 0;
+                    for (uint32_t q : full) hit += std::binary_search(on.begin(), on.end(), q) ? 1 : 0;
+                    return full.empty() ? 0.0 : double(hit) / double(full.size());
+                };
+                // 1. the target
+                s.presentShape(word, hold, false);
+                s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                std::vector<double> target;
+                double bestOwn = -1.0;
+                int bestTick = -1;
+                for (int w = -1; w < 30; ++w) {
+                    if (w >= 0) s.silence(1, false);
+                    const double own = mouthOwn();
+                    if (own > bestOwn) {
+                        bestOwn = own, bestTick = w;
+                        const auto& st = s.matrix().voxelState();
+                        target.assign(st.begin(), st.end());
+                    }
+                }
+                // 2. rest
+                s.silence(150, false);
+                // 3. the partial cue (exactly as repeat's partial branch; a full cue at FRACTION >= 1)
+                if (part < 0.999 && part > 0.0) {
+                    const auto cue = lab::thin(full, float(part), cfg.itemSeed(), word[0]);
+                    for (uint64_t t = 0; t < hold; ++t) s.tick(&cue, &full, false);
+                } else {
+                    s.presentShape(word, hold, false);
+                }
+                s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                // 4. silent ticks: how alike the deep state is to the target, per field
+                const size_t per = target.size() / kFields;
+                std::vector<std::string> rows(kFields);
+                for (uint64_t t = 0; t < T; ++t) {
+                    s.silence(1, false);
+                    const auto& st = s.matrix().voxelState();
+                    const std::vector<double> now(st.begin(), st.end());
+                    for (uint32_t k = 0; k < kFields; ++k) {
+                        char b[24];
+                        std::snprintf(b, sizeof b, "%s%.4f", t ? "," : "", lab::cosine(now, target, k * per, (k + 1) * per));
+                        rows[k] += b;
+                    }
+                }
+                std::string out;
+                for (uint32_t k = 0; k < kFields; ++k) out += std::string(k ? ",[" : "[") + rows[k] + "]";
+                std::printf("COMPLETE {\"word\":\"%s\",\"frac\":%.2f,\"target_tick\":%d,\"target_own\":%.3f,\"cos\":[%s]}\n",
+                            word.c_str(), part, bestTick, bestOwn, out.c_str());
+                tick += hold + 1 + 30 + 150 + hold + 1 + T;
+            }
         } else if (op == "read" && cfg.word_shape > 0.5f) {
             // read:WORD:N:REST - reading aloud (word_shape): it sees the word's letters one by one, then hears the
             // word as its own shape (and its space) while the mouth shows that shape. Nothing says the letters

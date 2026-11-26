@@ -10,6 +10,8 @@ brain), keeps a ledger of what was started, and scores what has finished.
 TEST: rep5 / rep30 / rep100 - words learnt as their own shapes (spread, shuffled practice), then each heard
       and said back; read30 - reading-aloud lessons (letters, then the shape), then each word heard, and
       read from its letters four ways: whole, first two + filler, filler + the rest, (and two never-learnt).
+      comp10 - rep10 lessons, then each word cued by 100/60/40/25% of its shape (pattern completion, I-01a);
+      gauge_comp - rep10 lessons, then the completion gauge complete:w:0.4:30 on 5 words (I-01b).
 mem:  the quick memory test (tools/quick/quick.py via quick.yml): letters learnt as chains, recalled from cues.
 BASE: the word settings every word test starts from (the best repeat version so far), unless --nobase.
 """
@@ -30,6 +32,7 @@ BASE = ('--set word_shape=1 --set speak_soft=1 --set downward_gain=0.15 --set wo
         '--set word_say_margin=1.5 --set predict_surprise=1 --set presynaptic_bound=0.1')
 NEW = ['lamp', 'river']
 ROUNDS = 8
+COMP_FRACS = ['1', '0.6', '0.4', '0.25']  # comp10: the share of the shape heard as the cue
 
 
 def first_order(words):
@@ -116,6 +119,16 @@ def script(test):
         random.Random(5).shuffle(order)
         t = ['still:1'] + [f'rest:120;assoc:{w}:40' for w in order] + ['rest:300'] + [f'rest:120;assoc:{w}:40' for w in order]
         return ';'.join(out + t)
+    if test == 'comp10':  # pattern completion (I-01a): rep10 lessons, then each word cued by a share of its shape
+        words = quick.words(100)[:10]
+        t = ['still:1']
+        for frac in COMP_FRACS:
+            t += [f'rest:150;repeat:{w}:8:30:{frac}' for w in words]
+        t += [f'rest:150;repeat:{w}' for w in NEW]
+        return ';'.join(lessons(words, 'say') + t)
+    if test == 'gauge_comp':  # completion gauge (I-01b): rep10 lessons, then complete:w:0.4:30 for 5 words
+        words = quick.words(100)[:10]
+        return ';'.join(lessons(words, 'say') + ['still:1'] + [f'rest:150;complete:{w}:0.4:30' for w in words[:5]])
     sleep = test.endswith('s') and not test.startswith('jung')  # rep100s / read30s: the same test with a sleep after every pass
     test = test.rstrip('s') if sleep else test
     if test.startswith('rep'):
@@ -222,6 +235,35 @@ def top(r):
 
 def score_word(test, path):
     test = test.rstrip('s') if test.endswith('s') and not test.startswith('gauge') else test
+    if test == 'comp10':
+        words = quick.words(100)[:10]
+        rows = rows_of(path, 'REPEAT')
+        if len(rows) < 10 * len(COMP_FRACS) + len(NEW):
+            return None
+        def own(r):
+            m = re.search(r'\| own ([-0-9.]+)', r['plan'])
+            return float(m.group(1)) if m else None
+        out = {}
+        for i, frac in enumerate(COMP_FRACS):
+            blk = rows[10 * i:10 * i + 10]
+            ow = [o for o in map(own, blk) if o is not None]
+            out[f'F{frac}'] = {'top': sum(top(r) == r['heard'] for r in blk), 'said': sum(r['said'] == r['heard'] for r in blk),
+                               'wrong': sum(bool(r['said']) and r['said'] != r['heard'] for r in blk),
+                               'own': round(sum(ow) / len(ow), 3) if ow else None}
+        new = rows[10 * len(COMP_FRACS):10 * len(COMP_FRACS) + len(NEW)]
+        out['new_said'] = [r['said'] or '-' for r in new]
+        out['false_alarms'] = sum(bool(r['said']) for r in new)
+        return out
+    if test == 'gauge_comp':
+        rows = [r for r in rows_of(path, 'COMPLETE') if 'cos' in r]
+        if len(rows) < 5:
+            return None
+        mean = lambda xs: round(sum(xs) / len(xs), 4)
+        F = len(rows[0]['cos'])
+        return {'first': [mean([r['cos'][f][0] for r in rows]) for f in range(F)],
+                'last': [mean([r['cos'][f][-1] for r in rows]) for f in range(F)],
+                'max': [mean([max(r['cos'][f]) for r in rows]) for f in range(F)],
+                'target_own': mean([r['target_own'] for r in rows])}
     if test.startswith('rep'):
         n = int(test[3:])
         words = quick.words(100)[:n]
