@@ -402,6 +402,14 @@ struct Config {
     // a cue's cells stay on long enough for the word's links to pull in the rest, while the usual
     // competition between neighbours pushes rivals out. 0 = off.
     float settle_bind = 0.0f;
+    // Theta-gamma replay (after Lisman & Jensen's theta-gamma code; Bahramisharif et al. 2018): 1 = at the
+    // end of a word heard as letters, before the whole-word look, the deep levels replay the belt one letter
+    // per beat, oldest first (each beat: the sheets hear only that slot, then a 3D step, then learning at
+    // gamma_learn x the last learning strength). Each letter is then coded on its own (no competition with
+    // the others) and bound to the next in order; at most gamma_max beats. 0 = off.
+    float gamma_replay = 0.0f;
+    float gamma_learn = 1.0f;
+    float gamma_max = 8.0f;
     float settle_hold = 0.0f;
     // Brakes on holding. settle_cap > 0: in silence each field keeps at most settle_cap x as many voxels
     // firing as fired at the last heard moment (the strongest; newcomers push the weakest out).

@@ -113,6 +113,23 @@ public:
         // clock_reset 2: a word ends at its space or where silence begins; there every level takes
         // one look at once, so the top level sees the whole word (cues and lessons alike).
         const bool wordEnd = fingerprint && heard_ == ' ';
+        // gamma replay: the letters of the word just ended, one per beat, oldest first (belt slot n .. 1),
+        // before the whole-word look; each beat is a sheet step on that slot alone, a 3D step and learning.
+        if (fingerprint && wasSilentBefore) lettersRun_ = 0;
+        if (wordEnd && cfg_.gamma_replay > 0.5f && lettersRun_ >= 2) {
+            const uint32_t n = std::min<uint32_t>({lettersRun_, uint32_t(cfg_.gamma_max + 0.5f), cfg_.line_len - 1});
+            for (uint32_t j = n; j >= 1; --j) {
+                m_->setSlotWindow(j, j);
+                m_->step2D();
+                m_->setTick4D(false);
+                m_->step3D();
+                if (learning_ && allowLearning && lastModulator_ > 0.0f) m_->learn(lastModulator_ * cfg_.gamma_learn);
+            }
+            m_->setSlotWindow(0, UINT32_MAX);
+            ++replays_;
+        }
+        if (fingerprint && heard_ != ' ' && heard_ != '#') ++lettersRun_;
+        if (wordEnd) lettersRun_ = 0;
         if (cfg_.clock_reset > 1.5f && (wordEnd || (!fingerprint && !wasSilentBefore))) clock_.lookNow();
         const LevelScheduler::Tick t = clock_.advance();
         if (t.sheet) {
@@ -406,6 +423,7 @@ private:
     uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
     bool wasSilent_ = true; // the previous tick had no input
+    uint32_t lettersRun_ = 0; uint64_t replays_ = 0; // gamma replay: letters since the word began, replays so far
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input
     // ends, suppression builds up gradually, so memory circuits stay in recall mode briefly

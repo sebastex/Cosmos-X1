@@ -100,6 +100,8 @@ public:
     // Pharmakon: whether the coming 3D step is also a 4D step (the 4D-lattice coupling updates
     // and learns only then; in between its drive is held).
     void setTick4D(bool fourD) { tick4_ = fourD; }
+    // gamma replay: which belt slots report to the sheets (default all); one slot at a time = one item per beat.
+    void setSlotWindow(uint32_t lo, uint32_t hi) { slotLo_ = lo, slotHi_ = hi; }
 
     // Learn by predicting (predict_surprise): after a 3D step, how much of the voxels' firing their
     // learned links did not predict (0 = fully expected, 1 = all new). Kept until the next call.
@@ -230,6 +232,7 @@ private:
 
     Config cfg_;
     uint32_t N_, S_, L_;
+    uint32_t slotLo_ = 0, slotHi_ = UINT32_MAX; // gamma replay: the belt slots that report to the sheets
     size_t V_, Vf_, SS_, Q_, P_;
 
     LevelState s1_; // 1D line cells, C1 channels

@@ -914,7 +914,8 @@ void NeuralCellularMatrix::step2D() {
             float up[C2] = {};
             bool anyActive = false;
             // A quiet line contributes nothing: its flag spares reading it.
-            for (uint32_t k = 0; k < (lineQuietCur_[q] ? 0u : L); ++k) {
+            // gamma replay: only the belt slots in [slotLo_, slotHi_] report (one item per gamma beat)
+            for (uint32_t k = lineQuietCur_[q] ? L : slotLo_; k < L && k <= slotHi_; ++k) {
                 const float* cell = s1 + (q * L + k) * C1;
                 bool active = false;
                 for (uint32_t c = 0; c < C1; ++c) active = active || cell[c] != 0.0f;
