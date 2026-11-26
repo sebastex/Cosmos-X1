@@ -239,6 +239,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"inner_rate", &c.learning.inner_rate},
         {"inner_period", &c.learning.inner_period},
         {"inner_down_budget", &c.learning.inner_down_budget},
+        {"inner_delta", &c.learning.inner_delta},
         {"sheet_learn", &c.learning.sheet_learn},
         {"sheet_budget", &c.learning.sheet_budget},
         {"sheet_link_bound", &c.learning.sheet_link_bound},

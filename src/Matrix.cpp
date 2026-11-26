@@ -2405,6 +2405,19 @@ void NeuralCellularMatrix::learn(float modulator) {
                 if (innerDown_)
                     for (uint32_t b = 0; b < C2; ++b) { // sheet cell's channel b
                         float* w = ch + kInnerDown + size_t(b) * C3;
+                        if (cfg_.learning.inner_delta > 0.5f) {
+                            // inner_delta: learn only what the firing channels together got wrong. Their joint
+                            // guess (weighted mean of their links) is compared with what the cell below shows;
+                            // every firing channel moves by the shared error, so a pattern already right is not
+                            // copied again, and a channel shared by many words is not pulled to the latest one.
+                            float sa = 0.0f, sw = 0.0f;
+                            for (uint32_t c = 0; c < C3; ++c)
+                                if (a[c] > 0.0f) sa += a[c], sw += a[c] * w[c];
+                            const float e = sa > 0.0f ? xc[b] - sw / sa : 0.0f;
+                            const bool neg = cfg_.learning.inner_delta > 1.5f; // 2: links may turn inhibitory
+                            for (uint32_t c = 0; c < C3; ++c)
+                                if (a[c] > 0.0f) w[c] = neg ? w[c] + r * a[c] * e : std::max(0.0f, w[c] + r * a[c] * e);
+                        } else
                         for (uint32_t c = 0; c < C3; ++c)
                             if (a[c] > 0.0f) w[c] += r * a[c] * (xc[b] - w[c]);
                         if (downBudget > 0.0f) { // fair share: the cell's total learned input stays within the budget

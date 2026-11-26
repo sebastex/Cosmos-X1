@@ -277,6 +277,10 @@ struct LearningParams {
     // downward path): each sheet cell channel's total learned downward strength is capped at b, so a
     // few early words cannot own the cells below (the mouth) and drown later words. 0 = no cap.
     float inner_down_budget = 0.0f;
+    // inner_delta (fix S3 on the downward path, learning-limits.md L12): 1 = the learned downward links
+    // learn from their joint error (what the cell below shows - the firing channels' weighted-mean guess)
+    // instead of each moving toward the latest pattern; 2 = the same, and links may turn negative.
+    float inner_delta = 0.0f;
     // 2D level learns (every level influences its neighbours): each sheet cell gets a learned
     // C2 x C2 block from each of its 8 neighbours on top of the fixed rule, learned on every 2D
     // step with the voxels' rule (fire together / in order, Oja, per-link bound sheet_link_bound,
