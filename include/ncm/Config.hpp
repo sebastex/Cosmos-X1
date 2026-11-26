@@ -243,6 +243,10 @@ struct LearningParams {
     float alloc_recovery = 3000.0f;
     float alloc_jitter = 0.0f;
     float alloc_period = 400.0f;
+    // bcm (fix for L8, hubs): > 0 = the post side of "fired together" follows the BCM rule with a sliding
+    // threshold theta = bcm x (long-run activity)^2 / target_activity; a voxel that fires far above the target
+    // (a hub such as an early word) must fire harder to strengthen and otherwise weakens. 0 = covariance.
+    float bcm = 0.0f;
     float predictive = 0.0f;
     float predictive_gain = 1.0f;
     float feedback_rate = 0.02f;

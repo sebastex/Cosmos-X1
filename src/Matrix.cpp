@@ -227,13 +227,15 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
 template <uint32_t C>
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja, float hetero, const float* preRoom, float linkMax) {
+                           float oja, float hetero, const float* preRoom, float linkMax, float bcmTheta = -1.0f) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
         if (pa == 0.0f && qa == 0.0f) continue;
         float* row = W + size_t(a) * C;
-        const float da = pa - avgPost;
+        // bcm: the post side follows the BCM rule, pa x (pa - theta), with a threshold that slides up with
+        // the cell's own long-run activity: a busy cell needs to fire harder to strengthen at all.
+        const float da = bcmTheta >= 0.0f ? pa * (pa - bcmTheta) : pa - avgPost;
         for (uint32_t b = 0; b < C; ++b) {
             // Heterosynaptic depression: a silent input of an active cell is weakened by
             // `hetero` times the covariance term (1 = full covariance, 0 = only active inputs
@@ -2185,6 +2187,12 @@ void NeuralCellularMatrix::learn(float modulator) {
             }
         }
 
+        // bcm (L8, BCM theory: Bienenstock, Cooper & Munro 1982): the strengthening threshold of this voxel is
+        // its long-run activity squared over the target (theta_M = <y>^2 / y0), so a voxel firing at the target
+        // level learns as before, and a hub that fires far above it has a high bar and weakens instead.
+        const float bcmTheta = cfg_.learning.bcm > 0.0f
+                                   ? std::min(1.0f, cfg_.learning.bcm * average3_[v] * average3_[v] / std::max(1e-6f, cfg_.target_activity))
+                                   : -1.0f;
         // Familiarity: how much of this voxel's firing its learned links already predict.
         float vrate = rate;
         // Acetylcholine raises learning where the input is new; familiar areas learn less (ach_learn).
@@ -2234,7 +2242,7 @@ void NeuralCellularMatrix::learn(float modulator) {
                                                   preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
                 else
                     change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate * lv, lambda,
-                                                oja, hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                                                oja, hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax, bcmTheta);
                 const float* cs = ctxOn ? ctx3_.data() + src * C3 : nullptr;
                 if (cs && !isFaint(cs)) {
                     for (uint32_t a = 0; a < C3; ++a) {
