@@ -326,7 +326,11 @@ struct Config {
     // its most strongly driven channels stay active, so *which* channels fire depends on the
     // content. Without it the same cells win for every input and patterns overlap heavily.
     uint32_t channel_winners2 = 2; // of C2 = 8
-    uint32_t channel_winners3 = 3; // of C3 = 16; sparser than 4 reduces overlap (cross-talk) between memories
+    uint32_t channel_winners3 = 3;
+    // divnorm k > 0 (divisive normalization, Carandini & Heeger 2012): the voxels' local competition becomes
+    // graded - response = d^2 / (divnorm_sigma^2 + d^2 + k x mean neighbour d^2) - instead of top-winners3-only.
+    float divnorm = 0.0f;
+    float divnorm_sigma = 0.05f; // of C3 = 16; sparser than 4 reduces overlap (cross-talk) between memories
 
     // Position weights are scaled by 1/sqrt(fan-in), so an upward gain of 1 keeps a
     // summary's strength roughly equal to what it summarizes (spec Section 2B).

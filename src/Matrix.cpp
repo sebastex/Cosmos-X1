@@ -1542,8 +1542,28 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
-                                            cfg_.fire_threshold3, cfg_.fire_gain3);
+        float final;
+        if (cfg_.divnorm > 0.0f) {
+            // divnorm (divisive normalization, Carandini & Heeger 2012): instead of "top 3 win, the rest go silent",
+            // each voxel's response is its drive squared over a constant plus its own and its neighbourhood's pooled
+            // drive: g = d^2 / (sigma^2 + d^2 + divnorm x mean rival d^2). A voxel far stronger than its neighbours
+            // fires near full strength, one among equals fires faintly, so several things heard at once all stay in
+            // the pattern with graded strengths (L16). Its channel pattern is kept, strongest channel = g.
+            const float d = drive[v];
+            float pool = 0.0f;
+            for (uint32_t r = 0; r < n; ++r) pool += drive[rivals[r]] * drive[rivals[r]];
+            pool /= float(std::max<uint32_t>(1, n));
+            const float sg = cfg_.divnorm_sigma;
+            const float g = d > 0.0f ? d * d / (sg * sg + d * d + cfg_.divnorm * pool) : 0.0f;
+            float* o = out + v * C3;
+            float strongest = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) strongest = std::max(strongest, o[c]);
+            float sum = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) sum += (o[c] = strongest > 0.0f ? o[c] * g / strongest : 0.0f);
+            final = sum / float(C3);
+        } else
+            final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
+                                    cfg_.fire_threshold3, cfg_.fire_gain3);
         adaptThreshold(theta[v], homeoAvg(homeo3_, v, final), lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);

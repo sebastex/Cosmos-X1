@@ -243,6 +243,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"sheet_budget", &c.learning.sheet_budget},
         {"sheet_link_bound", &c.learning.sheet_link_bound},
         {"fatigue_divisive2", &c.fatigue_divisive2},
+        {"divnorm", &c.divnorm},
+        {"divnorm_sigma", &c.divnorm_sigma},
         {"link4d_spread_scaled", &c.link4d_spread_scaled},
         {"agc_relax_field", &c.agc_relax_field},
         {"agc_plastic", &c.agc_plastic},
