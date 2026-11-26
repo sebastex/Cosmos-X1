@@ -326,7 +326,13 @@ struct Config {
     // its most strongly driven channels stay active, so *which* channels fire depends on the
     // content. Without it the same cells win for every input and patterns overlap heavily.
     uint32_t channel_winners2 = 2; // of C2 = 8
-    uint32_t channel_winners3 = 3; // of C3 = 16; sparser than 4 reduces overlap (cross-talk) between memories
+    uint32_t channel_winners3 = 3;
+    // burst (HTM-style minicolumns, after Hawkins & Ahmad 2016): > 0 = while hearing, a voxel's channel
+    // competition is won by input + burst x the learned links' (unmuted) guess, and a voxel nothing foresaw
+    // (strongest guess < burst_min) lets burst_k channels fire instead of channel_winners3. 0 = off.
+    float burst = 0.0f;
+    float burst_min = 0.05f;
+    float burst_k = 8.0f; // of C3 = 16; sparser than 4 reduces overlap (cross-talk) between memories
 
     // Position weights are scaled by 1/sqrt(fan-in), so an upward gain of 1 keeps a
     // summary's strength roughly equal to what it summarizes (spec Section 2B).

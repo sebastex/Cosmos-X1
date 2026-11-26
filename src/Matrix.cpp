@@ -155,6 +155,23 @@ inline float activateCell(const float* in, float* out, float theta, uint32_t kee
     return sum / float(C);
 }
 
+// activateCell with the channel competition decided by `rank` instead of the input (burst: foreseen channels win).
+template <uint32_t C>
+inline float activateCellRanked(const float* in, const float* rank, float* out, float theta, uint32_t keep) {
+    float sum = 0.0f;
+    for (uint32_t c = 0; c < C; ++c) out[c] = activate(in[c] - theta);
+    if (keep < C)
+        for (uint32_t c = 0; c < C; ++c) {
+            if (out[c] == 0.0f) continue;
+            uint32_t stronger = 0;
+            for (uint32_t d = 0; d < C; ++d)
+                if (rank[d] > rank[c] || (rank[d] == rank[c] && d < c)) ++stronger;
+            if (stronger >= keep) out[c] = 0.0f;
+        }
+    for (uint32_t c = 0; c < C; ++c) sum += out[c];
+    return sum / float(C);
+}
+
 // 1D cells: no competition (lines carry sequences intact, spec Section 3C).
 template <uint32_t C>
 inline void finishCell(const float* in, float* out, float& theta, const LevelParams& lp, float target) {
@@ -1405,6 +1422,7 @@ void NeuralCellularMatrix::step3D() {
                 for (uint32_t c = 0; c < C3; ++c) in[c] += gu * achBoost * up[c];
         }
 
+        float predRaw[C3] = {}; // burst: what the learned links guess for each channel, unmuted
         {
             // Gain control turning the field down also turns down its learned recurrent input.
             const float plScale = cfg_.agc_plastic > 0.5f ? std::min(1.0f, afferentGain) : 1.0f;
@@ -1453,6 +1471,7 @@ void NeuralCellularMatrix::step3D() {
                     in[c] += holdK * (cfg_.settle_fit > 0.5f ? std::min(own, std::max(0.0f, learned)) : own);
                 }
                 learnedC[c] = learned;
+                predRaw[c] = (plScale * pl[c] + pl4[c]) / std::max(0.05f, recL);
                 in[c] += learned;
                 plSum += learned;
                 inSum += std::max(0.0f, in[c]);
@@ -1520,6 +1539,19 @@ void NeuralCellularMatrix::step3D() {
             reset3_[v] -= 1.0f;
             for (uint32_t c = 0; c < C3; ++c) in[c] = -1.0f;
         }
+        // burst (HTM minicolumns, Hawkins & Ahmad 2016): while hearing, a voxel whose firing its learned links
+        // did not foresee bursts - more of its channels fire (every possibility, so the new input is bound
+        // broadly); a voxel that was foreseen lets the foreseen channels win its channel competition (a sparse,
+        // context-specific code). The guess is read unmuted, so it steers encoding too.
+        if (cfg_.burst > 0.0f && sensoryOn_) {
+            float guess = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) guess = std::max(guess, predRaw[c]);
+            float rank[C3];
+            for (uint32_t c = 0; c < C3; ++c) rank[c] = in[c] + cfg_.burst * predRaw[c];
+            const uint32_t keep = guess < cfg_.burst_min ? std::max(cfg_.channel_winners3, uint32_t(cfg_.burst_k + 0.5f))
+                                                        : cfg_.channel_winners3;
+            drive3_[v] = activateCellRanked<C3>(in, rank, out + v * C3, theta[v] + achTire * lp.fatigue_gain * fatigue3_[v] + allocTheta, keep);
+        } else
         drive3_[v] = activateCell<C3>(in, out + v * C3, theta[v] + achTire * lp.fatigue_gain * fatigue3_[v] + allocTheta, cfg_.channel_winners3);
     }
 
