@@ -351,6 +351,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"separation_soft", &c.separation_soft},
         {"spread_plastic", &c.spread_plastic},
         {"line_recency", &c.line_recency},
+        {"down_shape", &c.down_shape},
         {"fire_threshold2", &c.fire_threshold2},
         {"fire_threshold3", &c.fire_threshold3},
         {"fire_gain2", &c.fire_gain2},

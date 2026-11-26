@@ -627,6 +627,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
 void NeuralCellularMatrix::initSurfaces() {
     const size_t lines = cfg_.surfaceLines();
     sensoryQ_.resize(lines);
+    if (cfg_.down_shape > 0.5f) earLine_.assign(Q_, 0);
     motorQ_.resize(lines);
     innerQ_.resize(lines);
     sensoryDrive_.assign(lines, 0);
@@ -640,6 +641,7 @@ void NeuralCellularMatrix::initSurfaces() {
                 const size_t vin = voxelIndex(uint32_t(Field::Input), 0, y, z);
                 const size_t vout = voxelIndex(uint32_t(Field::Output), N_ - 1, y, z);
                 sensoryQ_[s] = uint32_t(vin * SS_ + cell);
+                if (cfg_.down_shape > 0.5f) earLine_[vin * SS_ + cell] = 1;
                 motorQ_[s] = uint32_t(vout * SS_ + cell);
                 const uint32_t fi = uint32_t(std::clamp(cfg_.inner_field, 0.0f, float(kFields - 1)) + 0.5f);
                 innerQ_[s] = uint32_t(voxelIndex(fi, cfg_.inner_face > 0.5f ? N_ - 1 : 0, y, z) * SS_ + cell);
@@ -814,7 +816,11 @@ void NeuralCellularMatrix::step1D() {
             }
             // The parent writes into the entry cell only; the carry moves what entered
             // along the line, so each line holds the last L entries in order.
-            if (k == 0) matvecAdd(D1_.data(), parent, in, C1, C2, gd);
+            // down_shape (fix S7, learning-limits.md L10): 1 = the ear's lines take no drive from above (the
+            // ear only hears the world, the brain cannot write its own echo onto it); 2 = no line does (the
+            // 16-tick sheet -> belt -> sheet echo loop is cut everywhere).
+            const bool noDown = (cfg_.down_shape > 1.5f) || (!earLine_.empty() && earLine_[q]);
+            if (k == 0 && !noDown) matvecAdd(D1_.data(), parent, in, C1, C2, gd);
             if (mt1_.on()) mt1_.addPush(q * L + k, in, cfg_.mt_decay);
             finishCell<C1>(in, lineOut + size_t(k) * C1, theta[q * L + k], lp, target);
         }

@@ -475,6 +475,7 @@ private:
 
     // Surfaces: surface line index -> sheet cell index q.
     std::vector<uint32_t> sensoryQ_;
+    std::vector<uint8_t> earLine_; // down_shape 1: 1 for the ear's lines (they take no drive from above)
     std::vector<uint32_t> motorQ_;
     std::vector<uint8_t> sensoryDrive_;
     std::vector<uint8_t> motorDrive_;

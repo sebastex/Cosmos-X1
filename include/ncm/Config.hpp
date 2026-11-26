@@ -700,6 +700,9 @@ struct Config {
     // letter's strength) is unchanged. In a stream the newest letters dominate, so a word is not
     // drowned by the words before it. 1 = all positions count the same.
     float line_recency = 1.0f;
+    // down_shape (fix S7): 1 = the ear's belts take no drive from the sheets above (only the world writes
+    // on them); 2 = no belt takes drive from above (cuts the sheet -> belt -> sheet echo loop). 0 = as before.
+    float down_shape = 0.0f;
     float downward_gain = 0.3f;
     // 1 = divisive fatigue in the 2D sheets (they relay the input; a weak but real input is
     // never silenced there): a tired cell fires more slowly instead of having its threshold
