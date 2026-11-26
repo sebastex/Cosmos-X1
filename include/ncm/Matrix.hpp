@@ -88,6 +88,8 @@ public:
     // weakened by eta x (their product); the slow consolidated part is left alone, so what is stored
     // stays while over-strong attractors (magnets) are trimmed most.
     void learnSleep(float eta);
+    // sleep_shy: after a sleep, every learned link is scaled down, the strongest the most (synaptic homeostasis).
+    void sleepDownscale(float shy);
     // Learning from right and wrong (feedback_tau): good (+1) or bad (-1) for what was just done.
     void feedback(float signal);
     // 2D learning (sheet_learn), applied right after step2D().

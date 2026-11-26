@@ -402,6 +402,9 @@ struct Config {
     // a cue's cells stay on long enough for the word's links to pull in the rest, while the usual
     // competition between neighbours pushes rivals out. 0 = off.
     float settle_bind = 0.0f;
+    // sleep_shy s (after the synaptic homeostasis hypothesis, Tononi & Cirelli): at the end of every sleep, each
+    // fast learned link w loses s x w^2 / (w + 0.05), so the strongest links (hubs) are scaled back most. 0 = off.
+    float sleep_shy = 0.0f;
     float settle_hold = 0.0f;
     // Brakes on holding. settle_cap > 0: in silence each field keeps at most settle_cap x as many voxels
     // firing as fired at the last heard moment (the strongest; newcomers push the weakest out).

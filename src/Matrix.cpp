@@ -1884,6 +1884,25 @@ void NeuralCellularMatrix::learnSleep(float eta) {
     }
 }
 
+// Synaptic homeostasis in sleep (Tononi & Cirelli): waking leaves a net build-up of strength; sleep scales it
+// back, mostly in the largest synapses. Each fast link w loses shy x w x w / (w + 0.05): weak links keep almost
+// all, strong ones (hubs, over-full channels) lose up to the share shy. The consolidated (slow) part is kept.
+void NeuralCellularMatrix::sleepDownscale(float shy) {
+    if (shy <= 0.0f) return;
+    const float k = std::clamp(shy, 0.0f, 1.0f);
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        LinkStore::Hold hold(links_);
+        forEachLearnedBlock(size_t(vi), [&](float* block, size_t) {
+            for (size_t i = 0; i < size_t(C3) * C3; ++i) {
+                const float w = block[i];
+                if (w > 0.0f) block[i] = w - k * w * w / (w + 0.05f);
+            }
+        });
+    }
+}
+
 void NeuralCellularMatrix::feedback(float signal) {
     if (fbTrace_.empty() || signal == 0.0f) return;
     const float k = cfg_.learning.feedback_rate * signal;

@@ -316,6 +316,7 @@ public:
             }
         }
         m_->setNoise(0.0f, 0.0f);
+        if (learning_ && eta > 0.0f && cfg_.sleep_shy > 0.0f) m_->sleepDownscale(cfg_.sleep_shy); // synaptic homeostasis
         wasSilent_ = true;
     }
     // Right or wrong for what was just done (+1 good, -1 bad), brain-wide; only while learning.

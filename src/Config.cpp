@@ -257,6 +257,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"ach_rest", &c.ach_rest},
         {"ach_learn", &c.ach_learn},
         {"settle_bind", &c.settle_bind},
+        {"sleep_shy", &c.sleep_shy},
         {"settle_hold", &c.settle_hold},
         {"settle_cap", &c.settle_cap},
         {"settle_fit", &c.settle_fit},
