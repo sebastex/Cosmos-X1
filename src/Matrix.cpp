@@ -1401,6 +1401,41 @@ void NeuralCellularMatrix::step3D() {
                     }
                 }
             }
+            if (cfg_.bigram > 0.0f) {
+                // Open bigrams (Grainger & Whitney 2004; local combination detectors, Dehaene et al. 2005): for every
+                // two of its lines that fired within bigram_window ticks of each other, a voxel hears a fixed random
+                // signal for the ordered pair "line p, then line q" - whatever the gap and wherever the pair sits on
+                // the belt. Letter order is then coded by which came before which, not by absolute slot, so a word
+                // shares pairs with any word that has the same letters in the same order (s.a, s.m, a.e ...).
+                const float* s1 = s1_.cur.data();
+                const uint32_t win = std::min<uint32_t>(L_ - 1, uint32_t(cfg_.bigram_window + 0.5f));
+                uint32_t cellOf[64], lastOf[64], m = 0;
+                for (size_t cell = 0; cell < SS && m < 64; ++cell) {
+                    const size_t q = v * SS + cell;
+                    if (lineQuietCur_[q]) continue;
+                    for (uint32_t k = 0; k <= win; ++k) { // the most recent slot this line fired in
+                        const float* lc = s1 + (q * L_ + k) * C1;
+                        bool on = false;
+                        for (uint32_t c = 0; c < C1; ++c) on = on || lc[c] != 0.0f;
+                        if (on) { cellOf[m] = uint32_t(cell), lastOf[m] = k, ++m; break; }
+                    }
+                }
+                float bg[C3] = {};
+                uint32_t pairs = 0;
+                for (uint32_t i = 0; i < m; ++i)
+                    for (uint32_t j = 0; j < m; ++j) {
+                        if (lastOf[i] <= lastOf[j]) continue; // i fired earlier than j
+                        const uint64_t key = ((uint64_t(v) * SS + cellOf[i]) * SS + cellOf[j]) * C3;
+                        for (uint32_t c = 0; c < C3; ++c)
+                            bg[c] += float(2.0 * hashUniform(cfg_.seed, kStreamBigram, key + c) - 1.0) * 1.7320508f / float(std::sqrt(double(SS)));
+                        ++pairs;
+                    }
+                if (pairs) {
+                    anyActive = true;
+                    const float k = cfg_.bigram / std::sqrt(float(pairs));
+                    for (uint32_t c = 0; c < C3; ++c) up[c] += k * bg[c];
+                }
+            }
             if (anyActive)
                 for (uint32_t c = 0; c < C3; ++c) in[c] += gu * achBoost * up[c];
         }

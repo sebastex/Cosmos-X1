@@ -54,6 +54,7 @@ enum Stream : uint64_t {
     kStreamMicrotubule,
     kStreamSleep,
     kStreamAlloc,
+    kStreamBigram, // bigram: the fixed signal of each ordered pair of a voxel's lines
 };
 
 } // namespace ncm
