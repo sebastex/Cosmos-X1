@@ -229,6 +229,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"protect", &c.learning.protect},
         {"feedback_tau", &c.learning.feedback_tau},
         {"predictive", &c.learning.predictive},
+        {"order_predict", &c.learning.order_predict},
         {"level_learn", &c.learning.level_learn},
         {"predictive_gain", &c.learning.predictive_gain},
         {"feedback_rate", &c.learning.feedback_rate},

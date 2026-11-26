@@ -2204,6 +2204,20 @@ void NeuralCellularMatrix::learn(float modulator) {
             const float f = fired > 0.0f ? std::clamp(explained / fired, 0.0f, 1.0f) : 0.0f;
             vrate = rate * std::max(0.0f, 1.0f - cfg_.familiarity * f);
         }
+        // order_predict: the order part learns only what the voxel's links did not yet predict (error-driven),
+        // while "fired together" stays Hebbian. The error per channel: fired now - predicted from what the
+        // sources did before (the previous step, or their timing-window trace).
+        const bool orderPred = cfg_.learning.order_predict > 0.5f && !predictive && !learnFrom_;
+        float ordErr[C3] = {};
+        if (orderPred) {
+            float pred[C3] = {};
+            forEachLearnedBlock(v, [&](float* block, size_t src) {
+                const float* sq = useOrderTrace ? orderTrace3_.data() + src * C3 : prev + src * C3;
+                for (uint32_t a = 0; a < C3; ++a)
+                    for (uint32_t b = 0; b < C3; ++b) pred[a] += block[size_t(a) * C3 + b] * sq[b];
+            });
+            for (uint32_t a = 0; a < C3; ++a) ordErr[a] = pi[a] - cfg_.learning.predictive_gain * pred[a];
+        }
         // One pass over the learned blocks does what used to be separate passes (each block's
         // update depends only on itself, so the result is the same, number for number):
         //   Hebbian learning (inhibitory connections and self-persistence are not visited: they stay
@@ -2232,9 +2246,13 @@ void NeuralCellularMatrix::learn(float modulator) {
                 if (predictive)
                     change += predictiveBlock<C3>(block, err, sq, vrate * cfg_.learning.predictive,
                                                   preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
-                else
-                    change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate * lv, lambda,
+                else {
+                    change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate * lv, orderPred ? 0.0f : lambda,
                                                 oja, hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                    if (orderPred) // the order part, from the error: what came before x what was not predicted
+                        change += predictiveBlock<C3>(block, ordErr, sq, vrate * lv * lambda,
+                                                      preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                }
                 const float* cs = ctxOn ? ctx3_.data() + src * C3 : nullptr;
                 if (cs && !isFaint(cs)) {
                     for (uint32_t a = 0; a < C3; ++a) {

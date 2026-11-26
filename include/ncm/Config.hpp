@@ -245,6 +245,11 @@ struct LearningParams {
     float alloc_period = 400.0f;
     float predictive = 0.0f;
     float predictive_gain = 1.0f;
+    // 1 = the order part of Hebbian learning becomes error-driven (fix S3, learning-limits.md): a link from
+    // an earlier source changes by (fired now - what the voxel's links predicted) x the source's earlier
+    // activity, at rate x order_gain; "fired together" stays as it is. A sequence that is already predicted
+    // stops being learnt again, and links that predict what does not come are weakened.
+    float order_predict = 0.0f;
     float feedback_rate = 0.02f;
     // Field roles: the Memory field holds vocabulary (each word on its own), the other fields hold
     // what happens between words. At every word boundary (a space, or input after a pause) the
