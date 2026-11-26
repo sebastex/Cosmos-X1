@@ -479,6 +479,7 @@ void NeuralCellularMatrix::initVoxelWeights() {
     if (cfg_.learning.sheet_learn > 0.0f) L2_.assign(Q_ * 8 * C2 * C2, 0.0f);
     if (cfg_.up_evidence > 0.0f) parentShare2_.assign(Q_, 0.0f);
     if (cfg_.learning.link_use > 0.0f) linkRes_.assign(V_ * C3, 1.0f);
+    if (cfg_.learning.facilitation > 0.0f) fac3_.assign(V_ * C3, 0.0f);
     if (cfg_.learning.budget_grow > 0.0f) budgetGrow_.assign(V_ * C3 * 4, 1.0f);
     if (cfg_.settle_bind > 0.0f) wordTrace_.assign(V_ * C3, 0.0f);
     if (cfg_.ach > 0.5f) achArea_.assign(lattice_ ? cellGain_.size() : kFields, 1.0f), achExplained_.assign(achArea_.size(), 0.0), achFired_.assign(achArea_.size(), 0.0);
@@ -1064,9 +1065,13 @@ void NeuralCellularMatrix::step3D() {
     const float traceFloor = std::max(0.0f, cfg_.learning.trace_floor);
     // Loop guard: what source u sends through learned links is its firing x its resource.
     const float* res = linkRes_.empty() ? nullptr : linkRes_.data();
-    auto spent = [res](size_t u, const float* src, float* buf) -> const float* {
-        if (!res) return src;
-        for (uint32_t c = 0; c < C3; ++c) buf[c] = src[c] * res[u * C3 + c];
+    // facilitation (synaptic working memory): a source's learned links carry its firing x (1 + gain x its facilitation)
+    const float* fac = fac3_.empty() ? nullptr : fac3_.data();
+    const float facK = cfg_.learning.facilitation;
+    auto spent = [res, fac, facK](size_t u, const float* src, float* buf) -> const float* {
+        if (!res && !fac) return src;
+        for (uint32_t c = 0; c < C3; ++c)
+            buf[c] = src[c] * (res ? res[u * C3 + c] : 1.0f) * (fac ? 1.0f + facK * fac[u * C3 + c] : 1.0f);
         return buf;
     };
     const int R = int(std::min<uint32_t>(cfg_.inhibition_radius3, 3));
@@ -1729,6 +1734,16 @@ void NeuralCellularMatrix::step3D() {
         mt3_.step(s, mtActive_, mtParams());
     }
     if (soma_.on()) soma_.step(s3_.cur.data(), somaParams(), sensoryOn_); // the somatic network senses the new state
+    if (!fac3_.empty()) { // facilitation: firing builds it up (saturating), it fades over facilitation_tau 3D steps
+        const float* a = s3_.cur.data();
+        const float up = std::clamp(cfg_.learning.facilitation_use, 0.0f, 1.0f), down = 1.0f / std::max(1.0f, cfg_.learning.facilitation_tau);
+        const int64_t n = int64_t(fac3_.size());
+#pragma omp parallel for schedule(static)
+        for (int64_t i = 0; i < n; ++i) {
+            float& u = fac3_[size_t(i)];
+            u = std::clamp(u + up * (1.0f - u) * a[i] - down * u, 0.0f, 1.0f);
+        }
+    }
 }
 
 template <class Fn>

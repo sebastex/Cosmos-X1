@@ -213,6 +213,13 @@ struct LearningParams {
     // without a floor every voxel that fired in the last ~250 steps keeps learning (by amounts
     // pruning removes), and the faintest values are slow for the processor. 0 = off.
     float trace_floor = 0.0f;
+    // Synaptic working memory (after Mongillo, Barak & Tsodyks 2008): a voxel channel that fires facilitates its
+    // outgoing learned links for a while (u += facilitation_use x (1-u) x firing, fading over facilitation_tau
+    // 3D steps; links carry firing x (1 + facilitation x u)). What was just heard stays "warm" in the synapses
+    // without having to keep firing, so it survives a loud input that silences it. 0 = off.
+    float facilitation = 0.0f;
+    float facilitation_use = 0.3f;
+    float facilitation_tau = 30.0f;
     float link_use = 0.0f;
     float link_recovery = 30.0f;
     // Predictive coding (pc_error > 0, 4D lattice with the outward links split off): a slice sends

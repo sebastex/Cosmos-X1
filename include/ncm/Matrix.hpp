@@ -429,6 +429,7 @@ private:
     AVec<float> L2_;
     // Loop guard (link_use): per voxel channel, the resource of its learned links (1 = rested).
     AVec<float> linkRes_;
+    AVec<float> fac3_; // facilitation: per voxel channel, short-term facilitation of its outgoing learned links
     // Predictive coding: a copy of the top-down predictions (hold4Learned_) read while it is rewritten.
     AVec<float> pred4_;
     // Vigilance: per voxel, its last mismatch (0..1) and the 3D steps left of a reset.
