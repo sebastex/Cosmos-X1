@@ -241,6 +241,9 @@ private:
     // Drive per cell for the local competition (spec Section 3C); scratch, rewritten every step.
     AVec<float> drive2_;
     AVec<float> drive3_;
+    // up_hold: the strongest each sheet cell got since the last 3D step (what the voxel reads), so the
+    // slower level sums up everything since its last look instead of seeing only the moment it looks.
+    AVec<float> hold2_;
     AVec<float> diagPlastic3_; // learned part of each voxel's input on the last step (diagnostic)
     AVec<float> diagInput3_;   // all positive input of each voxel on the last step (diagnostic)
 public:

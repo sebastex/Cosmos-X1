@@ -397,6 +397,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     s3_.allocate(V_, C3);
     drive2_.assign(Q_, 0.0f);
     drive3_.assign(V_, 0.0f);
+    if (cfg.up_hold > 0.5f) hold2_.assign(Q_ * C2, 0.0f);
     diagPlastic3_.assign(V_, 0.0f);
     diagInput3_.assign(V_, 0.0f);
     fatigue2_.assign(Q_, 0.0f);
@@ -1001,6 +1002,13 @@ void NeuralCellularMatrix::step2D() {
     }
     s2_.swap();
     sheetQuietCur_.swap(sheetQuietNext_);
+    if (!hold2_.empty()) { // up_hold: keep the strongest each sheet cell got since the voxel's last look
+        const float* s = s2_.cur.data();
+        float* h = hold2_.data();
+        const int64_t n = int64_t(hold2_.size());
+#pragma omp parallel for schedule(static)
+        for (int64_t i = 0; i < n; ++i) h[i] = std::max(h[i], s[i]);
+    }
     if (mt2_.on()) { // microtubules of the sheet cells, on the 2D clock
         mtActive_.clear();
         const float* s = s2_.cur.data();
@@ -1017,7 +1025,8 @@ void NeuralCellularMatrix::step2D() {
 void NeuralCellularMatrix::step3D() {
     ScopeTimer timer_(time3D);
     // Fatigue raises a voxel's firing threshold (it ends activity that outlasts its input).
-    const float* s2 = s2_.cur.data();
+    // up_hold: the voxel reads all its sheet did since its last step (held max), not one moment of it.
+    const float* s2 = hold2_.empty() ? s2_.cur.data() : hold2_.data();
     const float* s3 = s3_.cur.data();
     float* out = s3_.next.data();
     float* theta = s3_.theta.data();
@@ -1729,6 +1738,7 @@ void NeuralCellularMatrix::step3D() {
         mt3_.step(s, mtActive_, mtParams());
     }
     if (soma_.on()) soma_.step(s3_.cur.data(), somaParams(), sensoryOn_); // the somatic network senses the new state
+    if (!hold2_.empty()) std::copy(s2_.cur.begin(), s2_.cur.end(), hold2_.begin()); // up_hold: a new look starts from now
 }
 
 template <class Fn>

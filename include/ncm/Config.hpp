@@ -375,6 +375,10 @@ struct Config {
     // heard, wherever it appears. 2 = the same, but at a word's end every level first takes one look
     // at once (on the next tick), so the top level sees the whole word, not only its first letters.
     float clock_reset = 0.0f;
+    // 1 = each voxel reads, from its sheet, the strongest each sheet cell got since the voxel's last step
+    // (a held max, restarted from the present state after every 3D step), not only the sheet's state at
+    // that moment: the slower level sums up all that happened between its looks (fix A, learning-limits.md).
+    float up_hold = 0.0f;
     // > 0: homeostasis follows each cell's activity averaged over this many of its steps (slow, as in
     // the brain), so hearing a word does not change which cells answer it next time. 0 = every step.
     float homeo_tau = 0.0f;

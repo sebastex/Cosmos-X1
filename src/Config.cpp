@@ -248,6 +248,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"agc_plastic", &c.agc_plastic},
         {"agc_input_only", &c.agc_input_only},
         {"clock_reset", &c.clock_reset},
+        {"up_hold", &c.up_hold},
         {"homeo_tau", &c.homeo_tau},
         {"clock_fast", &c.clock_fast},
         {"ach", &c.ach},
