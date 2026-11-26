@@ -311,6 +311,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"word_mouth_from", &c.word_mouth_from},
         {"word_repeat_letters", &c.word_repeat_letters},
         {"read_mouth", &c.read_mouth},
+        {"read_gap", &c.read_gap},
         {"workspace", &c.workspace},
         {"workspace_top", &c.workspace_top},
         {"self_sense", &c.self_sense},

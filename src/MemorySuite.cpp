@@ -2258,6 +2258,32 @@ int runScriptTest(const Config& cfg) {
             std::printf("TRACE {\"word\": \"%s\", \"gap\": %llu, \"frac\": %.2f, \"top\": \"%s\", \"second\": \"%s\", \"ov\": [%s]}\n",
                         word.c_str(), (unsigned long long)gap, double(frac), top.c_str(), second.c_str(), ovs.c_str());
             tick += word.size() * (1 + gap);
+        } else if (op == "drift") {
+            // drift:WORD:HOLD - diagnostic (no learning): hear WORD's shape (word_shape) or letters for HOLD ticks;
+            // after every tick, how alike the deep state is to the state after tick 4 (per field, cosine).
+            const std::string w = f.size() > 1 ? f[1] : "";
+            const uint64_t hold = num(f, 2, 16);
+            std::vector<std::vector<double>> snaps;
+            for (uint64_t t = 0; t < hold; ++t) {
+                if (cfg.word_shape > 0.5f) s.presentShape(w, 1, false);
+                else s.present(std::string(1, w[t % w.size()]), 1, 1.0f, false, UINT64_MAX);
+                const auto& st = s.matrix().voxelState();
+                snaps.emplace_back(st.begin(), st.end());
+            }
+            const size_t per = snaps.empty() ? 0 : snaps[0].size() / kFields;
+            std::string out;
+            for (uint32_t k = 0; k < kFields; ++k) {
+                out += k ? "],[" : "[[";
+                for (size_t t = 0; t < snaps.size(); ++t) {
+                    char b[24];
+                    std::snprintf(b, sizeof b, "%s%.3f", t ? "," : "",
+                                  snaps.size() > 3 ? lab::cosine(snaps[3], snaps[t], k * per, (k + 1) * per) : 0.0);
+                    out += b;
+                }
+            }
+            std::printf("DRIFT {\"word\":\"%s\",\"vs_tick4\":%s]]}\n", w.c_str(), out.c_str());
+            s.silence(60, false);
+            tick += hold + 60;
         } else if (op == "read" && cfg.word_shape > 0.5f) {
             // read:WORD:N:REST - reading aloud (word_shape): it sees the word's letters one by one, then hears the
             // word as its own shape (and its space) while the mouth shows that shape. Nothing says the letters
@@ -2269,6 +2295,11 @@ int runScriptTest(const Config& cfg) {
             for (uint64_t k = 0; k < n && !w.empty(); ++k) {
                 s.mouthShape(learn && cfg.read_mouth > 0.5f ? &s.wordShape(w) : nullptr);
                 for (char ch : w) s.present(std::string(1, ch), 1, 1.0f, learn, UINT64_MAX);
+                // read_gap 1: the written word ends with its space, so every level takes its one look at the whole
+                // letter word (clock_reset 2) before the shape comes. Without it the slower levels only look on their
+                // own rhythm: a 3D step on the 3rd letter (seeing letters 1-2), the next on the 6th, by when a short
+                // word's shape is already there - so they only ever see its first two letters.
+                if (cfg.read_gap > 0.5f) s.present(" ", 1, 1.0f, learn, UINT64_MAX), ++tick;
                 s.mouthShape(learn ? &s.wordShape(w) : nullptr);
                 s.presentShape(w, hold, learn);
                 s.present(" ", 1, 1.0f, learn, UINT64_MAX);
@@ -2660,6 +2691,21 @@ int runScriptTest(const Config& cfg) {
                               avg(act.voxelMean, act.steps, 1), avg(act.sheet, act.allSteps, 0), avg(act.sheet, act.allSteps, 1),
                               avg(act.line, act.allSteps, 0), avg(act.line, act.allSteps, 1), gains[k][0], gains[k][1], gains[k][2]);
                 j += buf;
+            }
+            { // voxel thresholds per field (homeostasis drift): mean, 90th percentile, max
+                const auto& th = m.voxelThresholds();
+                const size_t vf = th.size() / kFields;
+                j += "],\"theta\":[";
+                for (uint32_t k = 0; k < kFields; ++k) {
+                    std::vector<float> t(th.begin() + long(k * vf), th.begin() + long((k + 1) * vf));
+                    std::sort(t.begin(), t.end());
+                    double mean = 0.0;
+                    for (float x : t) mean += x;
+                    char b[96];
+                    std::snprintf(b, sizeof b, "%s[%.4f,%.4f,%.4f]", k ? "," : "", t.empty() ? 0.0 : mean / double(t.size()),
+                                  t.empty() ? 0.0 : double(t[t.size() * 9 / 10]), t.empty() ? 0.0 : double(t.back()));
+                    j += b;
+                }
             }
             char tail[400];
             std::snprintf(tail, sizeof tail, "],\"steps\":[%llu,%llu],\"learn_calls\":%llu,\"learn_change\":%.4f,\"scaled\":%.4f,\"mt\":%llu,\"soma\":%llu}",

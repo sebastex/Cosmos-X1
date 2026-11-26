@@ -574,6 +574,7 @@ struct Config {
     float word_say_margin = 0.0f;
     float word_repeat_letters = 0.0f; // word_shape: the repeat test also plays the letters before the shape (old)
     float read_mouth = 0.0f;          // read op: the mouth shows the word's shape while its letters are seen
+    float read_gap = 0.0f;            // read op: the letters end with a space (the written word's end) before the shape
     float word_mouth_from = 0.0f; // diagnostic: the mouth is taught only from the Nth word lesson on (0 = all)
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
