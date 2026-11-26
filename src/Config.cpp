@@ -204,6 +204,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"presynaptic_bound", &c.learning.presynaptic_bound},
         {"consolidation_rate", &c.learning.consolidation_rate},
         {"consolidated_budget", &c.learning.consolidated_budget},
+        {"cascade", &c.learning.cascade},
         {"link_bound", &c.learning.link_bound},
         {"prune", &c.learning.prune},
         {"trace_floor", &c.learning.trace_floor},

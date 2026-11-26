@@ -2302,8 +2302,18 @@ void NeuralCellularMatrix::learn(float modulator) {
                 if (consolidate > 0.0f) {
                     float* slow = slowOf(block);
                     if (!slow) return; // blocks without a slow part (learned cue route)
+                    const float cap = cfg_.learning.cascade;
                     for (size_t i = 0; i < size_t(C3) * C3; ++i) {
-                        if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
+                        if (cap > 0.0f) {
+                            // cascade (Benna & Fusi 2016): the two parts exchange in both directions like
+                            // communicating vessels - the fast part relaxes toward the slow one at `consolidate`,
+                            // the slow one (cap times bigger, so slower) follows the fast one up or down at
+                            // consolidate / cap. A new change fades from the fast part unless it lasts, and an
+                            // old memory held in the slow part pulls the fast part back after being overwritten.
+                            const float d = block[i] - slow[i];
+                            block[i] = std::max(0.0f, block[i] - consolidate * d);
+                            slow[i] = std::max(0.0f, slow[i] + consolidate / cap * d);
+                        } else if (block[i] > slow[i]) slow[i] += consolidate * (block[i] - slow[i]);
                         slowTotal[i / C3] += slow[i];
                     }
                 }
