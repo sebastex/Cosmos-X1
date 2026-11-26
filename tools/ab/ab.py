@@ -38,20 +38,24 @@ def first_order(words):
     return w
 
 
-def lessons(words, op):
+def lessons(words, op, sleep=False):
     out = ['lexicon:' + ','.join(quick.words(100) + NEW)]
     for r in range(1, ROUNDS + 1):
         p = list(words)
         random.Random(r).shuffle(p)  # a new order every pass, the same for every version
         out += [f'{op}:{w}:1:40' for w in p]
+        if sleep:
+            out.append('sleep:600')  # a night after every pass: replay + unlearning of links that fire together (L8)
     return out
 
 
 def script(test):
+    sleep = test.endswith('s')  # rep100s / read30s: the same test with a sleep after every pass
+    test = test.rstrip('s') if sleep else test
     if test.startswith('rep'):
         words = quick.words(100)[:int(test[3:])]
         t = ['still:1'] + [f'rest:150;repeat:{w}' for w in words + NEW]
-        return ';'.join(lessons(words, 'say') + t)
+        return ';'.join(lessons(words, 'say', sleep) + t)
     if test.startswith('read'):
         words = quick.words(100)[:int(test[4:])]
         t = ['still:1']
@@ -60,7 +64,7 @@ def script(test):
                   f'rest:150;repeat:{w[:2] + "q" * (len(w) - 2)}:8:30:read', f'rest:150;repeat:{"qq" + w[2:]}:8:30:read']
         for w in NEW:
             t += [f'rest:150;repeat:{w}:8:30', f'rest:150;repeat:{w}:8:30:read']
-        return ';'.join(lessons(words, 'read') + t)
+        return ';'.join(lessons(words, 'read', sleep) + t)
     if test.startswith('gauge'):  # gauges (no score): brain reports through the lesson, then drift while hearing
         words = quick.words(100)[:int(test[5:])]
         L = lessons(words, 'say')
@@ -144,6 +148,7 @@ def top(r):
 
 
 def score_word(test, path):
+    test = test.rstrip('s') if test.endswith('s') and not test.startswith('gauge') else test
     if test.startswith('rep'):
         n = int(test[3:])
         words = quick.words(100)[:n]
