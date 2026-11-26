@@ -88,6 +88,8 @@ public:
     // weakened by eta x (their product); the slow consolidated part is left alone, so what is stored
     // stays while over-strong attractors (magnets) are trimmed most.
     void learnSleep(float eta);
+    // lesion: every learned link is cut (set to 0) with probability p, fixed by the seed (robustness tests).
+    void lesion(float p);
     // Learning from right and wrong (feedback_tau): good (+1) or bad (-1) for what was just done.
     void feedback(float signal);
     // 2D learning (sheet_learn), applied right after step2D().

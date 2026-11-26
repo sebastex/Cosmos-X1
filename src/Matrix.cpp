@@ -1884,6 +1884,22 @@ void NeuralCellularMatrix::learnSleep(float eta) {
     }
 }
 
+void NeuralCellularMatrix::lesion(float p) {
+    if (p <= 0.0f) return;
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        LinkStore::Hold hold(links_);
+        uint64_t k = 0;
+        forEachLearnedBlock(size_t(vi), [&](float* block, size_t) {
+            for (size_t i = 0; i < size_t(C3) * C3; ++i, ++k)
+                if (block[i] != 0.0f && hashUniform(cfg_.seed, 0x1E5, uint64_t(vi) * 1000003ull + k) < p) block[i] = 0.0f;
+            if (float* sl = slowOf(block))
+                for (size_t i = 0; i < size_t(C3) * C3; ++i) sl[i] = block[i] == 0.0f ? 0.0f : sl[i];
+        });
+    }
+}
+
 void NeuralCellularMatrix::feedback(float signal) {
     if (fbTrace_.empty() || signal == 0.0f) return;
     const float k = cfg_.learning.feedback_rate * signal;

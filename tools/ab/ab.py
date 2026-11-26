@@ -71,7 +71,38 @@ def jung_design():
     return W, core, ring, free, charged, calm
 
 
+SAFFRAN = ['bix', 'kut', 'mog', 'faz']  # nonsense "words": inside a word the next letter is certain, across words 1 in 3
+
+
+def saffran_stream(n, seed):
+    rng, out, last = random.Random(seed), [], None
+    for _ in range(n):
+        w = rng.choice([x for x in SAFFRAN if x != last])
+        out.append(w)
+        last = w
+    return ''.join(out)
+
+
+def bench_words():
+    W = quick.words(100)
+    return W[40:50], W[50:60]
+
+
 def script(test):
+    if test == 'bench':  # the brain-function battery: statistical learning, continual learning, completion, lesions
+        A, Bw = bench_words()
+        out = ['lexicon:' + ','.join(quick.words(100) + NEW)]
+        out += ['learn:0', f'stream:{saffran_stream(20, 1)}:3', 'learn:1', f'stream:{saffran_stream(80, 2)}:3', 'learn:0',
+                f'stream:{saffran_stream(20, 3)}:3', 'learn:1', 'rest:200']
+        out += lessons(A, 'say')[1:]
+        out += ['learn:0'] + [f'rest:150;repeat:{w}' for w in A] + ['learn:1']
+        out += lessons(Bw, 'say')[1:]
+        out += ['learn:0', 'still:1'] + [f'rest:150;repeat:{w}' for w in A + Bw]
+        for frac in ('0.6', '0.4', '0.25'):
+            out += [f'rest:150;repeat:{w}:8:30:{frac}' for w in A]
+        out += ['lesion:0.1'] + [f'rest:150;repeat:{w}' for w in A + Bw]
+        out += ['lesion:0.2'] + [f'rest:150;repeat:{w}' for w in A + Bw]
+        return ';'.join(out)
     if test.startswith('jung'):  # jung = charged complexes; jungcalm = the same lessons without charge (control)
         W, core, ring, free, charged, calm = jung_design()
         k = 1 if test == 'jungcalm' else 3
@@ -206,6 +237,29 @@ def score_word(test, path):
         return {'said': sum(r['said'] == r['heard'] for r in known), 'top': sum(top(r) == r['heard'] for r in known),
                 'wrong': sum(bool(r['said']) and r['said'] != r['heard'] for r in known), 'quarters': q,
                 'new_said': [r['said'] or '-' for r in rows if r['heard'] in NEW]}
+    if test == 'bench':
+        A, Bw = bench_words()
+        st = rows_of(path, 'STREAM')
+        rp = rows_of(path, 'REPEAT')
+        if len(st) < 3 or len(rp) < 10 + 20 + 30 + 40:
+            return None
+        def edge(r):  # surprise at the first letter of each nonsense word minus inside words (after the first word)
+            s = r['surprise']
+            first = [s[i] for i in range(3, len(s), 3)]
+            inside = [s[i] for i in range(len(s)) if i % 3 and i > 3]
+            return round(sum(first) / len(first) - sum(inside) / len(inside), 3)
+        right = lambda rows: sum(top(r) == r['heard'] for r in rows)
+        i = 0
+        a1 = rp[i:i + 10]; i += 10
+        a2, b2 = rp[i:i + 10], rp[i + 10:i + 20]; i += 20
+        comp = []
+        for _ in range(3):
+            comp.append(right(rp[i:i + 10])); i += 10
+        l1 = rp[i:i + 20]; i += 20
+        l2 = rp[i:i + 20]
+        return {'saffran_edge_before': edge(st[0]), 'saffran_edge_after': edge(st[2]),
+                'A_first': right(a1), 'A_after_B': right(a2), 'B': right(b2),
+                'completion_60_40_25': comp, 'lesion10': right(l1), 'lesion28': right(l2)}
     if test.startswith('jung'):
         W, core, ring, free, charged, calm = jung_design()
         rows = rows_of(path, 'ASSOC')

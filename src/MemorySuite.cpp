@@ -2562,7 +2562,13 @@ int runScriptTest(const Config& cfg) {
             std::string said, plan;
             if (cfg.word_shape > 0.5f) { // hear the word as its shape, then read which word the mouth shows
                 const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(word.size());
-                if (!readIt) {
+                const double part = (!readIt && f.size() > 4 && !f[4].empty()) ? std::atof(f[4].c_str()) : 1.0;
+                if (!readIt && part < 0.999 && part > 0.0) { // pattern completion: hear only a share of the word's shape
+                    const std::vector<uint32_t> full = s.wordShape(word);
+                    const auto cue = lab::thin(full, float(part), cfg.itemSeed(), word[0]);
+                    for (uint64_t t = 0; t < hold; ++t) s.tick(&cue, &full, false);
+                    s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                } else if (!readIt) {
                     s.presentShape(word, hold, false);
                     s.present(" ", 1, 1.0f, false, UINT64_MAX);
                 }
@@ -2965,6 +2971,21 @@ int runScriptTest(const Config& cfg) {
             std::printf("BRAINREPORT %s\n", j.c_str());
         } else if (op == "still") { // still:1 = hear as in a lesson (shapes are recorded) but change nothing
             s.setLearning(learns && num(f, 1, 1) == 0);
+        } else if (op == "stream") {
+            const std::string text = f.size() > 1 ? f[1] : "";
+            const uint64_t hold = std::max<uint64_t>(1, num(f, 2, 1)); // ticks per letter (surprise updates on 3D steps)
+            std::string sur;
+            for (char ch : text) {
+                s.present(std::string(1, ch == '_' ? ' ' : ch), hold, 1.0f, learn, UINT64_MAX);
+                char b[16];
+                std::snprintf(b, sizeof b, "%s%.3f", sur.empty() ? "" : ",", double(s.matrix().lastSurprise()));
+                sur += b;
+            }
+            std::printf("STREAM {\"text\":\"%s\",\"learn\":%d,\"surprise\":[%s]}\n", text.c_str(), learn ? 1 : 0, sur.c_str());
+            tick += text.size() * hold;
+        } else if (op == "lesion") {
+            const float p = float(std::atof(f.size() > 1 ? f[1].c_str() : "0.1"));
+            const_cast<NeuralCellularMatrix&>(s.matrix()).lesion(p);
         } else if (op == "charge") {
             // charge:X - an emotionally charged stretch (Jung's feeling-toned complexes): learning while hearing is
             // X times stronger until charge:1.
