@@ -408,6 +408,32 @@ struct Config {
     // settle_fit 1: a cell holds itself on only as far as its learned links still support it.
     float settle_cap = 0.0f;
     float settle_fit = 0.0f;
+    // Recall as a steady settling phase (issue I-01c, dev/audit-01.md). All default 0 = off, so
+    // every run behaves exactly as before unless a switch is set.
+    // recall_hold 1 (audit-01 finding 1): after a cue heard with learning off, the silence that
+    // follows keeps the encoding/recall mode at the recall level (0) until the next input, instead
+    // of letting it climb to 1 over mode_tau. The learned links (rec, rec4, recL) and the mouth's
+    // learned readout (rec2, inner_down) then stay at full strength while the brain settles, so the
+    // loop gain is steady instead of falling as 0.926^t. Applies only to silent ticks with learning
+    // off whose last heard input also had learning off (a recall cue); lessons are unchanged.
+    // (With ach = 1 the learned links follow each area's own level, not the mode: no effect there.)
+    float recall_hold = 0.0f;
+    // bind_clean 1 (audit-01 finding 3a): the word-end (space) tick's 3D step does not add to the
+    // word trace, so learnWord binds only the word's own cells, not the space's cells that every
+    // word shares (one hub for all words pulled recall toward a blend).
+    float bind_clean = 0.0f;
+    // settle_fair 1 (audit-01 finding 2): in silence the holding term is settle_hold x the learned
+    // support for every cell, firing or not (no bonus for being on: a missing cell is driven as
+    // hard as an incumbent with the same support; settle_fit is then not used), and settle_cap
+    // limits each field (w-slice) to settle_cap x target_activity x its voxel count. That is the
+    // brain's own sparsity, the share gain control steers every field to, the same number for every
+    // word and cue; the old cap (settle_cap x the count at the last heard step, the space) depends on
+    // how big the cue was, so cells recruited by learned links were cut when the cue was small.
+    float settle_fair = 0.0f;
+    // settle_fix 1 (audit-01 "bugs"): settle_cap runs right after the competition, before fatigue,
+    // homeostasis, the averages and the traces (word, order, context, feedback) count the step, so a
+    // cell the cap switched off is not counted as having fired. 0 = the old order.
+    float settle_fix = 0.0f;
     // 1 = front-to-back sweep: on every 3D step the four fields are updated in order (Input,
     // Memory, Reasoning, Output) and each field reads the NEW state of the fields before it, so
     // the whole matrix looks at the same moment. 0 = all fields update from the previous step's
@@ -739,6 +765,8 @@ Config makePreset(const std::string& name);
 void applySetting(Config& cfg, const std::string& assignment);
 // Every setting's value, as one JSON object (name: value).
 std::string settingValues(Config cfg);
+// Every setting's value as "CONFIG name=value" lines (NCM_PRINT_CONFIG=1 prints them at startup).
+std::string settingLines(Config cfg);
 // Named Pharmakon variants (alpha, beta, gamma, delta = default, epsilon, zeta, eta).
 void applyVariant(Config& cfg, const std::string& name);
 const std::vector<std::pair<std::string, std::vector<std::string>>>& variants();

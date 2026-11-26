@@ -99,12 +99,17 @@ public:
             // familiar_rate_only: familiarity sets only how strongly a word is learnt; a lesson stays in
             // encoding mode (learned loops muted), since recall mode in lessons made one blob.
             setMode(allowLearning ? (cfg_.familiar_rate_only > 0.5f ? 1.0f : float(1.0 - guess)) : 0.0f, false);
+            cueRecall_ = !allowLearning; // recall_hold: this input was a cue heard with learning off
         } else {
             m_->clearSensoryInput();
             m_->releaseMotorSheets();
             m_->releaseInnerSheets();
             m_->clearInnerLines();
-            setMode(silenceSuppressed_ ? 1.0f : 0.0f, true);
+            // recall_hold (I-01c, audit-01 finding 1): retrieving (learning off, after a cue heard with
+            // learning off), the mode stays at the recall level, so the learned links and the mouth's
+            // learned readout keep a steady strength while the brain settles. Lessons are unchanged.
+            const bool hold = cfg_.recall_hold > 0.5f && !allowLearning && cueRecall_;
+            setMode(hold ? 0.0f : silenceSuppressed_ ? 1.0f : 0.0f, true);
         }
 
         auto t0 = Clock::now();
@@ -132,7 +137,9 @@ public:
         }
         if (t.voxel) {
             m_->setTick4D(t.fourD);
+            m_->setWordEndStep(wordEnd); // bind_clean: the space's step stays out of the word trace
             m_->step3D();
+            m_->setWordEndStep(false);
             m_->updateAch(fingerprint != nullptr);
             lap(t.fourD ? 4 : 3, t0);
             if (watchActivity_) { // read only: what the brain does while hearing and in silence
@@ -409,6 +416,7 @@ private:
     uint64_t modCount_ = 0;
     float mode_ = 1.0f; // encoding/recall mode actually applied (the matrix starts suppressed)
     bool wasSilent_ = true; // the previous tick had no input
+    bool cueRecall_ = false; // recall_hold: the last heard input had learning off (not saved in the state)
     float arousal_ = 1.0f; // charge: learning multiplier while hearing (1 = calm)
 
     // Encoding/recall mode with neuromodulator kinetics (mode_tau, 1D ticks): after input

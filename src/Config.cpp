@@ -260,6 +260,10 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"settle_hold", &c.settle_hold},
         {"settle_cap", &c.settle_cap},
         {"settle_fit", &c.settle_fit},
+        {"recall_hold", &c.recall_hold}, // I-01c, audit-01 finding 1
+        {"bind_clean", &c.bind_clean},   // I-01c, audit-01 finding 3a
+        {"settle_fair", &c.settle_fair}, // I-01c, audit-01 finding 2
+        {"settle_fix", &c.settle_fix},   // I-01c, audit-01 bug note (settleCap order)
         {"field_sweep", &c.field_sweep},
         {"lattice4d", &c.lattice4d},
         {"lattice_cell", &c.lattice_cell},
@@ -420,6 +424,20 @@ std::string settingValues(Config c) {
         s += buf;
     }
     return s + "}";
+}
+
+std::string settingLines(Config c) {
+    std::string s;
+    char buf[128];
+    for (const auto& [name, ptr] : settingTable(c)) {
+        std::snprintf(buf, sizeof buf, "CONFIG %s=%.9g\n", name.c_str(), double(*ptr));
+        s += buf;
+    }
+    for (const auto& [name, ptr] : countTable(c)) {
+        std::snprintf(buf, sizeof buf, "CONFIG %s=%u\n", name.c_str(), unsigned(*ptr));
+        s += buf;
+    }
+    return s;
 }
 
 void applyEvolvedRule(Config& cfg) {

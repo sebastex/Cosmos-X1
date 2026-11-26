@@ -227,6 +227,15 @@ int main(int argc, char** argv) {
     }
     if (opt.seedSet) cfg.seed = opt.seed;
     ncm::setTestTimeScale(opt.timeScale);
+    // NCM_PRINT_CONFIG=1: every setting's final value (preset, then the evolved rule, the variant and
+    // --set), one "CONFIG name=value" line each, so nobody reasons from the defaults in Config.hpp.
+    if (const char* pc = std::getenv("NCM_PRINT_CONFIG"); pc && std::atoi(pc) > 0) {
+        std::printf("CONFIG preset=%s\nCONFIG rule=%s\nCONFIG variant=%s\nCONFIG seed=%llu\n", opt.preset.c_str(),
+                    opt.rule.c_str(), opt.variant.empty() ? "prime" : opt.variant.c_str(),
+                    (unsigned long long)cfg.seed);
+        std::printf("%s", ncm::settingLines(cfg).c_str());
+        std::fflush(stdout);
+    }
     if (opt.test == "settings") { // every setting's value under these options, as JSON
         std::printf("%s\n", ncm::settingValues(cfg).c_str());
         return 0;

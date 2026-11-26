@@ -1448,7 +1448,11 @@ void NeuralCellularMatrix::step3D() {
                 const float learned = recallK * (plScale * pl[c] + pl4[c]);
                 // Holding with a brake: a cell keeps itself on only as far as its learned links still
                 // back it up (settle_fit 1), so a stray cell nothing supports fades. settle_fit 0 = plain hold.
-                if (holdK > 0.0f) {
+                // settle_fair 1 (audit-01 finding 2): every cell, firing or not, gets holdK x its learned
+                // support, so a missing cell the word's links call for is driven as hard as an incumbent.
+                if (holdK > 0.0f && cfg_.settle_fair > 0.5f) {
+                    in[c] += holdK * std::max(0.0f, learned);
+                } else if (holdK > 0.0f) {
                     const float own = s3[v * C3 + c];
                     in[c] += holdK * (cfg_.settle_fit > 0.5f ? std::min(own, std::max(0.0f, learned)) : own);
                 }
@@ -1524,9 +1528,7 @@ void NeuralCellularMatrix::step3D() {
     }
 
     // Pass 2: competition within each field over the inhibition radius, then homeostasis.
-#pragma omp parallel for schedule(dynamic, 256)
-    for (int64_t vi = vBegin; vi < vEnd; ++vi) {
-        const size_t v = size_t(vi);
+    auto compete = [&](size_t v) -> float { // one voxel's competition; writes its output, returns its mean
         const uint32_t x = uint32_t(v % N);
         const uint32_t y = uint32_t((v / N) % N);
         const uint32_t z = uint32_t((v / (size_t(N) * N)) % N);
@@ -1542,8 +1544,29 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
-                                            cfg_.fire_threshold3, cfg_.fire_gain3);
+        return competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3, cfg_.fire_threshold3,
+                               cfg_.fire_gain3);
+    };
+    // settle_fix (audit-01 bug note): the silence cap runs between the competition and the bookkeeping
+    // (fatigue, homeostasis, averages, traces), so they count only the cells that stay on. The
+    // competition reads only the drives, so running it first in its own pass gives the same outputs.
+    const bool capFirst = cfg_.settle_cap > 0.0f && cfg_.settle_fix > 0.5f;
+    if (capFirst) {
+#pragma omp parallel for schedule(dynamic, 256)
+        for (int64_t vi = vBegin; vi < vEnd; ++vi) compete(size_t(vi));
+        settleCap(out, size_t(vBegin), size_t(vEnd));
+    }
+#pragma omp parallel for schedule(dynamic, 256)
+    for (int64_t vi = vBegin; vi < vEnd; ++vi) {
+        const size_t v = size_t(vi);
+        float final;
+        if (capFirst) { // already competed (and capped): the cell's mean, as competeCell returns it
+            float sum = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) sum += out[v * C3 + c];
+            final = sum / float(C3);
+        } else {
+            final = compete(v);
+        }
         adaptThreshold(theta[v], homeoAvg(homeo3_, v, final), lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);
@@ -1558,7 +1581,9 @@ void NeuralCellularMatrix::step3D() {
         // out of the word's binding while it is taught (speak_learn), so it is not tied to every letter.
         const bool mouthVoxel = cfg_.speak_learn > 0.5f && v / Vf_ == size_t(Field::Output) && v % N_ == N_ - 1;
         const bool innerVoxel = cfg_.inner_sense > 0.0f && v / Vf_ == size_t(std::clamp(cfg_.inner_field, 0.0f, 3.0f) + 0.5f) && v % N_ == (cfg_.inner_face > 0.5f ? N_ - 1 : 0);
-        if (!wordTrace_.empty() && sensoryOn_ && !mouthVoxel && !innerVoxel) {
+        // bind_clean (audit-01 finding 3a): the word-end (space) step stays out of the word's trace.
+        const bool spaceStep = cfg_.bind_clean > 0.5f && wordEndStep_;
+        if (!wordTrace_.empty() && sensoryOn_ && !mouthVoxel && !innerVoxel && !spaceStep) {
             float* wt = wordTrace_.data() + v * C3;
             const float* cell = out + v * C3;
             for (uint32_t c = 0; c < C3; ++c) wt[c] = std::max(wt[c], cell[c]);
@@ -1591,7 +1616,7 @@ void NeuralCellularMatrix::step3D() {
             for (uint32_t c = 0; c < C3; ++c) fb[c] += (cell[c] - fb[c]) / tau;
         }
     }
-        if (cfg_.settle_cap > 0.0f) settleCap(out, size_t(vBegin), size_t(vEnd));
+        if (cfg_.settle_cap > 0.0f && !capFirst) settleCap(out, size_t(vBegin), size_t(vEnd));
     } // fields (front-to-back sweep)
 
     if (cfg_.workspace > 0.0f) { // shared stage: the brain-wide strongest voxels win, the rest are dimmed
@@ -2061,8 +2086,13 @@ void NeuralCellularMatrix::settleCap(float* out, size_t b, size_t e) {
             if (a > 0.0f) on.emplace_back(a, v);
         }
         if (sensoryOn_) { heardActive_[f] = on.size(); continue; }
-        if (heardActive_[f] == 0) continue; // nothing heard yet: no measure
-        const size_t cap = std::max<size_t>(1, size_t(std::ceil(cfg_.settle_cap * double(heardActive_[f]))));
+        // settle_fair 1 (audit-01 finding 2): the cap is the brain's own sparsity (settle_cap x the
+        // target share x the field's voxels, the level gain control steers to), the same for every
+        // cue, not the count at the last heard step, so cells the links recruit are not cut for a small cue.
+        const bool fair = cfg_.settle_fair > 0.5f;
+        if (!fair && heardActive_[f] == 0) continue; // nothing heard yet: no measure
+        const double ref = fair ? double(std::max(0.0f, cfg_.target_activity)) * double(Vf_) : double(heardActive_[f]);
+        const size_t cap = std::max<size_t>(1, size_t(std::ceil(cfg_.settle_cap * ref)));
         if (on.size() <= cap) continue;
         std::nth_element(on.begin(), on.begin() + cap, on.end(), [](const auto& x, const auto& y) { return x.first > y.first; });
         for (size_t k = cap; k < on.size(); ++k) std::fill(out + on[k].second * C3, out + (on[k].second + 1) * C3, 0.0f);

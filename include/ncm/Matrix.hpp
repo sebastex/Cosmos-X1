@@ -102,6 +102,9 @@ public:
     // Pharmakon: whether the coming 3D step is also a 4D step (the 4D-lattice coupling updates
     // and learns only then; in between its drive is held).
     void setTick4D(bool fourD) { tick4_ = fourD; }
+    // bind_clean: whether the coming 3D step is the word-end (space) step; with bind_clean 1 it does
+    // not add to the word trace (audit-01 finding 3a). Set by the session around step3D().
+    void setWordEndStep(bool on) { wordEndStep_ = on; }
 
     // Learn by predicting (predict_surprise): after a 3D step, how much of the voxels' firing their
     // learned links did not predict (0 = fully expected, 1 = all new). Kept until the next call.
@@ -293,6 +296,7 @@ private:
     // Acetylcholine (ach): per area its level, 1 = new (take in, learn), 0 = familiar (recall).
     std::vector<float> achArea_;
     std::vector<float> wordTrace_;          // settle_bind: per voxel channel, its peak firing during the current word
+    bool wordEndStep_ = false;              // bind_clean: this 3D step is the word-end (space) step
     const float* learnFrom_ = nullptr;      // learnWord: learn() reads these traces instead of the state
     float learnScale_ = 1.0f;
     std::array<size_t, kFields> heardActive_{}; // settle_cap: voxels firing per field at the last heard step
