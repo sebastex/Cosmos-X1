@@ -61,6 +61,15 @@ def script(test):
         for w in NEW:
             t += [f'rest:150;repeat:{w}:8:30', f'rest:150;repeat:{w}:8:30:read']
         return ';'.join(lessons(words, 'read') + t)
+    if test.startswith('gauge'):  # gauges (no score): brain reports through the lesson, then drift while hearing
+        words = quick.words(100)[:int(test[5:])]
+        L = lessons(words, 'say')
+        out, k = [L[0], 'drift:same:16', 'report:start'], 0
+        for r in range(1, ROUNDS + 1):
+            out += L[1 + (r - 1) * len(words):1 + r * len(words)]
+            if r in (1, 4, 8):
+                out.append(f'report:round{r}')
+        return ';'.join(out + ['drift:same:16', 'drift:team:16', 'drift:trip:16'])
     raise SystemExit(f'unknown test {test}')
 
 
@@ -150,6 +159,13 @@ def score_word(test, path):
         return {'said': sum(r['said'] == r['heard'] for r in known), 'top': sum(top(r) == r['heard'] for r in known),
                 'wrong': sum(bool(r['said']) and r['said'] != r['heard'] for r in known), 'quarters': q,
                 'new_said': [r['said'] or '-' for r in rows if r['heard'] in NEW]}
+    if test.startswith('gauge'):
+        g = {}
+        for r in rows_of(path, 'BRAINREPORT'):
+            g[r['tag']] = {'fill': [round(f['fill'], 3) for f in r['fields']], 'full': [round(f['full'], 3) for f in r['fields']],
+                           'theta': [t[0] for t in r.get('theta', [])], 'pre_room': r.get('pre_room'), 'scaled': round(r['scaled'], 1)}
+        g['drift'] = [[d['word']] + [f[-1] for f in d['vs_tick4']] for d in rows_of(path, 'DRIFT')]
+        return g or None
     n = int(test[4:])
     words = quick.words(100)[:n]
     hear = rows_of(path, 'REPEAT')

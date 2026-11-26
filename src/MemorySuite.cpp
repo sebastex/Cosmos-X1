@@ -2707,6 +2707,18 @@ int runScriptTest(const Config& cfg) {
                     j += b;
                 }
             }
+            { // presynaptic_bound: each source channel's room (1 = unused outgoing budget, 1 - bound = full)
+                const auto& pr = m.presynapticRoom();
+                double mean = 0.0;
+                size_t full = 0;
+                float lo = 1.0f;
+                for (float x : pr) mean += x, lo = std::min(lo, x);
+                for (float x : pr) full += x <= lo + 1e-6f ? 1 : 0;
+                char b[160];
+                std::snprintf(b, sizeof b, "],\"pre_room\":[%.4f,%.4f,%.4f", pr.empty() ? 1.0 : mean / double(pr.size()), double(lo),
+                              pr.empty() ? 0.0 : double(full) / double(pr.size()));
+                j += b;
+            }
             char tail[400];
             std::snprintf(tail, sizeof tail, "],\"steps\":[%llu,%llu],\"learn_calls\":%llu,\"learn_change\":%.4f,\"scaled\":%.4f,\"mt\":%llu,\"soma\":%llu}",
                           (unsigned long long)act.steps[0], (unsigned long long)act.steps[1], (unsigned long long)ls.calls, ls.change, ls.scaled, (unsigned long long)m.microtubuleCollapses(),

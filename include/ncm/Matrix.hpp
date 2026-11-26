@@ -183,6 +183,7 @@ public:
     const AVec<float>& sheetState() const { return s2_.cur; }
     const AVec<float>& voxelState() const { return s3_.cur; }
     const AVec<float>& voxelThresholds() const { return s3_.theta; }
+    const std::vector<float>& presynapticRoom() const { return preRoom_; } // diagnostic (presynaptic_bound)
     // Read-only views for the activity monitor (Monitor.hpp).
     const std::vector<uint8_t>& lineQuiet() const { return lineQuietCur_; }   // 1 = the line is silent
     const std::vector<uint8_t>& sheetQuiet() const { return sheetQuietCur_; } // 1 = the voxel's sheet is silent
