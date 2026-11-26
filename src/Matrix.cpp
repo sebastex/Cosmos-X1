@@ -227,7 +227,8 @@ inline float competeCell(float* out, float ownDrive, size_t own, const size_t* r
 template <uint32_t C>
 inline double hebbianBlock(float* W, const float* post, const float* postPrev, const float* pre,
                            const float* prePrev, float avgPost, float avgPre, float rate, float lambda,
-                           float oja, float hetero, const float* preRoom, float linkMax) {
+                           float oja, float hetero, const float* preRoom, float linkMax, int ltdMode = 0,
+                           float ltdScale = 1.0f) {
     double change = 0.0;
     for (uint32_t a = 0; a < C; ++a) {
         const float pa = post[a], qa = postPrev[a];
@@ -239,8 +240,18 @@ inline double hebbianBlock(float* W, const float* post, const float* postPrev, c
             // `hetero` times the covariance term (1 = full covariance, 0 = only active inputs
             // change). Silent inputs include other memories' cells, so this erases them.
             const float preTerm = pre[b] == 0.0f ? hetero * (0.0f - avgPre) : pre[b] - avgPre;
-            const float dw =
-                da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+            float dw;
+            if (ltdMode == 0) {
+                dw = da * preTerm + lambda * (prePrev[b] * pa - pre[b] * qa) - oja * pa * pa * row[b];
+            } else {
+                // order_ltd (audit-01 finding 3b): the weakening side of the order term scaled by ltdScale.
+                // 1: the order term's net value where it is negative (late -> early); 2: its depressing
+                // half (source now x target before) always. 0 scale = no order-driven weakening.
+                float order = ltdMode == 2 ? lambda * (prePrev[b] * pa - ltdScale * pre[b] * qa)
+                                           : lambda * (prePrev[b] * pa - pre[b] * qa);
+                if (ltdMode == 1 && order < 0.0f) order *= ltdScale;
+                dw = da * preTerm + order - oja * pa * pa * row[b];
+            }
             float grow = preRoom ? preRoom[b] : 1.0f;
             if (linkMax > 0.0f) grow *= std::max(0.0f, 1.0f - row[b] / linkMax); // per-link bound
             const float updated = std::max(0.0f, row[b] + rate * (dw > 0.0f ? grow * dw : dw));
@@ -2040,6 +2051,8 @@ void NeuralCellularMatrix::learn2D(float modulator) {
     const float* post = s2_.cur.data();
     const float* prev = s2_.next.data();
     const float lambda = cfg_.learning.order_gain;
+    const int ltdMode = int(std::clamp(cfg_.learning.order_ltd, 0.0f, 2.0f) + 0.5f); // order_ltd: same rule as 3D
+    const float ltdScale = std::max(0.0f, cfg_.learning.order_ltd_scale);
     const float oja = std::max(0.0f, cfg_.learning.oja);
     const float budget = std::max(0.0f, cfg_.learning.sheet_budget);
     const float linkMax = std::max(0.0f, cfg_.learning.sheet_link_bound);
@@ -2060,7 +2073,7 @@ void NeuralCellularMatrix::learn2D(float modulator) {
                 float* block = blocks + size_t(oi++) * C2 * C2;
                 if (qn == SIZE_MAX || inhib2_[qn]) continue;
                 hebbianBlock<C2>(block, pq, rq, post + qn * C2, prev + qn * C2, 0.0f, 0.0f, rate, lambda, oja, 0.0f,
-                                 nullptr, linkMax);
+                                 nullptr, linkMax, ltdMode, ltdScale);
             }
         // Each output channel's total learned input stays within the budget.
         for (uint32_t a = 0; a < C2; ++a) {
@@ -2120,6 +2133,9 @@ void NeuralCellularMatrix::learn(float modulator) {
     const float rate = cfg_.learning.rate * std::clamp(modulator, 0.0f, 1.0f) * learnScale_;
     if (rate <= 0.0f) return;
     const float lambda = cfg_.learning.order_gain;
+    // order_ltd (I-01g, audit-01 finding 3b): 0 = the order term as before; 1/2 = its weakening side x order_ltd_scale.
+    const int ltdMode = int(std::clamp(cfg_.learning.order_ltd, 0.0f, 2.0f) + 0.5f);
+    const float ltdScale = std::max(0.0f, cfg_.learning.order_ltd_scale);
     // After step3D() swapped the buffers, `cur` holds the new state and `next` the previous one.
     // learnWord: both sides are the word traces, so the whole word is learnt as one moment.
     const float* post = learnFrom_ ? learnFrom_ : s3_.cur.data();
@@ -2287,7 +2303,8 @@ void NeuralCellularMatrix::learn(float modulator) {
                                                   preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
                 else
                     change += hebbianBlock<C3>(block, pi, qi, sp, sq, avgOf(v), avgOf(src), vrate * lv, lambda,
-                                                oja, hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax);
+                                                oja, hetero, preSoft > 0.0f ? preRoom_.data() + src * C3 : nullptr, linkMax,
+                                                ltdMode, ltdScale);
                 const float* cs = ctxOn ? ctx3_.data() + src * C3 : nullptr;
                 if (cs && !isFaint(cs)) {
                     for (uint32_t a = 0; a < C3; ++a) {
@@ -2913,6 +2930,20 @@ std::string NeuralCellularMatrix::blockReport() const {
         for (uint32_t f = 0; f < kFields; ++f) s += (f ? "," : "") + std::to_string(byField[f]);
         s += "]}";
     }
+    { // I-01i: learned link blocks per voxel with any non-zero weight, by kind, mean per field
+        const auto lb = linkBlocks();
+        s += ",\"nonzero_blocks_per_voxel\":{";
+        for (int k = 0; k < 4; ++k) {
+            s += std::string(k ? "," : "") + "\"" + names[k] + "\":[";
+            for (uint32_t f = 0; f < kFields; ++f) {
+                char b[32];
+                std::snprintf(b, sizeof b, "%s%.3f", f ? "," : "", lb[f][size_t(k)]);
+                s += b;
+            }
+            s += "]";
+        }
+        s += "}";
+    }
     const double stored = double(links_.bytes());
     // The inner (voxel <-> sheet) learned weights: chunks stored, and how much of them is non-zero.
     double innerN = 0.0, innerNZ = 0.0;
@@ -3105,6 +3136,52 @@ std::array<DriveSources, kFields> NeuralCellularMatrix::driveSources() const {
         DriveSources& d = out[v / Vf_];
         d.firing += 1.0;
         for (uint32_t k = 0; k < kSources; ++k) d.net[k] += diagSource3_[v * kSources + k];
+    }
+    return out;
+}
+
+std::array<std::array<double, 4>, kFields> NeuralCellularMatrix::linkBlocks(const std::vector<uint8_t>* inside) const {
+    // I-01i: learned link blocks with any non-zero weight, per voxel, by kind; mean per field.
+    std::array<std::array<double, 4>, kFields> count{}, out{};
+    std::array<double, kFields> voxels{};
+    auto& self = const_cast<NeuralCellularMatrix&>(*this);
+    for (size_t v = 0; v < V_; ++v) {
+        if (inside && (v >= inside->size() || !(*inside)[v])) continue;
+        const size_t f = std::min<size_t>(kFields - 1, v / Vf_);
+        voxels[f] += 1.0;
+        self.forEachLearnedBlock(v, [&](const float* block, size_t src, int kind) {
+            if (kind < 0 || kind > 3) return;
+            if (inside && (src >= inside->size() || !(*inside)[src])) return;
+            const float* sl = self.slowOf(block);
+            bool nz = false;
+            for (size_t i = 0; i < size_t(C3) * C3 && !nz; ++i) nz = block[i] != 0.0f || (sl && sl[i] != 0.0f);
+            if (nz) count[f][size_t(kind)] += 1.0;
+        });
+    }
+    for (size_t f = 0; f < kFields; ++f)
+        for (size_t k = 0; k < 4; ++k) out[f][k] = voxels[f] > 0.0 ? count[f][k] / voxels[f] : 0.0;
+    return out;
+}
+
+std::vector<NeuralCellularMatrix::DriveGroup> NeuralCellularMatrix::driveGroups(const std::vector<uint8_t>& group,
+                                                                                uint32_t groups) const {
+    // I-01h: fixed vs learned drive on the last 3D step, per field and group (diagSource3_, diagPlastic3_,
+    // diagInput3_ are written on every 3D step). The fixed parts are recorded before the silence gate, so
+    // they are scaled by it here (sensoryOn_ is the state the last step ran under).
+    std::vector<DriveGroup> out(size_t(kFields) * groups);
+    const float quiet = sensoryOn_ ? 1.0f : 1.0f - std::clamp(cfg_.learning.silence_gate, 0.0f, 1.0f);
+    const float* s3 = s3_.cur.data();
+    for (size_t v = 0; v < V_ && v < group.size(); ++v) {
+        if (group[v] >= groups) continue;
+        DriveGroup& d = out[std::min<size_t>(kFields - 1, v / Vf_) * groups + group[v]];
+        const float* ds = diagSource3_.data() + v * kSources;
+        double fixed = 0.0;
+        for (uint32_t k = kFixedLocal; k <= kUpward; ++k) fixed += ds[k];
+        d.voxels += 1.0;
+        d.firing += isSilent(s3 + v * C3, C3) ? 0.0 : 1.0;
+        d.fixed += double(quiet) * fixed;
+        d.learned += diagPlastic3_[v];
+        d.total += diagInput3_[v];
     }
     return out;
 }

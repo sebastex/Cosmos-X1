@@ -213,6 +213,18 @@ public:
     // Which learned blocks are stored (ever learned something), per kind and field, and the memory
     // they take against storing every block (one BLOCKS json line).
     std::string blockReport() const;
+    // I-01i (audit-01 finding 5): per field, the mean number of learned link blocks per voxel holding any
+    // non-zero weight (fast or slow), by kind [near, long-range, 4D, cue route]. With `inside` (a 0/1 mask
+    // per voxel), only voxels in the mask count, and only blocks whose source is also in the mask (the
+    // learned partners a voxel has inside one memory). Read only.
+    std::array<std::array<double, 4>, kFields> linkBlocks(const std::vector<uint8_t>* inside = nullptr) const;
+    // I-01h (audit-01 finding 4): per field and voxel group, the drive on the last 3D step, summed over the
+    // group's voxels. group[v] picks the group (>= groups = skipped). fixed = the net fixed input (local,
+    // long-range, 4D scaffold, input depth, spread, upward) after the silence gate; learned = the learned
+    // input as applied (recall_gain, agc_plastic, learned upward; the settle_hold term is not in it);
+    // total = all positive input. Read only.
+    struct DriveGroup { double voxels = 0.0, firing = 0.0, fixed = 0.0, learned = 0.0, total = 0.0; };
+    std::vector<DriveGroup> driveGroups(const std::vector<uint8_t>& group, uint32_t groups) const;
     double prunedWeights() const { return pruned_; } // weights removed by pruning so far (not saved)
     // Save or restore everything that changes while the brain runs (one brain across runs).
     // Restoring needs a brain built with the same configuration and seed.

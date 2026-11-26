@@ -72,6 +72,16 @@ struct StartingRule {
 struct LearningParams {
     float rate = 0.2f;       // eta; scaled by the surprise modulator M(t)
     float order_gain = 0.5f; // lambda: weight of the order (j before i) term
+    // order_ltd (I-01g, audit-01 finding 3b). The order term (order_gain 6.23 in the rule, about 6x the
+    // association term) grows early -> late links and applies its negative side in full (clamped at 0),
+    // so it wipes out the late -> early links that completing a word from a cue needs. 0 = as before.
+    // 1 = where the order term is negative (the source fired after the target) it is scaled by
+    // order_ltd_scale; within one held moment the term still cancels, so only the weakening changes.
+    // 2 = the depressing half (source now x target a moment before) is always scaled by order_ltd_scale,
+    // so a held moment also gains +order_gain x source x target (a much stronger association).
+    // order_ltd_scale 0 = no order-driven weakening, 1 = the old rule. Every level (3D and 2D sheets).
+    float order_ltd = 0.0f;
+    float order_ltd_scale = 0.0f;
     // Weight of Oja's normalization term. It shrinks all of a cell's plastic inputs whenever the
     // cell is active, which makes each cell keep only its most recent pattern (forgetting);
     // the synaptic-scaling cap already bounds strength.

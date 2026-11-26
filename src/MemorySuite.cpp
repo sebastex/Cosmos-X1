@@ -2390,6 +2390,113 @@ int runScriptTest(const Config& cfg) {
                             word.c_str(), part, bestTick, bestOwn, activeBefore.c_str(), activeTicks.c_str(), out.c_str());
                 tick += hold + 1 + 30 + 150 + hold + 1 + T;
             }
+        } else if (op == "probe") {
+            // probe:WORD:FRACTION:TICKS:TARGET - drive probe (I-01h, audit-01 finding 4; read only, nothing learns;
+            // needs word_shape). TARGET 1 (default): first the target as in complete (the full shape and its
+            // space; the deep state at the first look; 30 silent looks; 150 silent ticks). TARGET 0: no target,
+            // straight to the cue (as repeat). Then a FRACTION of the shape (lab::thin, as repeat), its space, and
+            // TICKS silent ticks (default 20). After the last cue tick, the space and every silent tick one PROBE
+            // line: per field and voxel group the voxel count and the mean fixed drive, learned drive and all
+            // positive input per voxel on the last 3D step ("step":0 = no 3D step this tick, values are the
+            // last step's). Groups: kept = target voxel firing now, missing = target voxel silent now, extra =
+            // other voxel firing, rest = other voxel silent (without a target every voxel is extra or rest).
+            // Active voxels = kept + extra. Also one PROBE_LINKS line: learned link blocks per voxel with any
+            // non-zero weight [near, long, 4d, cue] per field, for all voxels and inside the target (I-01i), and
+            // settle_cap's heard counts per field after the full shape and after the cue.
+            const std::string word = f.size() > 1 ? f[1] : "";
+            const double part = f.size() > 2 && !f[2].empty() ? std::atof(f[2].c_str()) : 0.4;
+            const uint64_t T = num(f, 3, 20);
+            const bool withTarget = num(f, 4, 1) != 0;
+            if (cfg.word_shape < 0.5f || word.empty()) {
+                std::printf("PROBE {\"word\":\"%s\",\"frac\":%.2f,\"error\":\"needs word_shape\"}\n", word.c_str(), part);
+            } else {
+                const auto& mat = s.matrix();
+                const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : uint64_t(word.size());
+                const std::vector<uint32_t> full = s.wordShape(word);
+                const size_t nv = mat.voxelState().size() / C3;
+                auto isOn = [&](size_t v) {
+                    const auto& st = mat.voxelState();
+                    for (uint32_t c = 0; c < C3; ++c)
+                        if (st[v * C3 + c] != 0.0f) return true;
+                    return false;
+                };
+                auto counts = [](const auto& a) {
+                    std::string r = "[";
+                    for (size_t k = 0; k < a.size(); ++k) r += (k ? "," : "") + std::to_string(a[k]);
+                    return r + "]";
+                };
+                std::vector<uint8_t> target(nv, 0);
+                std::string heardFull = "[]";
+                uint64_t used = 0;
+                if (withTarget) {
+                    s.presentShape(word, hold, false);
+                    s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                    heardFull = counts(mat.heardCounts());
+                    for (size_t v = 0; v < nv; ++v) target[v] = isOn(v) ? 1 : 0;
+                    s.silence(30, false);
+                    s.silence(150, false);
+                    used += hold + 1 + 180;
+                }
+                // Links: all voxels, and inside the target (the word's own learned partners).
+                const auto la = mat.linkBlocks();
+                const auto lt = withTarget ? mat.linkBlocks(&target) : decltype(la){};
+                auto linkRow = [](const auto& l) {
+                    std::string r = "[";
+                    for (size_t k = 0; k < l.size(); ++k) {
+                        char b[96];
+                        std::snprintf(b, sizeof b, "%s[%.2f,%.2f,%.2f,%.2f]", k ? "," : "", l[k][0], l[k][1], l[k][2], l[k][3]);
+                        r += b;
+                    }
+                    return r + "]";
+                };
+                size_t targetN = 0;
+                for (uint8_t x : target) targetN += x;
+                static const char* gname[4] = {"kept", "missing", "extra", "rest"};
+                uint64_t lastSteps = mat.steps3D();
+                auto row = [&](const std::string& label) {
+                    std::vector<uint8_t> group(nv);
+                    for (size_t v = 0; v < nv; ++v) group[v] = uint8_t((target[v] ? 0 : 2) + (isOn(v) ? 0 : 1));
+                    const auto g = mat.driveGroups(group, 4);
+                    const bool fresh = mat.steps3D() != lastSteps;
+                    lastSteps = mat.steps3D();
+                    std::string j = "PROBE {\"word\":\"" + word + "\",\"frac\":" + std::to_string(part) + ",\"tick\":\"" + label +
+                                    "\",\"step\":" + (fresh ? "1" : "0") + ",\"fields\":[";
+                    for (uint32_t k = 0; k < kFields; ++k) {
+                        j += k ? ",{" : "{";
+                        for (uint32_t q = 0; q < 4; ++q) {
+                            const auto& d = g[size_t(k) * 4 + q];
+                            const double n = std::max(1.0, d.voxels);
+                            char b[160];
+                            std::snprintf(b, sizeof b, "%s\"%s\":[%.0f,%.5f,%.5f,%.5f]", q ? "," : "", gname[q], d.voxels,
+                                          d.fixed / n, d.learned / n, d.total / n);
+                            j += b;
+                        }
+                        j += "}";
+                    }
+                    std::printf("%s]}\n", j.c_str());
+                };
+                // the partial cue (as repeat's partial branch; a full cue at FRACTION >= 1)
+                if (part < 0.999 && part > 0.0) {
+                    const auto cue = lab::thin(full, float(part), cfg.itemSeed(), word[0]);
+                    for (uint64_t t = 0; t < hold; ++t) s.tick(&cue, &full, false);
+                } else {
+                    s.presentShape(word, hold, false);
+                }
+                const std::string heardCue = counts(mat.heardCounts());
+                row("cue");
+                s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                row("space");
+                for (uint64_t t = 0; t < T; ++t) {
+                    s.silence(1, false);
+                    row(std::to_string(t));
+                }
+                std::printf("PROBE_LINKS {\"word\":\"%s\",\"frac\":%.2f,\"target_voxels\":%zu,\"kinds\":[\"near\",\"long\",\"4d\",\"cue\"],"
+                            "\"all\":%s,\"inside_target\":%s,\"heard_full\":%s,\"heard_cue\":%s,\"heard_mean\":[%.1f,%.1f,%.1f,%.1f]}\n",
+                            word.c_str(), part, targetN, linkRow(la).c_str(), withTarget ? linkRow(lt).c_str() : "[]",
+                            heardFull.c_str(), heardCue.c_str(), mat.heardMeans()[0], mat.heardMeans()[1],
+                            mat.heardMeans()[2], mat.heardMeans()[3]);
+                tick += used + hold + 1 + T;
+            }
         } else if (op == "read" && cfg.word_shape > 0.5f) {
             // read:WORD:N:REST - reading aloud (word_shape): it sees the word's letters one by one, then hears the
             // word as its own shape (and its space) while the mouth shows that shape. Nothing says the letters

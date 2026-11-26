@@ -184,6 +184,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"lattice_link", &c.rule.lattice_link},
         {"learning_rate", &c.learning.rate},
         {"order_gain", &c.learning.order_gain},
+        {"order_ltd", &c.learning.order_ltd},             // I-01g, audit-01 finding 3b
+        {"order_ltd_scale", &c.learning.order_ltd_scale}, // I-01g: order_ltd's scale (0 = no order weakening)
         {"oja", &c.learning.oja},
         {"budget_split", &c.learning.budget_split},
         {"budget_4d_share", &c.learning.budget_4d_share},
