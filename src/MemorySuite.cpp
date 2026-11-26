@@ -2307,6 +2307,228 @@ int runScriptTest(const Config& cfg) {
                 s.silence(rest, learn);
                 tick += w.size() + hold + 1 + rest;
             }
+        } else if (op == "scan" || op == "mind") {
+            // The MRI layer (read only, nothing learns). A voxel counts as active when its strongest channel reaches
+            // level3.active_level; regions are 4x4x4-voxel blocks (64 per field), so a scan is 4 x 64 "voxels" of
+            // an fMRI image per tick.
+            auto& mat = const_cast<NeuralCellularMatrix&>(s.matrix());
+            const uint32_t N = cfg.field_dim, Vf = N * N * N, B = std::max<uint32_t>(1, N / 4), A = N / B;
+            const float lvl = cfg.level3.active_level;
+            auto activeSet = [&]() {
+                const auto& st = s.matrix().voxelState();
+                std::vector<uint8_t> on(st.size() / C3, 0);
+                for (size_t v = 0; v < on.size(); ++v) {
+                    float m = 0.0f;
+                    for (uint32_t c = 0; c < C3; ++c) m = std::max(m, st[v * C3 + c]);
+                    on[v] = m >= lvl ? 1 : 0;
+                }
+                return on;
+            };
+            auto regions = [&](const std::vector<uint8_t>& on) {
+                std::vector<int> r(kFields * A * A * A, 0);
+                for (size_t v = 0; v < on.size(); ++v) {
+                    if (!on[v]) continue;
+                    const uint32_t fi = uint32_t(v / Vf), x = uint32_t(v % N), y = uint32_t((v / N) % N), z = uint32_t((v / (N * N)) % N);
+                    ++r[((size_t(fi) * A + z / B) * A + y / B) * A + x / B];
+                }
+                return r;
+            };
+            const uint64_t hold = cfg.word_hold > 0.5f ? uint64_t(cfg.word_hold + 0.5f) : 8;
+            if (op == "scan") {
+                // scan:WORD:TICKS - hear WORD (its shape, or its letters), then silence; one SCAN line per tick
+                const std::string w = f.size() > 1 ? f[1] : "";
+                const uint64_t T = num(f, 2, 60);
+                for (uint64_t t = 0; t < T; ++t) {
+                    const bool shape = cfg.word_shape > 0.5f;
+                    const bool in = shape ? t <= hold : t <= w.size();
+                    if (shape && t < hold) s.presentShape(w, 1, false);
+                    else if (shape && t == hold) s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                    else if (!shape && t <= w.size()) s.present(t < w.size() ? std::string(1, w[t]) : std::string(" "), 1, 1.0f, false, UINT64_MAX);
+                    else s.silence(1, false);
+                    const auto r = regions(activeSet());
+                    std::string row;
+                    for (size_t k = 0; k < r.size(); ++k) row += (k ? "," : "") + std::to_string(r[k]);
+                    std::printf("SCAN {\"word\":\"%s\",\"t\":%llu,\"input\":%d,\"r\":[%s]}\n", w.c_str(), (unsigned long long)t, in ? 1 : 0, row.c_str());
+                }
+                s.silence(100, false);
+                tick += T + 100;
+            } else {
+                // mind:w1,w2,... - consciousness-marker battery (read only). Markers from the science of consciousness,
+                // computed the way they are on brains; they show brain-like dynamics, they cannot prove sentience.
+                std::vector<std::string> ws = split(f.size() > 1 ? f[1] : "", ',');
+                std::string j = "{";
+                // 1. Perturbational complexity (PCI, Casali et al. 2013, "zap and zip"): perturb the brain directly
+                // (a brief random kick to 5% of voxels, like TMS), binarise the response (voxels active that were not
+                // active throughout the baseline), and measure its Lempel-Ziv complexity normalised by source entropy.
+                auto lz76 = [](const std::vector<uint8_t>& sq) { // Kaspar & Schuster LZ76 complexity
+                    const size_t n = sq.size();
+                    if (n < 2) return double(n);
+                    size_t c = 1, l = 1, i = 0, k = 1, kmax = 1;
+                    while (true) {
+                        if (sq[i + k - 1] == sq[l + k - 1]) {
+                            ++k;
+                            if (l + k > n) { ++c; break; }
+                        } else {
+                            kmax = std::max(kmax, k);
+                            ++i;
+                            if (i == l) {
+                                ++c;
+                                l += kmax;
+                                if (l + 1 > n) break;
+                                i = 0; k = 1; kmax = 1;
+                            } else k = 1;
+                        }
+                    }
+                    return double(c);
+                };
+                auto pci = [&](const std::vector<std::vector<uint8_t>>& resp, double& pOut, size_t& srcOut) {
+                    std::vector<size_t> src; // sources that ever respond
+                    for (size_t v = 0; !resp.empty() && v < resp[0].size(); ++v) {
+                        bool any = false;
+                        for (const auto& r : resp) any = any || r[v];
+                        if (any) src.push_back(v);
+                    }
+                    srcOut = src.size();
+                    std::vector<uint8_t> sq;
+                    for (const auto& r : resp)
+                        for (size_t v : src) sq.push_back(r[v]); // time-major: the columns of the sources x time matrix
+                    double ones = 0;
+                    for (uint8_t b : sq) ones += b;
+                    const double L = double(sq.size()), p = L > 0 ? ones / L : 0.0;
+                    pOut = p;
+                    if (L < 2 || p <= 0.0 || p >= 1.0) return 0.0;
+                    const double H = -p * std::log2(p) - (1 - p) * std::log2(1 - p);
+                    return lz76(sq) * std::log2(L) / (L * H);
+                };
+                {
+                    s.silence(60, false);
+                    std::vector<uint8_t> tonic = activeSet(); // active throughout the baseline
+                    for (int t = 0; t < 12; ++t) {
+                        s.silence(1, false);
+                        const auto on = activeSet();
+                        for (size_t v = 0; v < tonic.size(); ++v) tonic[v] = tonic[v] && on[v];
+                    }
+                    double pciSum = 0.0, shufSum = 0.0, pSum = 0.0, sizeSum = 0.0, srcSum = 0.0, fieldsSum = 0.0, stepsSum = 0.0;
+                    const int trials = 4;
+                    for (int tr = 0; tr < trials; ++tr) {
+                        mat.setNoise(1.0f, 0.05f);
+                        s.silence(3, false); // the kick (at least one 3D step)
+                        mat.setNoise(0.0f, 0.0f);
+                        std::vector<std::vector<uint8_t>> resp;
+                        std::vector<uint8_t> last;
+                        for (int t = 0; t < 60; ++t) {
+                            s.silence(1, false);
+                            auto on = activeSet();
+                            if (on == last) continue; // only new 3D states (one column per 3D step)
+                            last = on;
+                            for (size_t v = 0; v < on.size(); ++v) on[v] = on[v] && !tonic[v];
+                            resp.push_back(on);
+                        }
+                        double p = 0.0;
+                        size_t nsrc = 0;
+                        const double x = pci(resp, p, nsrc);
+                        // surrogate: each source's time course shuffled (the complexity of noise with the same density)
+                        auto sh = resp;
+                        for (size_t v = 0; !sh.empty() && v < sh[0].size(); ++v)
+                            for (size_t t = sh.size() - 1; t > 0; --t) {
+                                const size_t u = size_t(hashUniform(cfg.seed, 0x5C1, (uint64_t(tr) * 1000003 + v) * 4096 + t) * double(t + 1)) % (t + 1);
+                                std::swap(sh[t][v], sh[u][v]);
+                            }
+                        double ps = 0.0;
+                        size_t ns = 0;
+                        shufSum += pci(sh, ps, ns);
+                        pciSum += x, pSum += p, srcSum += double(nsrc), stepsSum += double(resp.size());
+                        double size = 0;
+                        std::array<int, kFields> fr{};
+                        for (const auto& r : resp)
+                            for (size_t v = 0; v < r.size(); ++v)
+                                if (r[v]) ++size, fr[v / Vf] = 1;
+                        sizeSum += size;
+                        fieldsSum += fr[0] + fr[1] + fr[2] + fr[3];
+                        s.silence(150, false);
+                    }
+                    char b[400];
+                    std::snprintf(b, sizeof b, "\"pci\":%.4f,\"pci_shuffled\":%.4f,\"resp_density\":%.4f,\"resp_sources\":%.0f,\"resp_steps\":%.1f,\"resp_size\":%.0f,\"fields_reached\":%.2f",
+                                  pciSum / trials, shufSum / trials, pSum / trials, srcSum / trials, stepsSum / trials, sizeSum / trials, fieldsSum / trials);
+                    j += b;
+                }
+                // 2. Ignition (global workspace, Dehaene & Changeux): a learnt word shown at growing strength (a share of
+                // its lines). A workspace answers all-or-none: little below a threshold, then a jump to a full, lasting,
+                // brain-wide answer. Per strength: [share shown, peak share of active voxels in the far fields (Memory..
+                // Output) in the 30 ticks after, ticks the answer lasts, best share of the word on the mouth].
+                {
+                    const float frs[] = {0.05f, 0.1f, 0.2f, 0.3f, 0.4f, 0.6f, 0.8f, 1.0f};
+                    j += ",\"ignition\":[";
+                    bool firstW = true;
+                    for (const std::string& w : ws) {
+                        if (w.empty() || cfg.word_shape < 0.5f) continue;
+                        const std::vector<uint32_t> full = s.wordShape(w);
+                        j += std::string(firstW ? "" : ",") + "{\"word\":\"" + w + "\",\"curve\":[";
+                        firstW = false;
+                        for (size_t q = 0; q < sizeof frs / sizeof frs[0]; ++q) {
+                            const auto cue = lab::thin(full, frs[q], cfg.itemSeed(), w[0]);
+                            for (uint64_t t = 0; t < hold; ++t) s.tick(&cue, &full, false);
+                            s.present(" ", 1, 1.0f, false, UINT64_MAX);
+                            double peak = 0.0, mouth = 0.0;
+                            int lasting = 0;
+                            for (int t = 0; t < 30; ++t) {
+                                s.silence(1, false);
+                                const auto on = activeSet();
+                                double farAct = 0;
+                                for (size_t v = Vf; v < on.size(); ++v) farAct += on[v];
+                                farAct /= double(on.size() - Vf);
+                                peak = std::max(peak, farAct);
+                                lasting += farAct > 0.005 ? 1 : 0;
+                                std::vector<uint32_t> m = s.matrix().readMotorSheets();
+                                std::sort(m.begin(), m.end());
+                                size_t hit = 0;
+                                for (uint32_t x : full) hit += std::binary_search(m.begin(), m.end(), x) ? 1 : 0;
+                                mouth = std::max(mouth, full.empty() ? 0.0 : double(hit) / double(full.size()));
+                            }
+                            char b[160];
+                            std::snprintf(b, sizeof b, "%s[%.2f,%.5f,%d,%.4f]", q ? "," : "", double(frs[q]), peak, lasting, mouth);
+                            j += b;
+                            s.silence(150, false);
+                        }
+                        j += "]}";
+                    }
+                    j += "]";
+                }
+                // 3. Criticality (neuronal avalanches, Beggs & Plenz 2003): spontaneous activity from faint random
+                // nudges; branching ratio = how many active voxels one active voxel leads to on the next 3D step
+                // (regression slope of A(t+1) on A(t)). Awake cortex sits just below 1 (reverberating); far below 1 =
+                // activity dies out at once, above 1 = it runs away.
+                {
+                    mat.setNoise(0.6f, 0.002f);
+                    std::vector<double> a;
+                    std::vector<uint8_t> last;
+                    for (int t = 0; t < 400; ++t) {
+                        s.silence(1, false);
+                        const auto on = activeSet();
+                        if (on == last) continue;
+                        last = on;
+                        double n = 0;
+                        for (uint8_t b : on) n += b;
+                        a.push_back(n);
+                    }
+                    mat.setNoise(0.0f, 0.0f);
+                    double sx = 0, sy = 0, sxx = 0, sxy = 0, ratio = 0;
+                    size_t m = 0, mr = 0;
+                    for (size_t t = 10; t + 1 < a.size(); ++t) {
+                        sx += a[t], sy += a[t + 1], sxx += a[t] * a[t], sxy += a[t] * a[t + 1], ++m;
+                        if (a[t] > 0) ratio += a[t + 1] / a[t], ++mr;
+                    }
+                    const double den = double(m) * sxx - sx * sx;
+                    const double slope = m > 1 && den != 0 ? (double(m) * sxy - sx * sy) / den : 0.0;
+                    const double mean = m ? sx / double(m) : 0.0;
+                    char b[200];
+                    std::snprintf(b, sizeof b, ",\"branching\":%.4f,\"branching_naive\":%.4f,\"spont_mean_active\":%.1f", slope, mr ? ratio / double(mr) : 0.0, mean);
+                    j += b;
+                    s.silence(150, false);
+                }
+                std::printf("MIND %s}\n", j.c_str());
+                tick += 4000;
+            }
         } else if (op == "lexicon") {
             // lexicon:a,b,c - word_shape: words it could say (their shapes exist), without hearing them
             for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) if (!w.empty()) s.wordShape(w);

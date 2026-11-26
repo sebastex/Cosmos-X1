@@ -65,6 +65,13 @@ def script(test):
         for w in NEW:
             t += [f'rest:150;repeat:{w}:8:30', f'rest:150;repeat:{w}:8:30:read']
         return ';'.join(lessons(words, 'read', sleep) + t)
+    if test.startswith('mind'):  # MRI scans + consciousness-marker battery; mind0 = an untrained brain (control)
+        n = int(test[4:])
+        words = quick.words(100)[:max(n, 4)]
+        L = lessons(words[:n], 'say') if n else ['lexicon:' + ','.join(quick.words(100) + NEW)]
+        scan = [f'scan:{w}:50' for w in words[:4] + NEW[:1]]
+        t = ['still:1'] + scan + ['mind:' + ','.join(words[:3])] + [f'rest:150;repeat:{w}' for w in words[:max(n, 4)] + NEW]
+        return ';'.join(L + t)
     if test.startswith('gauge'):  # gauges (no score): brain reports through the lesson, then drift while hearing
         words = quick.words(100)[:int(test[5:])]
         L = lessons(words, 'say')
@@ -164,6 +171,23 @@ def score_word(test, path):
         return {'said': sum(r['said'] == r['heard'] for r in known), 'top': sum(top(r) == r['heard'] for r in known),
                 'wrong': sum(bool(r['said']) and r['said'] != r['heard'] for r in known), 'quarters': q,
                 'new_said': [r['said'] or '-' for r in rows if r['heard'] in NEW]}
+    if test.startswith('mind'):
+        m = rows_of(path, 'MIND')
+        if not m:
+            return None
+        rows = rows_of(path, 'REPEAT')
+        def conf(r):  # top score over the runner-up
+            parts = r['plan'].split(' | ')[0].split(', ')
+            v = [float(p.rsplit(' ', 1)[1]) for p in parts if ' ' in p]
+            return v[0] / max(1e-3, v[1]) if len(v) > 1 else 0.0
+        ok = [conf(r) for r in rows if top(r) == r['heard']]
+        bad = [conf(r) for r in rows if top(r) != r['heard']]
+        auroc = (sum((a > b) + 0.5 * (a == b) for a in ok for b in bad) / (len(ok) * len(bad))) if ok and bad else None
+        out = dict(m[0])
+        out['ignition'] = [[w['word'], [[c[0], round(c[1], 4), c[2], round(c[3], 3)] for c in w['curve']]] for w in out.get('ignition', [])]
+        out['meta_auroc'] = round(auroc, 3) if auroc is not None else None
+        out['repeat_right'] = f"{sum(r['said'] == r['heard'] for r in rows)}/{len(rows)}"
+        return out
     if test.startswith('gauge'):
         g = {}
         for r in rows_of(path, 'BRAINREPORT'):
