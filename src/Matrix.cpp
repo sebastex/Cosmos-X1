@@ -403,6 +403,7 @@ NeuralCellularMatrix::NeuralCellularMatrix(const Config& cfg) : cfg_(cfg) {
     fatigue3_.assign(V_, 0.0f);
     average3_.assign(V_, cfg.target_activity);
     orderTrace3_.assign(V_ * C3, 0.0f);
+    if (cfg.plateau > 0.0f) elig3_.assign(V_ * C3, 0.0f);
     if (cfg.learning.context_tau > 0.0f) {
         ctx3_.assign(V_ * C3, 0.0f);
         hold4Ctx_.assign(V_ * C3, 0.0f);
@@ -1570,6 +1571,12 @@ void NeuralCellularMatrix::step3D() {
             float* ct = chanTheta3_.data() + v * C3;
             for (uint32_t c = 0; c < C3; ++c) ct[c] += cfg_.learning.channel_balance * (cell[c] - mean);
         }
+        if (!elig3_.empty()) { // plateau: eligibility trace over plateau_tau 3D steps
+            float* e = elig3_.data() + v * C3;
+            const float* cell = out + v * C3;
+            const float k = 1.0f / std::max(1.0f, cfg_.plateau_tau);
+            for (uint32_t c = 0; c < C3; ++c) e[c] += k * (cell[c] - e[c]);
+        }
         if (orderTau > 0.0f) {
             float* tr = orderTrace3_.data() + v * C3;
             const float* cell = out + v * C3;
@@ -2050,6 +2057,42 @@ void NeuralCellularMatrix::settleCap(float* out, size_t b, size_t e) {
         if (on.size() <= cap) continue;
         std::nth_element(on.begin(), on.begin() + cap, on.end(), [](const auto& x, const auto& y) { return x.first > y.first; });
         for (size_t k = cap; k < on.size(); ++k) std::fill(out + on[k].second * C3, out + (on[k].second + 1) * C3, 0.0f);
+    }
+}
+
+// Plateau learning (behavioural-timescale plasticity, Bittner et al. 2017; three-factor rules, Gerstner et
+// al. 2018): synapses keep an eligibility trace of their source's recent firing; when a surprising onset
+// comes (the third factor), every firing voxel channel strengthens its links from sources that fired in
+// the seconds before - their trace above their present firing, so only what came EARLIER is linked, at any
+// delay inside the window, not only the previous step. Growth has room (link_bound); the budgets of the
+// next ordinary learning step scale it like any other learning.
+void NeuralCellularMatrix::plateauLearn(float strength) {
+    if (elig3_.empty() || strength <= 0.0f) return;
+    const float k = cfg_.learning.rate * strength;
+    const float linkMax = std::max(0.0f, cfg_.learning.link_bound);
+    const float* post = s3_.cur.data();
+    const float* el = elig3_.data();
+    const int64_t voxels = int64_t(V_);
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int64_t vi = 0; vi < voxels; ++vi) {
+        const size_t v = size_t(vi);
+        const float* pi = post + v * C3;
+        if (isSilent(pi, C3)) continue;
+        LinkStore::Hold hold(links_);
+        forEachLearnedBlock(v, [&](float* block, size_t src) {
+            const float* e = el + src * C3;
+            const float* sp = post + src * C3;
+            for (uint32_t a = 0; a < C3; ++a) {
+                if (pi[a] <= 0.0f) continue;
+                for (uint32_t b = 0; b < C3; ++b) {
+                    const float d = e[b] - sp[b];
+                    if (d <= 0.0f) continue;
+                    float& w = block[size_t(a) * C3 + b];
+                    const float room = linkMax > 0.0f ? std::max(0.0f, 1.0f - w / linkMax) : 1.0f;
+                    w += k * pi[a] * d * room;
+                }
+            }
+        });
     }
 }
 

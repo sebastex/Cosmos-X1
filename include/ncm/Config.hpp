@@ -402,6 +402,13 @@ struct Config {
     // a cue's cells stay on long enough for the word's links to pull in the rest, while the usual
     // competition between neighbours pushes rivals out. 0 = off.
     float settle_bind = 0.0f;
+    // Plateau learning (fix for L1, after BTSP: Bittner et al. 2017; three-factor rules: Gerstner et al. 2018):
+    // plateau = strength (x learning rate x surprise) of the extra learning step taken at a surprising onset
+    // (the brain's surprise rises by more than plateau_jump over its recent level while hearing); plateau_tau =
+    // 3D steps of each voxel channel's eligibility trace (how far back an onset can link). 0 = off.
+    float plateau = 0.0f;
+    float plateau_tau = 6.0f;
+    float plateau_jump = 0.1f;
     float settle_hold = 0.0f;
     // Brakes on holding. settle_cap > 0: in silence each field keeps at most settle_cap x as many voxels
     // firing as fired at the last heard moment (the strongest; newcomers push the weakest out).

@@ -79,6 +79,9 @@ public:
     void learn(float modulator);
     // Settling: one more learning pass from every cell's word trace (what it fired during the word).
     void learnWord(float modulator);
+    // plateau (BTSP-like three-factor learning): at a surprising onset, every firing voxel links from what
+    // its sources did in the seconds before (their eligibility trace above their present firing).
+    void plateauLearn(float strength);
     void settleCap(float* out, size_t b, size_t e);
 
     // Sleep: faint random nudges (each voxel with probability `prob` gets `level` on one channel per
@@ -276,6 +279,7 @@ private:
     // sheets skipped in the current 2D step.
     std::vector<uint8_t> sheetQuietCur_, sheetQuietNext_, sheetSkip_;
     AVec<float> orderTrace3_; // per voxel channel: decaying recent activity (order timing window)
+    AVec<float> elig3_;       // plateau: per voxel channel, eligibility trace (decaying recent activity, plateau_tau)
     AVec<float> ctx3_;        // per voxel channel: slow trace of recent firing (held clues; context_tau)
     AVec<float> fbTrace_;     // per voxel channel: what it did lately, for right/wrong (feedback_tau)
     AVec<float> hold4Ctx_;    // per voxel channel: learned 4D drive from the partners' held clues

@@ -169,6 +169,14 @@ public:
                 ++modCount_;
                 m_->learn(modulator);
                 if (wordEnd) m_->learnWord(modulator); // settling: the whole word, learnt as one moment
+                if (cfg_.plateau > 0.0f) { // plateau: a surprising onset links back to the seconds before it
+                    const float sNow = m_->lastSurprise();
+                    if (fingerprint && sNow - surRun_ > cfg_.plateau_jump) {
+                        m_->plateauLearn(cfg_.plateau * sNow);
+                        ++plateaus_;
+                    }
+                    surRun_ += (sNow - surRun_) / 4.0f;
+                }
                 lastModulator_ = modulator;
             }
             lap(5, t0);
@@ -393,6 +401,7 @@ private:
     char heard_ = 0; // the character being heard (for the monitor)
     bool innerFeed_ = true;
     float surAvg_ = 0.9f, surVar_ = 0.001f, surFelt_ = 0.9f;           // inner_relative: usual surprise and its spread
+    float surRun_ = 1.0f; uint64_t plateaus_ = 0; // plateau: recent surprise level, onsets so far
     float mood_ = 0.0f, hitAvg_ = 0.0f;              // valence / self_sense: good vs bad moments
     std::array<std::vector<uint32_t>, 12> selfFp_{};  // self_sense: inner-state fingerprints (made on first use)
     std::vector<uint32_t> plan_;                      // speak_plan: the word's plan on the mouth
