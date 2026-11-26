@@ -1542,8 +1542,19 @@ void NeuralCellularMatrix::step3D() {
                         continue;
                     rivals[n++] = voxelIndex(f, uint32_t(nx), uint32_t(ny), uint32_t(nz));
                 }
-        const float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
-                                            cfg_.fire_threshold3, cfg_.fire_gain3);
+        // compete_keep k (L16, learning-limits.md): a voxel that loses the local competition keeps k x its
+        // firing instead of going silent, so a weaker part heard together with a stronger one (the letters
+        // under a held word) stays in the pattern, faintly, and can be bound to it. 0 = losers go silent.
+        float before3[C3];
+        const float keep3 = std::clamp(cfg_.compete_keep, 0.0f, 1.0f);
+        if (keep3 > 0.0f) std::copy(out + v * C3, out + (v + 1) * C3, before3);
+        float final = competeCell<C3>(out + v * C3, drive[v], v, rivals, n, drive, cfg_.winners3,
+                                      cfg_.fire_threshold3, cfg_.fire_gain3);
+        if (keep3 > 0.0f && final <= 0.0f && drive[v] > 0.0f) {
+            float sum = 0.0f;
+            for (uint32_t c = 0; c < C3; ++c) sum += (out[v * C3 + c] = keep3 * before3[c]);
+            final = sum / float(C3);
+        }
         adaptThreshold(theta[v], homeoAvg(homeo3_, v, final), lp, target);
         const float firing3 = final * float(C3) / float(std::clamp<uint32_t>(cfg_.channel_winners3, 1, C3));
         fatigue3_[v] += (firing3 - fatigue3_[v]) / std::max(1.0f, lp.fatigue_tau);

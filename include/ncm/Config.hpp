@@ -322,6 +322,9 @@ struct Config {
     // together. Measured: with radius 1, ~15% of voxels were active and learning lost specificity.
     uint32_t inhibition_radius3 = 2;
     uint32_t winners3 = 3;
+    // compete_keep (0..1, L16): a voxel that loses the local competition keeps this share of its firing
+    // (a faint trace) instead of going silent, so weaker parts heard with a stronger one stay in the pattern.
+    float compete_keep = 0.0f;
     // Competition inside a cell: a cell is a small group of neurons (its channels), and only
     // its most strongly driven channels stay active, so *which* channels fire depends on the
     // content. Without it the same cells win for every input and patterns overlap heavily.
