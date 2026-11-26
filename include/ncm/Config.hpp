@@ -575,7 +575,11 @@ struct Config {
     float word_repeat_letters = 0.0f; // word_shape: the repeat test also plays the letters before the shape (old)
     float read_mouth = 0.0f;          // read op: the mouth shows the word's shape while its letters are seen
     float read_gap = 0.0f;            // read op: the letters end with a space (the written word's end) before the shape
-    float word_mouth_from = 0.0f; // diagnostic: the mouth is taught only from the Nth word lesson on (0 = all)
+    float word_mouth_from = 0.0f;
+    // replay_rest k (interleaved replay, complementary learning systems): after each word lesson, k words from a
+    // store of the last replay_store learnt ones are re-lived (heard and said; read lessons: read). 0 = off.
+    float replay_rest = 0.0f;
+    float replay_store = 30.0f; // diagnostic: the mouth is taught only from the Nth word lesson on (0 = all)
     // Self-model step 1 (2026-11-19): an inner sense with its OWN entry point. self_sense fed the brain's
     // state through the ear and blurred the letters; here the state (surprise level x mood, 12 states) is
     // shown on the sheet cells of a separate face (x = 0 of field inner_field: 1 Memory, 2 Reasoning),

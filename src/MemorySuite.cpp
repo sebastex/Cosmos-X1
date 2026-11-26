@@ -2087,6 +2087,37 @@ int runScriptTest(const Config& cfg) {
     const bool learns = s.learning(); // the twin never learns, whatever the script says
     if (script.find("report:") != std::string::npos) s.watchActivity(true); // reports show activity while hearing
     uint64_t tick = 0, index = 0, shapeLessons = 0;
+    // replay_rest (interleaved replay, complementary learning systems: McClelland et al. 1995; Kumaran, Hassabis &
+    // McClelland 2016): a small fast store of recently learnt words (the last replay_store); after each lesson the
+    // brain re-lives replay_rest of them, picked at random (fixed by the seed), heard and said as in their own
+    // lesson, so new learning is interleaved with the old instead of overwriting it.
+    std::vector<std::string> recent;
+    uint64_t replayPick = 0;
+    auto replayRecent = [&](const std::string& now, bool readMode, uint64_t hold, uint64_t rest) {
+        if (!learn || cfg.replay_rest <= 0.0f || recent.empty()) return;
+        const uint32_t k = uint32_t(cfg.replay_rest + 0.5f);
+        for (uint32_t r = 0; r < k; ++r) {
+            const std::string& o = recent[size_t(hashUniform(cfg.seed, 0x4E91, replayPick++) * double(recent.size())) % recent.size()];
+            if (o == now) continue;
+            if (readMode) {
+                for (char ch : o) s.present(std::string(1, ch), 1, 1.0f, learn, UINT64_MAX);
+                if (cfg.read_gap > 0.5f) s.present(" ", 1, 1.0f, learn, UINT64_MAX);
+            }
+            s.mouthShape(&s.wordShape(o));
+            s.presentShape(o, hold, learn);
+            s.present(" ", 1, 1.0f, learn, UINT64_MAX);
+            s.mouthShape(nullptr);
+            s.silence(rest, learn);
+            tick += (readMode ? o.size() : 0) + hold + 1 + rest;
+        }
+    };
+    auto remember = [&](const std::string& w) {
+        if (cfg.replay_rest <= 0.0f) return;
+        recent.erase(std::remove(recent.begin(), recent.end(), w), recent.end());
+        recent.push_back(w);
+        const size_t cap = size_t(std::max(1.0f, cfg.replay_store));
+        if (recent.size() > cap) recent.erase(recent.begin());
+    };
     for (const std::string& step : split(script, ';')) {
         if (step.empty()) continue;
         const std::vector<std::string> f = split(step, ':');
@@ -2121,6 +2152,8 @@ int runScriptTest(const Config& cfg) {
                     s.silence(rest, learn);
                     tick += hold + 1 + rest;
                 }
+                replayRecent(w, false, hold, rest);
+                remember(w);
                 ++shapeLessons;
                 if (modOut) std::printf("SAYMOD %s %.4f change %.2f scaled %.2f\n", w.c_str(), s.meanModulator(),
                                         s.matrix().learningStats().change, s.matrix().learningStats().scaled);
@@ -2307,6 +2340,8 @@ int runScriptTest(const Config& cfg) {
                 s.silence(rest, learn);
                 tick += w.size() + hold + 1 + rest;
             }
+            replayRecent(w, true, hold, rest);
+            remember(w);
         } else if (op == "lexicon") {
             // lexicon:a,b,c - word_shape: words it could say (their shapes exist), without hearing them
             for (const std::string& w : split(f.size() > 1 ? f[1] : "", ',')) if (!w.empty()) s.wordShape(w);

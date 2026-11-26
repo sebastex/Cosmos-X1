@@ -309,6 +309,8 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"word_say_min", &c.word_say_min},
         {"word_say_margin", &c.word_say_margin},
         {"word_mouth_from", &c.word_mouth_from},
+        {"replay_rest", &c.replay_rest},
+        {"replay_store", &c.replay_store},
         {"word_repeat_letters", &c.word_repeat_letters},
         {"read_mouth", &c.read_mouth},
         {"read_gap", &c.read_gap},
