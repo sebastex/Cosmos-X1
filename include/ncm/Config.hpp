@@ -418,17 +418,25 @@ struct Config {
     // off whose last heard input also had learning off (a recall cue); lessons are unchanged.
     // (With ach = 1 the learned links follow each area's own level, not the mode: no effect there.)
     float recall_hold = 0.0f;
+    // recall_hold's length (review-02): the hold ends recall_window silent ticks after the cue; then the
+    // mode climbs as before, so an echo or hum cannot carry across a long rest into the next cue or
+    // lesson. 30 covers the repeat / complete readout (31 looks). 0 = until the next input.
+    float recall_window = 30.0f;
     // bind_clean 1 (audit-01 finding 3a): the word-end (space) tick's 3D step does not add to the
     // word trace, so learnWord binds only the word's own cells, not the space's cells that every
     // word shares (one hub for all words pulled recall toward a blend).
     float bind_clean = 0.0f;
     // settle_fair 1 (audit-01 finding 2): in silence the holding term is settle_hold x the learned
     // support for every cell, firing or not (no bonus for being on: a missing cell is driven as
-    // hard as an incumbent with the same support; settle_fit is then not used), and settle_cap
-    // limits each field (w-slice) to settle_cap x target_activity x its voxel count. That is the
-    // brain's own sparsity, the share gain control steers every field to, the same number for every
-    // word and cue; the old cap (settle_cap x the count at the last heard step, the space) depends on
-    // how big the cue was, so cells recruited by learned links were cut when the cue was small.
+    // hard as an incumbent with the same support; settle_fit is then not used). NOTE (review-02):
+    // this hold part only scales the learned input by (1 + settle_hold) in silence, so with
+    // settle_hold 1 it equals the already-tested recall_gain=2 with settle_hold=0 (which did worse);
+    // "no incumbent bonus" alone is settle_hold=0. The cap part limits each field (w-slice) in silence
+    // to settle_cap x the long-run mean of its heard counts (each heard step's count, averaged over
+    // average_tau steps; it starts at target_activity x the field's voxels). That is the brain's usual
+    // heard sparsity, the same for every word and cue; the old cap (settle_cap x the count at the last
+    // heard step, the space) depends on how big the cue was, so cells recruited by learned links were
+    // cut when the cue was small.
     float settle_fair = 0.0f;
     // settle_fix 1 (audit-01 "bugs"): settle_cap runs right after the competition, before fatigue,
     // homeostasis, the averages and the traces (word, order, context, feedback) count the step, so a

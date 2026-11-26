@@ -34,6 +34,7 @@ jobs:
           EXTRA_ENV: ${{ inputs.env }}
         run: |
           export OMP_NUM_THREADS=$(nproc)
+          export NCM_PRINT_CONFIG=1 # CONFIG name=value lines: the settings actually in force (rule 11)
           [ -n "$EXTRA_ENV" ] && export $EXTRA_ENV
           ./build/cosmos_x1 $ARGS --seed $SEED | tee result_$SEED.txt
       - uses: actions/upload-artifact@v4

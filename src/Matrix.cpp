@@ -1016,6 +1016,7 @@ void NeuralCellularMatrix::step2D() {
 // three fields, and a summary from each voxel's own 2D sheet.
 void NeuralCellularMatrix::step3D() {
     ScopeTimer timer_(time3D);
+    ++steps3D_;
     // Fatigue raises a voxel's firing threshold (it ends activity that outlasts its input).
     const float* s2 = s2_.cur.data();
     const float* s3 = s3_.cur.data();
@@ -2085,13 +2086,19 @@ void NeuralCellularMatrix::settleCap(float* out, size_t b, size_t e) {
             for (uint32_t c = 0; c < C3; ++c) a += out[v * C3 + c];
             if (a > 0.0f) on.emplace_back(a, v);
         }
-        if (sensoryOn_) { heardActive_[f] = on.size(); continue; }
-        // settle_fair 1 (audit-01 finding 2): the cap is the brain's own sparsity (settle_cap x the
-        // target share x the field's voxels, the level gain control steers to), the same for every
-        // cue, not the count at the last heard step, so cells the links recruit are not cut for a small cue.
+        // settle_fair (review-02): the long-run mean of the heard counts, starting at the target share.
+        if (heardMean_[f] <= 0.0) heardMean_[f] = double(std::max(0.0f, cfg_.target_activity)) * double(Vf_);
+        if (sensoryOn_) {
+            heardActive_[f] = on.size();
+            heardMean_[f] += (double(on.size()) - heardMean_[f]) / double(std::max(1.0f, cfg_.learning.average_tau));
+            continue;
+        }
+        // settle_fair 1 (audit-01 finding 2, review-02): the cap follows the brain's usual heard sparsity
+        // (settle_cap x the long-run mean of the heard counts), the same for every cue, not the count at
+        // the last heard step, so cells the links recruit are not cut because the cue was small.
         const bool fair = cfg_.settle_fair > 0.5f;
         if (!fair && heardActive_[f] == 0) continue; // nothing heard yet: no measure
-        const double ref = fair ? double(std::max(0.0f, cfg_.target_activity)) * double(Vf_) : double(heardActive_[f]);
+        const double ref = fair ? heardMean_[f] : double(heardActive_[f]);
         const size_t cap = std::max<size_t>(1, size_t(std::ceil(cfg_.settle_cap * ref)));
         if (on.size() <= cap) continue;
         std::nth_element(on.begin(), on.begin() + cap, on.end(), [](const auto& x, const auto& y) { return x.first > y.first; });

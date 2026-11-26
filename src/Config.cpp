@@ -261,6 +261,7 @@ std::map<std::string, float*> settingTable(Config& c) {
         {"settle_cap", &c.settle_cap},
         {"settle_fit", &c.settle_fit},
         {"recall_hold", &c.recall_hold}, // I-01c, audit-01 finding 1
+        {"recall_window", &c.recall_window}, // recall_hold's length in silent ticks (review-02)
         {"bind_clean", &c.bind_clean},   // I-01c, audit-01 finding 3a
         {"settle_fair", &c.settle_fair}, // I-01c, audit-01 finding 2
         {"settle_fix", &c.settle_fix},   // I-01c, audit-01 bug note (settleCap order)

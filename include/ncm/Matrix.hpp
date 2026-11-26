@@ -105,6 +105,12 @@ public:
     // bind_clean: whether the coming 3D step is the word-end (space) step; with bind_clean 1 it does
     // not add to the word trace (audit-01 finding 3a). Set by the session around step3D().
     void setWordEndStep(bool on) { wordEndStep_ = on; }
+    // settle_cap's heard counts per field (diagnostic): the last heard step's, and their long-run mean
+    // (settle_fair's cap reference). Only kept while settle_cap > 0.
+    std::array<size_t, kFields> heardCounts() const { return heardActive_; }
+    std::array<double, kFields> heardMeans() const { return heardMean_; }
+    // 3D steps taken so far (diagnostic: whether a tick had a 3D step).
+    uint64_t steps3D() const { return steps3D_; }
 
     // Learn by predicting (predict_surprise): after a 3D step, how much of the voxels' firing their
     // learned links did not predict (0 = fully expected, 1 = all new). Kept until the next call.
@@ -297,9 +303,11 @@ private:
     std::vector<float> achArea_;
     std::vector<float> wordTrace_;          // settle_bind: per voxel channel, its peak firing during the current word
     bool wordEndStep_ = false;              // bind_clean: this 3D step is the word-end (space) step
+    uint64_t steps3D_ = 0;                  // 3D steps taken (diagnostic, not saved)
     const float* learnFrom_ = nullptr;      // learnWord: learn() reads these traces instead of the state
     float learnScale_ = 1.0f;
     std::array<size_t, kFields> heardActive_{}; // settle_cap: voxels firing per field at the last heard step
+    std::array<double, kFields> heardMean_{};   // settle_fair: long-run mean of those counts (average_tau; not saved)
     std::vector<float> budgetGrow_; // budget_grow: per voxel channel and link kind, how far its budget has grown (x plastic_budget)
     std::vector<double> achExplained_, achFired_;
 public:

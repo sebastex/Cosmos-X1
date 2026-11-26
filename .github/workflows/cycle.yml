@@ -74,7 +74,7 @@ jobs:
           T1=$(date +%s)
           python3 tools/cycle/cycle.py test $LIST > out/test.json
           python3 -c "import json; print(json.load(open('out/test.json'))['puzzles'][0]['script'])" > test.txt
-          NCM_STATE_IN=next.bin NCM_SCRIPT_FILE=test.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
+          NCM_PRINT_CONFIG=1 NCM_STATE_IN=next.bin NCM_SCRIPT_FILE=test.txt NCM_MONITOR=monitor NCM_MONITOR_VOXELS=1 \
             ./build/cosmos_x1 --test script --preset dev --variant $VARIANT --seed $SEED $ARGS > out/result.txt
           : > out/report.txt
           for f in monitor/*.ncmmon; do python3 tools/monitor/read_monitor.py "$f" --story >> out/report.txt; done
